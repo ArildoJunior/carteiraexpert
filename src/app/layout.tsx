@@ -1,3 +1,4 @@
+import { ThemeScript } from "@/components/theme/theme-script";
 import type { Metadata, Viewport } from "next";
 import { ThemeProvider } from "next-themes";
 import { Inter, JetBrains_Mono } from "next/font/google";
@@ -44,6 +45,9 @@ export default function RootLayout({
       className={`${inter.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
+      <head>
+        <ThemeScript />
+      </head>
       <body>
         <ThemeProvider
           attribute="class"
