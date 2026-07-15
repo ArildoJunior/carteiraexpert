@@ -1,0 +1,55 @@
+@'
+
+# Dependencies
+node_modules
+.pnpm-store
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Production
+*.tsbuildinfo
+next-env.d.ts
+
+# Environment
+.env
+.env*.local
+
+# Testing
+coverage/
+playwright-report/
+test-results/
+.vitest/
+
+# Logs
+*.log
+*.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Storage
+public/uploads/
+public/documents/
+
+# Project notes
+Livro/
+
+'@ | Set-Content -Path "C:\projetos\carteiraexpert\.gitignore" -Encoding UTF8
