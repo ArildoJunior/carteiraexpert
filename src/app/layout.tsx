@@ -1,6 +1,6 @@
+import { Providers } from "@/components/providers";
 import { ThemeScript } from "@/components/theme/theme-script";
 import type { Metadata, Viewport } from "next";
-import { ThemeProvider } from "next-themes";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     default: "carteiraexpert",
     template: "%s | carteiraexpert",
   },
-  description: "Consolide, analise e acompanhe seus investimentos em um único lugar.",
+  description: "Controle de investimentos para o investidor brasileiro.",
   applicationName: "carteiraexpert",
 };
 
@@ -49,14 +49,7 @@ export default function RootLayout({
         <ThemeScript />
       </head>
       <body>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          {children}
-        </ThemeProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

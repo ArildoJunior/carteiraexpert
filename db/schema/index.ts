@@ -1,2 +1,5 @@
-// Placeholder: schemas concretos serão adicionados no Cap 4
-export {};
+export * from "./users";
+export * from "./accounts";
+export * from "./verification-tokens";
+export * from "./password-resets";
+export * from "./two-factor-secrets";
