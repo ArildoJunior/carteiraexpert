@@ -38,11 +38,16 @@ function currentCode(secret: string): string {
     c = Math.floor(c / 256);
   }
   const hmac = createHmac("sha1", key).update(buf).digest();
+  // biome-ignore lint/style/noNonNullAssertion: HMAC-SHA1 >= 20 bytes
   const offset = hmac[hmac.length - 1]! & 0x0f;
   const code =
+    // biome-ignore lint/style/noNonNullAssertion: idem
     ((hmac[offset]! & 0x7f) << 24) |
+    // biome-ignore lint/style/noNonNullAssertion: idem
     ((hmac[offset + 1]! & 0xff) << 16) |
+    // biome-ignore lint/style/noNonNullAssertion: idem
     ((hmac[offset + 2]! & 0xff) << 8) |
+    // biome-ignore lint/style/noNonNullAssertion: idem
     (hmac[offset + 3]! & 0xff);
   return (code % 1_000_000).toString().padStart(6, "0");
 }

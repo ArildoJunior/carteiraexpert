@@ -7,6 +7,7 @@ function base32Encode(buffer: Buffer): string {
   let value = 0;
   let output = "";
   for (let i = 0; i < buffer.length; i++) {
+    // biome-ignore lint/style/noNonNullAssertion: indice matematicamente valido no loop
     const byte = buffer[i]!;
     value = (value << 8) | byte;
     bits += 8;
@@ -48,11 +49,16 @@ function hotp(secret: string, counter: number, digits = 6): string {
     c = Math.floor(c / 256);
   }
   const hmac = createHmac("sha1", key).update(counterBuffer).digest();
+  // biome-ignore lint/style/noNonNullAssertion: HMAC-SHA1 sempre tem >= 20 bytes
   const offset = hmac[hmac.length - 1]! & 0x0f;
   const code =
+    // biome-ignore lint/style/noNonNullAssertion: offset calculado de HMAC-SHA1 (4 bytes garantidos)
     ((hmac[offset]! & 0x7f) << 24) |
+    // biome-ignore lint/style/noNonNullAssertion: idem
     ((hmac[offset + 1]! & 0xff) << 16) |
+    // biome-ignore lint/style/noNonNullAssertion: idem
     ((hmac[offset + 2]! & 0xff) << 8) |
+    // biome-ignore lint/style/noNonNullAssertion: idem
     (hmac[offset + 3]! & 0xff);
   return (code % 10 ** digits).toString().padStart(digits, "0");
 }
