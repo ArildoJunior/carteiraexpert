@@ -12,9 +12,13 @@ export default defineConfig({
     exclude: ["**/node_modules/**", "**/dist/**", "**/.next/**", "**/tests/e2e/**"],
   },
   resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-      "@/db": path.resolve(__dirname, "./db"),
-    },
+    alias: [
+      // "@/db" exato resolve para "./db"
+      { find: "@/db", replacement: path.resolve(__dirname, "./db") },
+      // "@/db/..." (com prefixo) resolve para "./db/..."
+      { find: /^@\/db\/(.*)$/, replacement: path.resolve(__dirname, "./db/$1") },
+      // "@/..." (com prefixo) resolve para "./src/..."
+      { find: /^@\/(.*)$/, replacement: path.resolve(__dirname, "./src/$1") },
+    ],
   },
 });
