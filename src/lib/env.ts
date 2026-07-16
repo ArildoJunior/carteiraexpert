@@ -23,6 +23,9 @@ const envSchema = z.object({
   SENTRY_DSN: z.string().url().optional(),
   NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
+  UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
+  BRAPI_TOKEN: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse({
@@ -35,6 +38,9 @@ const parsed = envSchema.safeParse({
   SENTRY_DSN: emptyToUndef(process.env.SENTRY_DSN),
   NEXT_PUBLIC_POSTHOG_KEY: emptyToUndef(process.env.NEXT_PUBLIC_POSTHOG_KEY),
   RESEND_API_KEY: emptyToUndef(process.env.RESEND_API_KEY),
+  UPSTASH_REDIS_REST_URL: emptyToUndef(process.env.UPSTASH_REDIS_REST_URL),
+  UPSTASH_REDIS_REST_TOKEN: emptyToUndef(process.env.UPSTASH_REDIS_REST_TOKEN),
+  BRAPI_TOKEN: emptyToUndef(process.env.BRAPI_TOKEN),
 });
 
 if (!parsed.success) {

@@ -1,9 +1,11 @@
+import { DegradedBanner } from "@/components/portfolio/degraded-banner";
 import { PositionTable } from "@/components/portfolio/position-table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { assets, brokerageAccounts, positions } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getQuotesBatch } from "@/lib/quotes/manager";
 import { eq } from "drizzle-orm";
 import { Plus, Wallet } from "lucide-react";
 import Link from "next/link";
@@ -31,13 +33,24 @@ export default async function PosicoesPage() {
     .innerJoin(brokerageAccounts, eq(positions.accountId, brokerageAccounts.id))
     .where(eq(positions.userId, userId));
 
-  // FIX: Postgres numeric vem como string no Drizzle. Converte para number
-  // antes de passar para a PositionTable (que espera number para sort numerico)
-  const data = rows.map((r) => ({
-    ...r,
-    quantity: Number(r.quantity),
-    averageCost: Number(r.averageCost),
-  }));
+  // Fan-out de cotacoes em paralelo (cache + provider)
+  const quoteResults = await getQuotesBatch(
+    rows.map((r) => ({ ticker: r.assetTicker, assetClass: r.assetClass }))
+  );
+
+  const data = rows.map((r) => {
+    const qr = quoteResults[r.assetTicker];
+    const quote = qr?.ok ? qr.quote : (qr?.staleQuote ?? null);
+    const quantity = Number(r.quantity);
+    const marketValue = quote ? quote.price * quantity : null;
+    return {
+      ...r,
+      quantity,
+      averageCost: Number(r.averageCost),
+      quote,
+      marketValue,
+    };
+  });
 
   return (
     <div className="space-y-6">
@@ -59,6 +72,8 @@ export default async function PosicoesPage() {
           </Link>
         </Button>
       </div>
+
+      <DegradedBanner />
 
       {data.length === 0 ? (
         <Card>

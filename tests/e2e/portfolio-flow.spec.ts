@@ -27,7 +27,7 @@ test.describe("Cap 5 Ã¢â‚¬â€ Fluxo de Portfolio", () => {
     await page.goto("/app/carteira");
     await expect(page.getByRole("heading", { name: "Carteira" })).toBeVisible();
     const main = page.getByRole("main");
-    const cardTitles = main.locator('[data-slot="card-title"]');
+    const _cardTitles = main.locator('[data-slot="card-title"]');
     await expect(main.getByText("Patrimonio", { exact: true })).toBeVisible();
     await expect(main.getByText("Posicoes", { exact: true })).toBeVisible();
     await expect(main.getByText("Contas", { exact: true })).toBeVisible();
@@ -82,11 +82,11 @@ test.describe("Cap 5 Ã¢â‚¬â€ Fluxo de Portfolio", () => {
     await positionLink.click();
     await page.waitForURL(/\/app\/posicoes\/[0-9a-f-]+$/);
     const main = page.getByRole("main");
-    const cardTitles = main.locator('[data-slot="card-title"]');
-    await expect(cardTitles.filter({ hasText: "Quantidade" })).toBeVisible();
-    await expect(cardTitles.filter({ hasText: "Custo medio" })).toBeVisible();
-    await expect(cardTitles.filter({ hasText: "Total investido" })).toBeVisible();
-    await expect(cardTitles.filter({ hasText: "Movimentacoes" })).toBeVisible();
+    const _cardTitles = main.locator('[data-slot="card-title"]');
+    await expect(_cardTitles.filter({ hasText: "Quantidade" })).toBeVisible();
+    await expect(_cardTitles.filter({ hasText: "Custo medio" })).toBeVisible();
+    await expect(_cardTitles.filter({ hasText: "Total investido" })).toBeVisible();
+    await expect(_cardTitles.filter({ hasText: "Movimentacoes" })).toBeVisible();
   });
 
   test("excluir conta via UI: confirmacao + conta some", async ({ page }) => {

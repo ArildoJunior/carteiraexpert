@@ -35,7 +35,11 @@ type PositionRow = {
   isOpen: string;
 };
 
-type Props = { data: PositionRow[] };
+type Props = {
+  data: Array<
+    PositionRow & { quote: import("@/lib/quotes/types").Quote | null; marketValue: number | null }
+  >;
+};
 
 const CLASS_LABELS: Record<string, string> = {
   stock: "Acao",
