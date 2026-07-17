@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { assets, brokerageAccounts, transactions } from "@/db/schema";
-import { auth } from "@/lib/auth";
+import { getUserIdOrRedirect } from "@/lib/auth/session-helper";
 import { db } from "@/lib/db";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { desc, eq } from "drizzle-orm";
@@ -41,8 +41,7 @@ const TYPE_VARIANT: Record<string, "default" | "secondary" | "destructive" | "ou
 };
 
 export default async function MovimentacoesPage() {
-  const session = await auth();
-  const userId = session!.user.id;
+  const userId = await getUserIdOrRedirect();
 
   // TODO Cap. 7: paginacao real (cursor/offset)
   const txs = await db

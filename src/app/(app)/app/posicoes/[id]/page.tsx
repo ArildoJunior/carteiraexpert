@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { assets, brokerageAccounts, transactions } from "@/db/schema";
-import { auth } from "@/lib/auth";
+import { getUserIdOrRedirect } from "@/lib/auth/session-helper";
 import { db } from "@/lib/db";
 import { getPositionForUser } from "@/lib/db/scopes";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -50,9 +50,8 @@ const CLASS_LABELS: Record<string, string> = {
 };
 
 export default async function PosicaoDetalhePage({ params }: Props) {
-  const session = await auth();
   const { id } = await params;
-  const userId = session!.user.id;
+  const userId = await getUserIdOrRedirect();
 
   // Scope check: so devolve a posicao se for do user
   const position = await getPositionForUser(id, userId);

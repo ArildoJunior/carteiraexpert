@@ -3,7 +3,7 @@ import { PositionTable } from "@/components/portfolio/position-table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { assets, brokerageAccounts, positions } from "@/db/schema";
-import { auth } from "@/lib/auth";
+import { getUserIdOrRedirect } from "@/lib/auth/session-helper";
 import { db } from "@/lib/db";
 import { getQuotesBatch } from "@/lib/quotes/manager";
 import { eq } from "drizzle-orm";
@@ -11,8 +11,7 @@ import { Plus, Wallet } from "lucide-react";
 import Link from "next/link";
 
 export default async function PosicoesPage() {
-  const session = await auth();
-  const userId = session!.user.id;
+  const userId = await getUserIdOrRedirect();
 
   const rows = await db
     .select({

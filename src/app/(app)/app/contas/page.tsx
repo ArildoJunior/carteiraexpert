@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { brokerageAccounts } from "@/db/schema";
-import { auth } from "@/lib/auth";
+import { getUserIdOrRedirect } from "@/lib/auth/session-helper";
 import { db } from "@/lib/db";
 import { desc, eq } from "drizzle-orm";
 import { Building2, Plus } from "lucide-react";
@@ -34,8 +34,7 @@ const BROKER_LABELS: Record<string, string> = {
 };
 
 export default async function ContasPage() {
-  const session = await auth();
-  const userId = session!.user.id;
+  const userId = await getUserIdOrRedirect();
 
   const accounts = await db
     .select()

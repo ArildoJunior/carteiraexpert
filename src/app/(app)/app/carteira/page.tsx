@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { assets, brokerageAccounts, positions } from "@/db/schema";
-import { auth } from "@/lib/auth";
+import { getUserIdOrRedirect } from "@/lib/auth/session-helper";
 import { db } from "@/lib/db";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { eq } from "drizzle-orm";
@@ -31,8 +31,7 @@ const CLASS_LABELS: Record<string, string> = {
 };
 
 export default async function CarteiraPage() {
-  const session = await auth();
-  const userId = session!.user.id;
+  const userId = await getUserIdOrRedirect();
 
   const rows = await db
     .select({

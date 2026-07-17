@@ -2,7 +2,7 @@ import { AccountForm } from "@/components/portfolio/account-form";
 import { DeleteAccountButton } from "@/components/portfolio/delete-account-button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { auth } from "@/lib/auth";
+import { getUserIdOrRedirect } from "@/lib/auth/session-helper";
 import { getAccountForUser } from "@/lib/db/scopes";
 import type { CreateBrokerageAccount } from "@/lib/validations/brokerage-account";
 import { notFound } from "next/navigation";
@@ -10,9 +10,9 @@ import { notFound } from "next/navigation";
 type Props = { params: Promise<{ id: string }> };
 
 export default async function ContaDetalhePage({ params }: Props) {
-  const session = await auth();
   const { id } = await params;
-  const account = await getAccountForUser(id, session!.user.id);
+  const userId = await getUserIdOrRedirect();
+  const account = await getAccountForUser(id, userId);
   if (!account) notFound();
 
   return (

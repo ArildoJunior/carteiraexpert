@@ -1,5 +1,6 @@
 "use client";
 
+import { QuoteCell } from "@/components/portfolio/quote-cell";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -9,6 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatCurrency } from "@/lib/utils";
 import {
   type ColumnDef,
   type SortingState,
@@ -35,10 +37,13 @@ type PositionRow = {
   isOpen: string;
 };
 
+type PositionWithQuote = PositionRow & {
+  quote: import("@/lib/quotes/types").Quote | null;
+  marketValue: number | null;
+};
+
 type Props = {
-  data: Array<
-    PositionRow & { quote: import("@/lib/quotes/types").Quote | null; marketValue: number | null }
-  >;
+  data: PositionWithQuote[];
 };
 
 const CLASS_LABELS: Record<string, string> = {
@@ -66,7 +71,7 @@ function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
 export function PositionTable({ data }: Props) {
   const [sorting, setSorting] = useState<SortingState>([]);
 
-  const columns: ColumnDef<PositionRow>[] = [
+  const columns: ColumnDef<PositionWithQuote>[] = [
     {
       accessorKey: "assetTicker",
       header: ({ column }) => (
@@ -145,6 +150,23 @@ export function PositionTable({ data }: Props) {
           })}
         </span>
       ),
+    },
+    {
+      id: "quote",
+      header: () => <SortHeader label="Cotação" />,
+      cell: ({ row }) => <QuoteCell quote={row.original.quote} />,
+      enableSorting: false,
+    },
+    {
+      id: "marketValue",
+      header: () => <SortHeader label="Valor de mercado" />,
+      cell: ({ row }) =>
+        row.original.marketValue !== null && row.original.marketValue !== undefined ? (
+          <span className="font-mono">{formatCurrency(row.original.marketValue)}</span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
+      enableSorting: false,
     },
     {
       accessorKey: "isOpen",

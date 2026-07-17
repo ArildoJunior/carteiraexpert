@@ -1,12 +1,11 @@
 import { TransactionForm } from "@/components/portfolio/transaction-form";
 import { assets, brokerageAccounts } from "@/db/schema";
-import { auth } from "@/lib/auth";
+import { getUserIdOrRedirect } from "@/lib/auth/session-helper";
 import { db } from "@/lib/db";
 import { asc, eq } from "drizzle-orm";
 
 export default async function NovaPosicaoPage() {
-  const session = await auth();
-  const userId = session!.user.id;
+  const userId = await getUserIdOrRedirect();
 
   const accounts = await db
     .select({ id: brokerageAccounts.id, name: brokerageAccounts.name })
