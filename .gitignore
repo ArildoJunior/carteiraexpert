@@ -53,3 +53,7 @@ public/documents/
 Livro/
 
 '@ | Set-Content -Path "C:\projetos\carteiraexpert\.gitignore" -Encoding UTF8
+# Scripts de bootstrap/recuperacao do Cap. 7
+scripts/check-cap7-state.ts
+scripts/apply-missing-indexes.ts
+scripts/mark-migration-applied.ts

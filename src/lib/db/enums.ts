@@ -64,3 +64,16 @@ export type Broker = (typeof brokerEnum)[number];
 
 export const watchlistUpdateModeEnum = ["static", "dynamic"] as const;
 export type WatchlistUpdateMode = (typeof watchlistUpdateModeEnum)[number];
+
+// Cap. 7 — Integracao com corretoras
+export const brokerProviderEnum = ["manual", "pluggy", "b3_direct"] as const;
+export type BrokerProvider = (typeof brokerProviderEnum)[number];
+
+export const brokerKindEnum = ["brokerage", "exchange", "bank", "crypto"] as const;
+export type BrokerKind = (typeof brokerKindEnum)[number];
+
+export const reviewStatusEnum = ["pending", "imported", "skipped", "duplicate"] as const;
+export type ReviewStatus = (typeof reviewStatusEnum)[number];
+
+export const importJobStatusEnum = ["running", "success", "error", "partial"] as const;
+export type ImportJobStatus = (typeof importJobStatusEnum)[number];

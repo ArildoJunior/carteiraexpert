@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1784300097933,
+      "tag": "0000_integrations_manual_csv",
+      "breakpoints": true
+    }
+  ]
+}

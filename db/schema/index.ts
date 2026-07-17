@@ -14,3 +14,9 @@ export * from "./watchlists";
 export * from "./alerts";
 export * from "./user-preferences";
 export * from "./audit-logs";
+
+// Integracao com corretoras (Cap. 7)
+export * from "./brokers";
+export * from "./broker-connections";
+export * from "./import-jobs";
+export * from "./import-queue";
