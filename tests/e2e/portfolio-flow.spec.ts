@@ -55,6 +55,9 @@ test.describe("Cap 5 Ã¢â‚¬â€ Fluxo de Portfolio", () => {
     await page.goto("/app/posicoes/nova");
     await page.getByRole("combobox").nth(0).click();
     await page.getByRole("option").first().click();
+    // Filtra o ativo via search field (banco tem dezenas de DUPs de testes
+    // E2E anteriores, PETR4 cairia fora do slice de 50 visiveis).
+    await page.getByPlaceholder(/buscar por ticker ou nome/i).fill(ticker);
     const assetSelect = page.getByRole("combobox").nth(2);
     await assetSelect.click();
     await page
