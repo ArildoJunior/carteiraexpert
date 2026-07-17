@@ -9,6 +9,7 @@ export type BrokerTransactionSide =
   | "buy"
   | "sell"
   | "dividend"
+  | "jcp"
   | "interest"
   | "fee"
   | "transfer_in"

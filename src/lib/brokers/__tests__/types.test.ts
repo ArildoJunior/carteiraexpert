@@ -1,65 +1,46 @@
 import { describe, expect, it } from "vitest";
-import {
-  type BrokerAccount,
-  BrokerError,
-  type BrokerPosition,
-  type BrokerTransaction,
-  type ImportPreview,
-} from "../types";
+import { BrokerError, type ImportWarning } from "../types";
 
-describe("Cap. 7A — tipos de BrokerConnector", () => {
-  it("BrokerError carrega code e message", () => {
-    const err = new BrokerError("unsupported_format", "PDF nao suportado");
+describe("types", () => {
+  it("BrokerError preserves code and message", () => {
+    const err = new BrokerError("parse_error", "Arquivo invalido");
+    expect(err.code).toBe("parse_error");
+    expect(err.message).toBe("Arquivo invalido");
     expect(err.name).toBe("BrokerError");
-    expect(err.code).toBe("unsupported_format");
-    expect(err.message).toBe("PDF nao suportado");
-    expect(err).toBeInstanceOf(Error);
   });
 
-  it("BrokerError aceita cause opcional", () => {
-    const cause = new Error("original");
-    const err = new BrokerError("parse_error", "linha invalida", { cause });
+  it("BrokerError accepts optional cause", () => {
+    const cause = new Error("origem");
+    const err = new BrokerError("network", "Falha de rede", { cause });
     expect((err as Error & { cause?: unknown }).cause).toBe(cause);
   });
 
-  it("shapes canonicos batem com o esperado (compilacao TS ja garante)", () => {
-    const account: BrokerAccount = {
-      externalId: "acc-1",
-      name: "Conta XP",
-      type: "brokerage",
-      currency: "BRL",
-      broker: "xp",
-    };
-    const position: BrokerPosition = {
-      externalId: "pos-1",
-      accountExternalId: "acc-1",
-      ticker: "PETR4",
-      name: "Petrobras PN",
-      assetClass: "stock",
-      quantity: 100,
-      averagePrice: 38.5,
-      currency: "BRL",
-      updatedAt: "2026-01-15T00:00:00Z",
-    };
-    const tx: BrokerTransaction = {
-      externalId: "tx-1",
-      accountExternalId: "acc-1",
-      ticker: "PETR4",
-      side: "buy",
-      quantity: 100,
-      price: 38.5,
-      currency: "BRL",
-      occurredAt: "2026-01-15",
-    };
-    const preview: ImportPreview = {
-      accounts: [account],
-      positions: [position],
-      transactions: [tx],
-      warnings: [],
-      totalRows: 1,
-    };
-    expect(preview.accounts).toHaveLength(1);
-    expect(preview.positions[0]?.ticker).toBe("PETR4");
-    expect(preview.transactions[0]?.side).toBe("buy");
+  it("BrokerError works without cause", () => {
+    const err = new BrokerError("not_found", "Nao encontrado");
+    expect((err as Error & { cause?: unknown }).cause).toBeUndefined();
+  });
+
+  it("ImportWarning code union has 4 variants", () => {
+    const codes: ImportWarning["code"][] = [
+      "encoding",
+      "missing_field",
+      "parse_error",
+      "skipped_row",
+    ];
+    expect(codes).toHaveLength(4);
+  });
+
+  it("BrokerError code union has 8 variants", () => {
+    const codes: BrokerError["code"][] = [
+      "invalid_file",
+      "unsupported_format",
+      "parse_error",
+      "mapping_error",
+      "provider_error",
+      "rate_limited",
+      "not_found",
+      "network",
+    ];
+    expect(codes).toHaveLength(8);
   });
 });

@@ -1,0 +1,4 @@
+data;ativo;operacao;quantidade;preco;valor;taxa
+2025-01-10;BOVA11;Compra;50;135,40;6770,00;3,50
+2025-02-15;ITSA4;Venda;100;10,50;1050,00;2,90
+2025-03-20;BOVA11;Dividendo;0;0,00;95,00;0,00
