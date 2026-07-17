@@ -18,6 +18,7 @@ export const importJobsTable = pgTable(
       .references(() => brokerConnectionsTable.id, { onDelete: "cascade" }),
     triggeredBy: text("triggered_by").notNull(),
     sourceFilename: text("source_filename"),
+    fileHash: text("file_hash"), // SHA-256 do arquivo - dedup no nivel de arquivo (idempotencia)
     startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
     finishedAt: timestamp("finished_at", { withTimezone: true }),
     status: importJobStatusPgEnum("status").notNull(),
@@ -36,6 +37,8 @@ export const importJobsTable = pgTable(
     idxImportJobsRunning: index("idx_import_jobs_running")
       .on(table.userId, table.status)
       .where(sql`${table.status} = 'running'`),
+    // Indice composto para checar idempotencia rapido (user + file_hash)
+    idxImportJobsFileHash: index("idx_import_jobs_file_hash").on(table.userId, table.fileHash),
   })
 );
 

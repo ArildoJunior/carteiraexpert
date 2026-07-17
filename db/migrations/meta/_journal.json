@@ -8,6 +8,13 @@
       "when": 1784300097933,
       "tag": "0000_integrations_manual_csv",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784314893418,
+      "tag": "0001_rich_wasp",
+      "breakpoints": true
     }
   ]
 }
