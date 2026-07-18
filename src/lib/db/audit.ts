@@ -25,6 +25,8 @@ export type AuditAction =
   | "auth.password_reset"
   | "export.requested"
   | "import.completed"
+  | "import.applied"
+  | "import.reviewed"
   | "deletion.requested";
 
 export async function logAudit(params: {

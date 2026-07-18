@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { sql } from "drizzle-orm";
 
-export type AdvisoryLockKey = `import:${string}`;
+export type AdvisoryLockKey = `import:${string}` | `apply:${string}`;
 
 // Tenta adquirir lock distribuido via pg_try_advisory_xact_lock.
 // O lock e' automaticamente liberado no COMMIT/ROLLBACK da transacao.
