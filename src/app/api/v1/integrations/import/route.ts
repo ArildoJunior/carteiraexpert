@@ -1,4 +1,5 @@
 import { brokerConnectionsTable, brokersTable, importJobsTable } from "@/db/schema";
+import { inngest } from "@/inngest/client";
 import { auth } from "@/lib/auth";
 import { getConnectorBySlug } from "@/lib/brokers/provider-registry";
 import type { ImportPreview } from "@/lib/brokers/types";
@@ -178,6 +179,20 @@ export async function POST(req: Request) {
     },
   });
 
+  // 9. Dispara evento assincrono para o Inngest (audit log + extensao futura).
+  // Gated: so dispara se INNGEST_EVENT_KEY estiver setada. Stub nao deve falhar
+  // em dev/test quando Inngest nao esta configurado. Cap 17 habilita em prod.
+  if (process.env.INNGEST_EVENT_KEY) {
+    try {
+      await inngest.send({
+        name: "broker/import.requested",
+        data: { userId, brokerSlug, importJobId: jobId },
+      });
+    } catch (err) {
+      // Falha no dispatch nao bloqueia o import - log e segue
+      console.error("[integrations/import] inngest.send falhou:", err);
+    }
+  }
   return NextResponse.json(
     {
       jobId,
