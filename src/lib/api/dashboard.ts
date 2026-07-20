@@ -1,0 +1,92 @@
+const BASE = "/api/v1/dashboard";
+
+export type Period = "1M" | "3M" | "6M" | "1Y" | "2Y" | "5Y" | "MAX";
+export type Benchmark = "IBOV" | "IFIX" | "CDI";
+
+export interface OverviewData {
+  snapshotDate: string;
+  totalValue: number;
+  totalCost: number;
+  totalPnL: number;
+  dayChange: number;
+  periodReturn: number;
+  twrCumulative: number;
+  positionsCount: number;
+  benchmarks: Array<{ benchmark: string; points: Array<{ date: string; value: string }> }>;
+  degraded: boolean;
+}
+
+export interface EvolutionPoint {
+  date: string;
+  portfolioValue: number;
+  portfolioCost: number;
+  portfolioTWR: number;
+  benchmark: { name: string; aligned: Array<{ date: string; value: number; twr: number }> } | null;
+}
+
+export interface AllocationData {
+  date: string;
+  totalValue: number;
+  byClass: Record<string, { value: number; percent: number; count: number }>;
+  degraded: boolean;
+}
+
+export interface Mover {
+  ticker: string;
+  name: string;
+  assetClass: string;
+  variation: number;
+  contribution: number;
+  price: number;
+}
+
+export interface MonthlyReturn {
+  year: number;
+  month: number;
+  return: number;
+}
+
+export type ApiResult<T> =
+  | { data: T; reason?: undefined }
+  | { data: null; reason: "no_snapshot_yet" };
+
+async function get<T>(path: string): Promise<ApiResult<T>> {
+  const res = await fetch(`${BASE}${path}`, { cache: "no-store" });
+  if (!res.ok) {
+    if (res.status === 401) throw new Error("Nao autenticado");
+    throw new Error(`API error: ${res.status}`);
+  }
+  return (await res.json()) as ApiResult<T>;
+}
+
+export async function fetchOverview(
+  period: Period,
+  benchmarks: Benchmark[] = []
+): Promise<ApiResult<OverviewData>> {
+  const params = new URLSearchParams({ period });
+  if (benchmarks.length > 0) params.set("benchmarks", benchmarks.join(","));
+  return get<OverviewData>(`/overview?${params}`);
+}
+
+export async function fetchEvolution(
+  period: Period,
+  benchmark: Benchmark = "IBOV"
+): Promise<ApiResult<EvolutionPoint[]>> {
+  return get<EvolutionPoint[]>(`/evolution?period=${period}&benchmark=${benchmark}`);
+}
+
+export async function fetchAllocation(date?: string): Promise<ApiResult<AllocationData>> {
+  const params = date ? `?date=${date}` : "";
+  return get<AllocationData>(`/allocation${params}`);
+}
+
+export async function fetchMovers(
+  period: Period = "1M",
+  limit = 5
+): Promise<ApiResult<{ winners: Mover[]; losers: Mover[] }>> {
+  return get(`/movers?period=${period}&limit=${limit}`);
+}
+
+export async function fetchHeatmap(period: Period = "1Y"): Promise<ApiResult<MonthlyReturn[]>> {
+  return get<MonthlyReturn[]>(`/heatmap?period=${period}`);
+}

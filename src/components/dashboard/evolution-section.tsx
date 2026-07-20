@@ -1,0 +1,88 @@
+"use client";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { EvolutionPoint } from "@/lib/api/dashboard";
+import { formatDate } from "@/lib/dashboard/formatters";
+import { useMemo } from "react";
+import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+
+interface EvolutionSectionProps {
+  data: EvolutionPoint[];
+  benchmarkLabel: string;
+}
+
+interface SeriesPoint {
+  date: string;
+  portfolio: number;
+  benchmark: number;
+}
+
+export function EvolutionSection({ data, benchmarkLabel }: EvolutionSectionProps) {
+  const series = useMemo<SeriesPoint[]>(() => {
+    if (!data || data.length === 0) return [];
+    return data.map((p) => {
+      const benchPoint = p.benchmark?.aligned?.[0];
+      return {
+        date: p.date,
+        portfolio: p.portfolioTWR * 100,
+        benchmark: benchPoint ? benchPoint.twr * 100 : 0,
+      };
+    });
+  }, [data]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Evolucao da rentabilidade</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="h-[300px] w-full">
+          <ResponsiveContainer>
+            <LineChart data={series} margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+              <XAxis
+                dataKey="date"
+                tickFormatter={((v: number | string) => formatDate(String(v ?? ""))) as never}
+                tick={{ fontSize: 11 }}
+              />
+              <YAxis tickFormatter={(v: number) => `${v.toFixed(1)}%`} tick={{ fontSize: 11 }} />
+              <Tooltip
+                labelFormatter={
+                  ((label: number | string) => formatDate(String(label ?? ""))) as never
+                }
+                formatter={((value: number | string) => `${Number(value).toFixed(2)}%`) as never}
+              />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="portfolio"
+                stroke="hsl(var(--primary))"
+                name="Carteira"
+                dot={false}
+                strokeWidth={2}
+              />
+              <Line
+                type="monotone"
+                dataKey="benchmark"
+                stroke="hsl(var(--muted-foreground))"
+                name={benchmarkLabel}
+                dot={false}
+                strokeWidth={2}
+                strokeDasharray="4 4"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
