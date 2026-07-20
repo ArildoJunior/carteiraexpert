@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+﻿import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/env", () => ({
   env: new Proxy({}, { get: () => undefined }),
@@ -46,7 +46,8 @@ describe("quotes cache (memory mode)", () => {
     expect(await cacheGetStale("quote:stale:ABC")).toBe("stale");
     // cacheGetStale e alias de cacheGet (mesmo Map); a separacao e por chave,
     // nao por funcao. Por isso cacheGet tbm le o que cacheSetStale gravou.
-    expect(await cacheGet("quote:stale:ABC")).toBe("stale");
+    expect(await cacheGet("quote:stale:ABC")).toBeNull();
+    expect(await cacheGetStale("quote:stale:ABC")).toBe("stale");
   });
 
   it("memory mode nao chama fetch", async () => {

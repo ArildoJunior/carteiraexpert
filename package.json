@@ -57,7 +57,8 @@
     "sonner": "^1.7.1",
     "tailwind-merge": "^2.5.5",
     "xlsx": "^0.18.5",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "date-fns": "^3.6.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

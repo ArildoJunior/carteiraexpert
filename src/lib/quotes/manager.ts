@@ -23,11 +23,11 @@ export async function getQuote(ticker: string, assetClass: AssetClass): Promise<
   const result = await provider.fetchQuote(upper);
   if (result.ok) {
     await cacheSet(`quote:${upper}`, result.quote, FRESH_TTL);
-    await cacheSetStale(`quote:stale:${upper}`, result.quote, STALE_TTL);
+    await cacheSetStale(`quote:${upper}`, result.quote, STALE_TTL);
     return result;
   }
 
-  const stale = await cacheGetStale<Quote>(`quote:stale:${upper}`);
+  const stale = await cacheGetStale<Quote>(`quote:${upper}`);
   if (stale) {
     const age =
       Math.floor(Date.now() / 1000) - Math.floor(new Date(stale.fetchedAt).getTime() / 1000);

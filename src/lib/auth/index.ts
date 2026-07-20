@@ -61,3 +61,6 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
   adapter: DrizzleAdapter(db),
   providers,
 });
+
+export * from "./errors";
+export * from "./get-authenticated-user";

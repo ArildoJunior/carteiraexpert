@@ -59,7 +59,7 @@ describe("getQuote", () => {
     if (result.ok) expect(result.quote.price).toBe(30);
     expect(brapiProvider.fetchQuote).toHaveBeenCalledWith("PETR4");
     expect(cacheSet).toHaveBeenCalledWith("quote:PETR4", quote, 60);
-    expect(cacheSetStale).toHaveBeenCalledWith("quote:stale:PETR4", quote, 86400);
+    expect(cacheSetStale).toHaveBeenCalledWith("quote:PETR4", quote, 86400);
   });
 
   it("cache fresh hit: nao chama provider", async () => {

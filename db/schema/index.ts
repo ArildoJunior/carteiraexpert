@@ -20,3 +20,7 @@ export * from "./brokers";
 export * from "./broker-connections";
 export * from "./import-jobs";
 export * from "./import-queue";
+
+// Cap. 8
+export * from "./benchmarks-history";
+export * from "./portfolio-snapshots";
