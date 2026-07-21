@@ -55,9 +55,6 @@ jobs:
       - name: Aplicar migrations do banco (Drizzle)
         run: pnpm drizzle-kit migrate
 
-      - name: Seed do banco de testes
-        run: pnpm seed:demo
-
       - name: Test (Vitest)
         run: pnpm test
 

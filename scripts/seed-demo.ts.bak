@@ -107,11 +107,6 @@ async function main() {
     { ticker: "ITUB4", name: "Itau Unibanco PN", assetClass: "stock" as const },
     { ticker: "KNRI11", name: "Kinea Renda Imobiliaria FII", assetClass: "reit" as const },
     { ticker: "TESOURO_SELIC_2029", name: "Tesouro Selic 2029", assetClass: "treasury" as const },
-    // Extras exigidos pelo seed.test.ts (sem transacoes/positions, apenas cadastrados)
-    { ticker: "HGLG11", name: "CSHG Logistica FII", assetClass: "reit" as const },
-    { ticker: "BOVA11", name: "iShares Bovespa Index ETF", assetClass: "etf" as const },
-    { ticker: "BTC", name: "Bitcoin", assetClass: "crypto" as const },
-    { ticker: "ETH", name: "Ethereum", assetClass: "crypto" as const },
   ];
   const assetMap = new Map<string, string>();
   for (const t of tickerList) {
