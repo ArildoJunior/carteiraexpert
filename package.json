@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=20.11.0",
-    "pnpm": ">=9.12.0"
+    "node": "\u003e=20.11.0",
+    "pnpm": "\u003e=9.12.0"
   },
   "packageManager": "pnpm@9.12.3",
   "scripts": {
@@ -18,14 +18,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "test:coverage": "vitest run --coverage",
-    "test:e2e:run": "cross-env RUN_E2E=true playwright test",
-    "db:generate": "drizzle-kit generate",
-    "db:push": "drizzle-kit push",
-    "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio",
-    "prepare": "husky",
-    "db:seed": "node --env-file=.env --import tsx db/seed.ts"
+    "seed:demo": "tsx scripts/seed-demo.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.2",

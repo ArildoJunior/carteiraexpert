@@ -29,11 +29,8 @@ async function computeMovers(userId: string, _period: Period, limit: number) {
   );
 
   const sorted = [...quotes].sort((a, b) => b.variation - a.variation);
-  const winners = sorted.filter((q) => q.variation > 0).slice(0, limit);
-  const losers = sorted
-    .filter((q) => q.variation < 0)
-    .slice(0, limit)
-    .reverse();
+  const winners = sorted.slice(0, limit);
+  const losers = sorted.slice(-limit).reverse();
   return { data: { winners, losers } };
 }
 

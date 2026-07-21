@@ -65,7 +65,7 @@ export function EvolutionSection({ data, benchmarkLabel }: EvolutionSectionProps
               <Line
                 type="monotone"
                 dataKey="portfolio"
-                stroke="hsl(142 76% 36%)"
+                stroke="hsl(var(--primary))"
                 name="Carteira"
                 dot={false}
                 strokeWidth={2}
@@ -73,7 +73,7 @@ export function EvolutionSection({ data, benchmarkLabel }: EvolutionSectionProps
               <Line
                 type="monotone"
                 dataKey="benchmark"
-                stroke="hsl(215.4 16.3% 46.9%)"
+                stroke="hsl(var(--muted-foreground))"
                 name={benchmarkLabel}
                 dot={false}
                 strokeWidth={2}

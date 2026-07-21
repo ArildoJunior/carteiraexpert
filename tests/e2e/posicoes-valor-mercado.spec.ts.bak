@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 const DEMO_EMAIL = process.env.E2E_DEMO_EMAIL ?? "demo@carteiraexpert.com";
-const DEMO_PASSWORD = process.env.E2E_DEMO_PASSWORD ?? "demo1234";
+const DEMO_PASSWORD = process.env.E2E_DEMO_PASSWORD ?? "senhademo123segura";
 
 test.describe("posicoes - valor de mercado (Cap 6)", () => {
   test.beforeEach(async ({ page }) => {

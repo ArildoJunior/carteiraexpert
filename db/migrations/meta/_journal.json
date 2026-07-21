@@ -22,6 +22,13 @@
       "when": 1784618400000,
       "tag": "0002_dashboard_analytics",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784574702881,
+      "tag": "0003_conscious_the_hunter",
+      "breakpoints": true
     }
   ]
 }

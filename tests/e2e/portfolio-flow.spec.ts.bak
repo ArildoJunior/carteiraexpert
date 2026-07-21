@@ -22,14 +22,16 @@ test.describe("Cap 5 Ã¢â‚¬â€ Fluxo de Portfolio", () => {
   const accountName = `E2E Conta ${suffix}`;
   const ticker = "PETR4";
 
-  test("dashboard /app/dashboard carrega com cards de resumo", async ({ page }) => {
+  test("dashboard /app/carteira carrega com cards de resumo", async ({ page }) => {
     await login(page);
-    await page.goto("/app/dashboard");
-    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+    await page.goto("/app/carteira");
+    await expect(page.getByRole("heading", { name: "Carteira" })).toBeVisible();
     const main = page.getByRole("main");
-    await expect(main).toBeVisible();
-    // A secao "Visao geral" sempre aparece na dashboard
-    await expect(main.getByText("Visao geral", { exact: true })).toBeVisible();
+    const _cardTitles = main.locator('[data-slot="card-title"]');
+    await expect(main.getByText("Patrimonio", { exact: true })).toBeVisible();
+    await expect(main.getByText("Posicoes", { exact: true })).toBeVisible();
+    await expect(main.getByText("Contas", { exact: true })).toBeVisible();
+    await expect(main.getByText("Classes", { exact: true })).toBeVisible();
   });
 
   test("lista de contas mostra empty state quando vazia", async ({ page }) => {

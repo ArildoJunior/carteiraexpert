@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 const DEMO_EMAIL = "demo@carteiraexpert.com";
-const DEMO_PASSWORD = "demo1234";
+const DEMO_PASSWORD = "senhademo123segura";
 
 test.describe("Auth com usuario demo", () => {
   test.beforeEach(async ({ page }) => {

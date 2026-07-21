@@ -26,8 +26,10 @@ export interface OverviewData {
 
 export interface EvolutionPoint {
   date: string;
-  portfolio: number;
-  benchmark: number;
+  portfolioValue: number;
+  portfolioCost: number;
+  portfolioTWR: number;
+  benchmark: { name: string; aligned: Array<{ date: string; value: number; twr: number }> } | null;
 }
 
 export interface AllocationData {

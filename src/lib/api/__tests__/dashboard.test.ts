@@ -51,7 +51,7 @@ describe("dashboard api client", () => {
     globalThis.fetch = mock;
     const result = await fetchAllocation();
     const calledUrl = firstCallUrl(mock) as string;
-    expect(calledUrl).toBe("/api/v1/dashboard/allocation");
+    expect(calledUrl).toBe("http://localhost:3000/api/v1/dashboard/allocation");
     expect(result).toEqual({ data: null, reason: "no_snapshot_yet" });
   });
 
@@ -61,7 +61,9 @@ describe("dashboard api client", () => {
       .mockResolvedValueOnce(new Response(JSON.stringify({ data: null }), { status: 200 }));
     globalThis.fetch = mock;
     await fetchAllocation("2025-12-31");
-    expect(firstCallUrl(mock)).toBe("/api/v1/dashboard/allocation?date=2025-12-31");
+    expect(firstCallUrl(mock)).toBe(
+      "http://localhost:3000/api/v1/dashboard/allocation?date=2025-12-31"
+    );
   });
 
   it("fetchEvolution envia period e benchmark", async () => {

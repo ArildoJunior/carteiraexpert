@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  ci:
+  test:
     runs-on: ubuntu-latest
 
     services:
@@ -43,29 +43,14 @@ jobs:
           node-version: 20
           cache: "pnpm"
 
-      - name: Instalar dependencias
+      - name: Instalar dependências
         run: pnpm install --frozen-lockfile
 
-      - name: Lint (Biome)
+      - name: Lint
         run: pnpm lint
 
-      - name: Typecheck (tsc)
+      - name: Typecheck
         run: pnpm typecheck
 
-      - name: Aplicar migrations do banco (Drizzle)
-        run: pnpm drizzle-kit migrate
-
-      - name: Test (Vitest)
-        run: pnpm test
-
-      - name: Build (Next.js)
+      - name: Build
         run: pnpm build
-
-      - name: Instalar browsers do Playwright
-        run: pnpm exec playwright install --with-deps
-
-      - name: Seed do usuario demo
-        run: pnpm seed:demo
-
-      - name: E2E (Playwright)
-        run: pnpm test:e2e

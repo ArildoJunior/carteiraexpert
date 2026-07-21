@@ -52,8 +52,8 @@ jobs:
       - name: Typecheck (tsc)
         run: pnpm typecheck
 
-      - name: Aplicar migrations do banco (Drizzle)
-        run: pnpm drizzle-kit migrate
+      - name: Aplicar migrations do banco
+        run: pnpm prisma migrate deploy
 
       - name: Test (Vitest)
         run: pnpm test
