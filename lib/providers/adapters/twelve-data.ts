@@ -2,13 +2,8 @@
 // TwelveDataAdapter — cotações US (6I) e globais (6K)
 // Em quote_global, converte "VOD.L" → symbol=VOD, exchange=LSE
 
-import type { ProviderAdapter, ProviderCategory } from '../types';
-import {
-  ProviderAuthError,
-  ProviderDataError,
-  ProviderTimeout,
-  ProviderRateLimit,
-} from '../types';
+import type { ProviderAdapter, ProviderCategory } from "../types";
+import { ProviderAuthError, ProviderDataError, ProviderRateLimit, ProviderTimeout } from "../types";
 
 export interface UsQuoteInput {
   ticker: string;
@@ -17,46 +12,55 @@ export interface UsQuoteInput {
 export interface UsQuoteOutput {
   ticker: string;
   price: number;
-  currency: 'USD';
+  currency: "USD";
   change: number;
   changePercent: number;
   volume: number;
   marketTime: string;
-  source: 'twelve_data';
+  source: "twelve_data";
 }
 
-const TWELVE_BASE = 'https://api.twelvedata.com';
+const TWELVE_BASE = "https://api.twelvedata.com";
 
 const BROWSER_HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 };
 
 const SUFFIX_TO_EXCHANGE: Record<string, string> = {
-  '.L': 'LSE', '.DE': 'XETR', '.PA': 'EURONEXT', '.F': 'FWB',
-  '.MI': 'MIL', '.MC': 'MCE', '.JP': 'TSE', '.HK': 'HKEX',
-  '.AU': 'ASX', '.CA': 'TSX', '.CH': 'SIX', '.SG': 'SGX',
-  '.IN': 'NSE', '.KR': 'KRX', '.TW': 'TWSE', '.NZ': 'NZX',
-  '.IL': 'TASE', '.SA': 'BVMF',
+  ".L": "LSE",
+  ".DE": "XETR",
+  ".PA": "EURONEXT",
+  ".F": "FWB",
+  ".MI": "MIL",
+  ".MC": "MCE",
+  ".JP": "TSE",
+  ".HK": "HKEX",
+  ".AU": "ASX",
+  ".CA": "TSX",
+  ".CH": "SIX",
+  ".SG": "SGX",
+  ".IN": "NSE",
+  ".KR": "KRX",
+  ".TW": "TWSE",
+  ".NZ": "NZX",
+  ".IL": "TASE",
+  ".SA": "BVMF",
 };
 
-export class TwelveDataAdapter
-  implements ProviderAdapter<UsQuoteInput, UsQuoteOutput>
-{
-  readonly name = 'twelve_data';
+export class TwelveDataAdapter implements ProviderAdapter<UsQuoteInput, UsQuoteOutput> {
+  readonly name = "twelve_data";
   readonly category: ProviderCategory;
   readonly priority: number;
 
-  constructor(
-    category: ProviderCategory = 'quote_us',
-    priority = 2,
-  ) {
+  constructor(category: ProviderCategory = "quote_us", priority = 2) {
     this.category = category;
     this.priority = priority;
   }
 
   private get token(): string | undefined {
     const t = process.env.TWELVE_DATA_TOKEN;
-    return t && t !== 'PUBLIC' ? t : undefined;
+    return t && t !== "PUBLIC" ? t : undefined;
   }
 
   isConfigured(): boolean {
@@ -66,10 +70,10 @@ export class TwelveDataAdapter
   async ping(): Promise<boolean> {
     if (!this.token) return false;
     try {
-      const r = await fetch(
-        `${TWELVE_BASE}/price?symbol=AAPL&apikey=${this.token}`,
-        { signal: AbortSignal.timeout(5000), headers: BROWSER_HEADERS },
-      );
+      const r = await fetch(`${TWELVE_BASE}/price?symbol=AAPL&apikey=${this.token}`, {
+        signal: AbortSignal.timeout(5000),
+        headers: BROWSER_HEADERS,
+      });
       return r.ok;
     } catch {
       return false;
@@ -84,7 +88,7 @@ export class TwelveDataAdapter
     let symbol = rawTicker;
     let exchange: string | undefined;
 
-    if (this.category === 'quote_global' && rawTicker.includes('.')) {
+    if (this.category === "quote_global" && rawTicker.includes(".")) {
       for (const [suffix, ex] of Object.entries(SUFFIX_TO_EXCHANGE)) {
         if (rawTicker.endsWith(suffix)) {
           symbol = rawTicker.slice(0, -suffix.length);
@@ -105,7 +109,7 @@ export class TwelveDataAdapter
       });
     } catch (err) {
       const e = err as Error;
-      if (e.name === 'AbortError' || e.name === 'TimeoutError') {
+      if (e.name === "AbortError" || e.name === "TimeoutError") {
         throw new ProviderTimeout(this.name, this.category);
       }
       throw new ProviderDataError(this.name, this.category, e.message);
@@ -135,29 +139,32 @@ export class TwelveDataAdapter
       meta?: { previous_close?: string };
     };
 
-    if (json.status === 'error' || !json.values?.[0]) {
+    if (json.status === "error" || !json.values?.[0]) {
       throw new ProviderDataError(
         this.name,
         this.category,
-        json.message ?? `Ticker "${rawTicker}" (${symbol}${exchange ? '/' + exchange : ''}) não encontrado`,
+        json.message ??
+          `Ticker "${rawTicker}" (${symbol}${exchange ? `/${exchange}` : ""}) não encontrado`
       );
     }
 
     const v = json.values[0];
-    const close = parseFloat(v.close);
-    const prevClose = json.meta?.previous_close ? parseFloat(json.meta.previous_close) : close;
+    const close = Number.parseFloat(v.close);
+    const prevClose = json.meta?.previous_close
+      ? Number.parseFloat(json.meta.previous_close)
+      : close;
     const change = close - prevClose;
     const changePercent = prevClose !== 0 ? (change / prevClose) * 100 : 0;
 
     return {
       ticker: rawTicker,
       price: close,
-      currency: 'USD',
+      currency: "USD",
       change,
       changePercent,
-      volume: parseFloat(v.volume) || 0,
+      volume: Number.parseFloat(v.volume) || 0,
       marketTime: new Date(v.datetime).toISOString(),
-      source: 'twelve_data',
+      source: "twelve_data",
     };
   }
 }

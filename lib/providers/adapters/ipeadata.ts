@@ -3,13 +3,8 @@
 // Cap 6 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â 6L-1 (Indicadores) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â priority 3
 // DocumentaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o: http://www.ipeadata.gov.br/api/
 
-import type { ProviderAdapter, ProviderCategory } from '../types';
-import {
-  ProviderAuthError,
-  ProviderDataError,
-  ProviderTimeout,
-  ProviderRateLimit,
-} from '../types';
+import type { ProviderAdapter, ProviderCategory } from "../types";
+import { ProviderAuthError, ProviderDataError, ProviderRateLimit, ProviderTimeout } from "../types";
 
 export interface IndicatorInput {
   // SERCODIGO da sÃƒÆ’Ã‚Â©rie no IPEADATA. Lista: http://www.ipeadata.gov.br/Default.aspx
@@ -24,31 +19,30 @@ export interface IndicatorOutput {
   name: string;
   unit: string;
   series: Array<{ date: string; value: number }>;
-  source: 'ipeadata';
+  source: "ipeadata";
 }
 
-const IPEA_BASE = 'http://www.ipeadata.gov.br/api/odata4';
+const IPEA_BASE = "http://www.ipeadata.gov.br/api/odata4";
 
 const BROWSER_HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  'Accept': 'application/json,text/plain,*/*',
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  Accept: "application/json,text/plain,*/*",
 };
 
 // CatÃƒÆ’Ã‚Â¡logo resumido
 const CATALOG: Record<string, { name: string; unit: string }> = {
-  'PAN12_IPCAG12': { name: 'IPCA - Acumulado 12 meses', unit: '%' },
-  'PAN12_IGPMG12': { name: 'IGP-M - Acumulado 12 meses', unit: '%' },
-  'PAN12_INPCAG12': { name: 'INPC - Acumulado 12 meses', unit: '%' },
-  'BM12_TJOVER12': { name: 'Taxa de juros Over (CDI/Selic) 12m', unit: '% a.a.' },
-  'PAN_PIBPMV4': { name: 'PIB - VariaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o 12 meses', unit: '%' },
-  'GM12_ERC12': { name: 'CÃƒÆ’Ã‚Â¢mbio - R$/US$ (mÃƒÆ’Ã‚Â©dia mensal)', unit: 'R$/US$' },
+  PAN12_IPCAG12: { name: "IPCA - Acumulado 12 meses", unit: "%" },
+  PAN12_IGPMG12: { name: "IGP-M - Acumulado 12 meses", unit: "%" },
+  PAN12_INPCAG12: { name: "INPC - Acumulado 12 meses", unit: "%" },
+  BM12_TJOVER12: { name: "Taxa de juros Over (CDI/Selic) 12m", unit: "% a.a." },
+  PAN_PIBPMV4: { name: "PIB - VariaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o 12 meses", unit: "%" },
+  GM12_ERC12: { name: "CÃƒÆ’Ã‚Â¢mbio - R$/US$ (mÃƒÆ’Ã‚Â©dia mensal)", unit: "R$/US$" },
 };
 
-export class IpeaDataAdapter
-  implements ProviderAdapter<IndicatorInput, IndicatorOutput>
-{
-  readonly name = 'ipeadata';
-  readonly category: ProviderCategory = 'indicator';
+export class IpeaDataAdapter implements ProviderAdapter<IndicatorInput, IndicatorOutput> {
+  readonly name = "ipeadata";
+  readonly category: ProviderCategory = "indicator";
   readonly priority = 3; // fallback 2
 
   isConfigured(): boolean {
@@ -59,7 +53,7 @@ export class IpeaDataAdapter
     try {
       const r = await fetch(
         `${IPEA_BASE}/ValoresSerie(SERCODIGO='PAN12_IPCAG12')?$top=1&$format=json`,
-        { signal: AbortSignal.timeout(5000), headers: BROWSER_HEADERS },
+        { signal: AbortSignal.timeout(5000), headers: BROWSER_HEADERS }
       );
       return r.ok;
     } catch {
@@ -79,7 +73,7 @@ export class IpeaDataAdapter
       });
     } catch (err) {
       const e = err as Error;
-      if (e.name === 'AbortError' || e.name === 'TimeoutError') {
+      if (e.name === "AbortError" || e.name === "TimeoutError") {
         throw new ProviderTimeout(this.name, this.category);
       }
       throw new ProviderDataError(this.name, this.category, e.message);
@@ -109,16 +103,16 @@ export class IpeaDataAdapter
       throw new ProviderDataError(
         this.name,
         this.category,
-        `IPEADATA cÃƒÆ’Ã‚Â³digo ${input.code} sem dados`,
+        `IPEADATA cÃƒÆ’Ã‚Â³digo ${input.code} sem dados`
       );
     }
 
     const series = json.value
       .map((p) => ({
-        date: p.VALDATA.split('T')[0] ?? '',
-        value: typeof p.VALVALOR === 'number' ? p.VALVALOR : parseFloat(String(p.VALVALOR)),
+        date: p.VALDATA.split("T")[0] ?? "",
+        value: typeof p.VALVALOR === "number" ? p.VALVALOR : Number.parseFloat(String(p.VALVALOR)),
       }))
-      .filter((p) => p.date !== '' && !isNaN(p.value))
+      .filter((p) => p.date !== "" && !Number.isNaN(p.value))
       .reverse(); // do mais antigo para o mais recente
 
     const [first] = json.value;
@@ -126,7 +120,7 @@ export class IpeaDataAdapter
       throw new ProviderDataError(
         this.name,
         this.category,
-        `IPEADATA cÃƒÂ³digo ${input.code} sem dados`,
+        `IPEADATA cÃƒÂ³digo ${input.code} sem dados`
       );
     }
     const meta = CATALOG[input.code];
@@ -134,9 +128,9 @@ export class IpeaDataAdapter
     return {
       code: input.code,
       name: meta?.name ?? first.SERNOME ?? input.code,
-      unit: meta?.unit ?? first.SERUNIDADE ?? '',
+      unit: meta?.unit ?? first.SERUNIDADE ?? "",
       series,
-      source: 'ipeadata',
+      source: "ipeadata",
     };
   }
 }

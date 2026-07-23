@@ -2,14 +2,9 @@
 // DividendUSAdapter — dividendos US via SEC XBRL
 // Cap 6 — 6M (Dividendos) — priority 1
 
-import type { ProviderAdapter, ProviderCategory } from '../types';
-import {
-  ProviderAuthError,
-  ProviderDataError,
-  ProviderTimeout,
-  ProviderRateLimit,
-} from '../types';
-import { SecEdgarAdapter } from './sec-edgar';
+import type { ProviderAdapter, ProviderCategory } from "../types";
+import { ProviderAuthError, ProviderDataError, ProviderRateLimit, ProviderTimeout } from "../types";
+import { SecEdgarAdapter } from "./sec-edgar";
 
 export interface DividendInput {
   ticker: string;
@@ -24,27 +19,25 @@ export interface DividendOutput {
     value: number;
     form: string;
   }>;
-  source: 'sec_edgar';
+  source: "sec_edgar";
 }
 
-const SEC_BASE = 'https://data.sec.gov';
+const SEC_BASE = "https://data.sec.gov";
 
 function getHeaders(): Record<string, string> {
-  const email = process.env.SEC_CONTACT_EMAIL ?? 'dev@carteiraexpert.local';
+  const email = process.env.SEC_CONTACT_EMAIL ?? "dev@carteiraexpert.local";
   return {
-    'User-Agent': `CarteiraExpert/1.0 (${email})`,
-    'Accept': 'application/json,text/plain,*/*',
+    "User-Agent": `CarteiraExpert/1.0 (${email})`,
+    Accept: "application/json,text/plain,*/*",
   };
 }
 
-export class DividendUSAdapter
-  implements ProviderAdapter<DividendInput, DividendOutput>
-{
-  readonly name = 'dividend_us';
-  readonly category: ProviderCategory = 'dividend_us';
+export class DividendUSAdapter implements ProviderAdapter<DividendInput, DividendOutput> {
+  readonly name = "dividend_us";
+  readonly category: ProviderCategory = "dividend_us";
   readonly priority = 1;
 
-  private readonly cikResolver = new SecEdgarAdapter('fundamental_us', 1);
+  private readonly cikResolver = new SecEdgarAdapter("fundamental_us", 1);
 
   isConfigured(): boolean {
     return this.cikResolver.isConfigured();
@@ -55,9 +48,9 @@ export class DividendUSAdapter
   }
 
   async fetch(input: DividendInput): Promise<DividendOutput> {
-    const ticker = (input.ticker ?? '').toUpperCase();
+    const ticker = (input.ticker ?? "").toUpperCase();
     if (!ticker) {
-      throw new ProviderDataError(this.name, this.category, 'Ticker vazio');
+      throw new ProviderDataError(this.name, this.category, "Ticker vazio");
     }
 
     const submissions = await this.cikResolver.fetch({ symbol: ticker });
@@ -71,7 +64,7 @@ export class DividendUSAdapter
       response = await fetch(url, { headers: getHeaders(), signal: AbortSignal.timeout(15000) });
     } catch (err) {
       const e = err as Error;
-      if (e.name === 'AbortError' || e.name === 'TimeoutError') {
+      if (e.name === "AbortError" || e.name === "TimeoutError") {
         throw new ProviderTimeout(this.name, this.category);
       }
       throw new ProviderDataError(this.name, this.category, e.message);
@@ -99,7 +92,7 @@ export class DividendUSAdapter
           accn: string;
           fp: string;
         }>;
-        'USD/shares'?: Array<{
+        "USD/shares"?: Array<{
           end: string;
           val: number;
           form: string;
@@ -110,10 +103,10 @@ export class DividendUSAdapter
       };
     };
 
-    const units = json.units?.['USD/shares'] ?? json.units?.USD ?? [];
+    const units = json.units?.["USD/shares"] ?? json.units?.USD ?? [];
 
     const dividends = units
-      .filter((u) => u.val > 0 && (u.form === '10-K' || u.form === '10-Q'))
+      .filter((u) => u.val > 0 && (u.form === "10-K" || u.form === "10-Q"))
       .map((u) => ({
         date: u.end,
         value: u.val,
@@ -127,7 +120,7 @@ export class DividendUSAdapter
       cik,
       companyName: json.entityName ?? companyName,
       dividends,
-      source: 'sec_edgar',
+      source: "sec_edgar",
     };
   }
 }

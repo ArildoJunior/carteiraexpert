@@ -2,13 +2,8 @@
 // FMPFundamentalAdapter — apenas profile (income statement do FMP é deprecado)
 // Cap 6 — 6L-2 (Fundamentos) — priority 3
 
-import type { ProviderAdapter, ProviderCategory } from '../types';
-import {
-  ProviderAuthError,
-  ProviderDataError,
-  ProviderTimeout,
-  ProviderRateLimit,
-} from '../types';
+import type { ProviderAdapter, ProviderCategory } from "../types";
+import { ProviderAuthError, ProviderDataError, ProviderRateLimit, ProviderTimeout } from "../types";
 
 export interface FundamentalInput {
   symbol: string;
@@ -31,21 +26,19 @@ export interface FundamentalOutput {
     price: number;
     changes: number;
   };
-  source: 'fmp_fundamental';
+  source: "fmp_fundamental";
 }
 
-const FMP_BASE = 'https://financialmodelingprep.com/api/v3';
+const FMP_BASE = "https://financialmodelingprep.com/api/v3";
 
-export class FMPFundamentalAdapter
-  implements ProviderAdapter<FundamentalInput, FundamentalOutput>
-{
-  readonly name = 'fmp_fundamental';
-  readonly category: ProviderCategory = 'fundamental_us';
+export class FMPFundamentalAdapter implements ProviderAdapter<FundamentalInput, FundamentalOutput> {
+  readonly name = "fmp_fundamental";
+  readonly category: ProviderCategory = "fundamental_us";
   readonly priority = 3; // fallback
 
   private get token(): string | undefined {
     const t = process.env.FMP_API_KEY;
-    return t && t !== 'PUBLIC' ? t : undefined;
+    return t && t !== "PUBLIC" ? t : undefined;
   }
 
   isConfigured(): boolean {
@@ -76,7 +69,7 @@ export class FMPFundamentalAdapter
       response = await fetch(url, { signal: AbortSignal.timeout(10000) });
     } catch (err) {
       const e = err as Error;
-      if (e.name === 'AbortError' || e.name === 'TimeoutError') {
+      if (e.name === "AbortError" || e.name === "TimeoutError") {
         throw new ProviderTimeout(this.name, this.category);
       }
       throw new ProviderDataError(this.name, this.category, e.message);
@@ -110,7 +103,11 @@ export class FMPFundamentalAdapter
 
     const p = json?.[0];
     if (!p) {
-      throw new ProviderDataError(this.name, this.category, `Ticker "${symbol}" não encontrado no FMP`);
+      throw new ProviderDataError(
+        this.name,
+        this.category,
+        `Ticker "${symbol}" não encontrado no FMP`
+      );
     }
 
     return {
@@ -130,7 +127,7 @@ export class FMPFundamentalAdapter
         price: p.price ?? 0,
         changes: p.changes ?? 0,
       },
-      source: 'fmp_fundamental',
+      source: "fmp_fundamental",
     };
   }
 }

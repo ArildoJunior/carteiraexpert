@@ -4,13 +4,8 @@
 // Endpoint público: https://query1.finance.yahoo.com/v8/finance/chart/{TICKER}
 // Documentação: https://github.com/ranaroussi/yfinance
 
-import type { ProviderAdapter, ProviderCategory } from '../types';
-import {
-  ProviderAuthError,
-  ProviderDataError,
-  ProviderTimeout,
-  ProviderRateLimit,
-} from '../types';
+import type { ProviderAdapter, ProviderCategory } from "../types";
+import { ProviderAuthError, ProviderDataError, ProviderRateLimit, ProviderTimeout } from "../types";
 
 export interface GlobalQuoteInput {
   ticker: string; // "VOD.L", "SAP.DE", "PETR4.SA", "AAPL"
@@ -18,31 +13,30 @@ export interface GlobalQuoteInput {
 
 export interface GlobalQuoteOutput {
   ticker: string;
-  market: string;       // ex: "LSE", "GER", "SAO", "NMS"
-  exchange: string;     // ex: "LSE", "GER", "BVMF", "NASDAQ"
+  market: string; // ex: "LSE", "GER", "SAO", "NMS"
+  exchange: string; // ex: "LSE", "GER", "BVMF", "NASDAQ"
   price: number;
-  currency: string;     // ISO 4217 ou "GBp" (pence)
+  currency: string; // ISO 4217 ou "GBp" (pence)
   change: number;
   changePercent: number;
   volume: number;
   marketTime: string;
-  source: 'yahoo_finance';
+  source: "yahoo_finance";
 }
 
-const YAHOO_BASE = 'https://query1.finance.yahoo.com/v8/finance/chart';
+const YAHOO_BASE = "https://query1.finance.yahoo.com/v8/finance/chart";
 
 // Mapear exchange do Yahoo → categoria do registry (caso queiramos rotear depois)
 const BROWSER_HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  'Accept': 'application/json,text/plain,*/*',
-  'Accept-Language': 'en-US,en;q=0.9',
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  Accept: "application/json,text/plain,*/*",
+  "Accept-Language": "en-US,en;q=0.9",
 };
 
-export class YahooFinanceAdapter
-  implements ProviderAdapter<GlobalQuoteInput, GlobalQuoteOutput>
-{
-  readonly name = 'yahoo_finance';
-  readonly category: ProviderCategory = 'quote_global';
+export class YahooFinanceAdapter implements ProviderAdapter<GlobalQuoteInput, GlobalQuoteOutput> {
+  readonly name = "yahoo_finance";
+  readonly category: ProviderCategory = "quote_global";
   readonly priority = 1; // primário (sem fallback necessário — Yahoo cobre quase tudo)
 
   isConfigured(): boolean {
@@ -73,7 +67,7 @@ export class YahooFinanceAdapter
       });
     } catch (err) {
       const e = err as Error;
-      if (e.name === 'AbortError' || e.name === 'TimeoutError') {
+      if (e.name === "AbortError" || e.name === "TimeoutError") {
         throw new ProviderTimeout(this.name, this.category);
       }
       throw new ProviderDataError(this.name, this.category, e.message);
@@ -94,9 +88,9 @@ export class YahooFinanceAdapter
         result?: Array<{
           meta: {
             symbol: string;
-            currency: string;          // "GBp", "EUR", "USD", "BRL"
-            exchangeName: string;      // "LSE", "GER", "BVMF"
-            fullExchangeName: string;  // "London Stock Exchange"
+            currency: string; // "GBp", "EUR", "USD", "BRL"
+            exchangeName: string; // "LSE", "GER", "BVMF"
+            fullExchangeName: string; // "London Stock Exchange"
             instrumentType: string;
             regularMarketPrice: number;
             regularMarketChange: number;
@@ -104,7 +98,7 @@ export class YahooFinanceAdapter
             regularMarketVolume: number;
             regularMarketTime: number; // epoch seconds
             previousClose: number;
-            scale?: string;            // "3" para pence (divide por 100)
+            scale?: string; // "3" para pence (divide por 100)
           };
           indicators: {
             quote: Array<{
@@ -121,7 +115,7 @@ export class YahooFinanceAdapter
       throw new ProviderDataError(
         this.name,
         this.category,
-        `${json.chart.error.code}: ${json.chart.error.description}`,
+        `${json.chart.error.code}: ${json.chart.error.description}`
       );
     }
 
@@ -130,7 +124,7 @@ export class YahooFinanceAdapter
       throw new ProviderDataError(
         this.name,
         this.category,
-        `Ticker "${ticker}" não retornou dados no Yahoo`,
+        `Ticker "${ticker}" não retornou dados no Yahoo`
       );
     }
 
@@ -139,13 +133,13 @@ export class YahooFinanceAdapter
       throw new ProviderDataError(
         this.name,
         this.category,
-        `Yahoo não retornou cotação para "${ticker}"`,
+        `Yahoo não retornou cotação para "${ticker}"`
       );
     }
 
     // Yahoo retorna ações UK em pence (scale=3) → divide por 100
     // Demais mercados já vêm na moeda certa
-    const divisor = m.scale === '3' ? 100 : 1;
+    const divisor = m.scale === "3" ? 100 : 1;
     const price = m.regularMarketPrice / divisor;
     const previousClose = (m.previousClose ?? price * divisor) / divisor;
     const change = price - previousClose;
@@ -162,7 +156,7 @@ export class YahooFinanceAdapter
       changePercent,
       volume,
       marketTime: new Date(m.regularMarketTime * 1000).toISOString(),
-      source: 'yahoo_finance',
+      source: "yahoo_finance",
     };
   }
 }

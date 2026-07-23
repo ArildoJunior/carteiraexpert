@@ -45,12 +45,7 @@ describe("seed", () => {
     const [acc] = await db
       .select()
       .from(brokerageAccounts)
-      .where(
-        and(
-          eq(brokerageAccounts.userId, userId),
-          eq(brokerageAccounts.broker, "xp"),
-        ),
-      )
+      .where(and(eq(brokerageAccounts.userId, userId), eq(brokerageAccounts.broker, "xp")))
       .limit(1);
     expect(acc).toBeDefined();
     expect(acc?.broker).toBe("xp");

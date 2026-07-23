@@ -3,29 +3,27 @@
 // + log de cada chamada na tabela provider_breakdown (Drizzle)
 // CarteiraExpert ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Cap 6 fundaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o
 
-import { db } from '@/lib/db';
-import { providerBreakdown } from '@/db/schema';
-import type {
-  ProviderAdapter,
-  ProviderCategory,
-  ProviderSuccess,
-  ProviderFailure,
-} from './types';
-import { ProviderDataError, ProviderNotConfigured } from './types';
+import { providerBreakdown } from "@/db/schema";
+import { db } from "@/lib/db";
+import type { ProviderAdapter, ProviderCategory, ProviderFailure, ProviderSuccess } from "./types";
+import { ProviderDataError, ProviderNotConfigured } from "./types";
 
 export class ProviderRegistry {
+  // biome-ignore lint/suspicious/noExplicitAny: registry armazena adapters com tipos genericos
   private adapters = new Map<ProviderCategory, ProviderAdapter<any, any>[]>();
 
   register<TInput, TOutput>(adapter: ProviderAdapter<TInput, TOutput>): void {
     const list = this.adapters.get(adapter.category) ?? [];
+    // biome-ignore lint/suspicious/noExplicitAny: registry armazena adapters com tipos genericos
     list.push(adapter as ProviderAdapter<any, any>);
     list.sort((a, b) => a.priority - b.priority);
     this.adapters.set(adapter.category, list);
     console.log(
-      `[ProviderRegistry] Registrado: ${adapter.name} (${adapter.category}, priority=${adapter.priority})`,
+      `[ProviderRegistry] Registrado: ${adapter.name} (${adapter.category}, priority=${adapter.priority})`
     );
   }
 
+  // biome-ignore lint/suspicious/noExplicitAny: registry armazena adapters com tipos genericos
   getAdapters(category: ProviderCategory): ProviderAdapter<any, any>[] {
     return this.adapters.get(category) ?? [];
   }
@@ -36,7 +34,7 @@ export class ProviderRegistry {
    */
   async fetch<TInput, TOutput>(
     category: ProviderCategory,
-    input: TInput,
+    input: TInput
   ): Promise<ProviderSuccess<TOutput>> {
     const adapters = this.getAdapters(category);
     if (adapters.length === 0) {
@@ -56,8 +54,8 @@ export class ProviderRegistry {
           ok: false,
           provider: adapter.name,
           category,
-          status: 'skipped',
-          error: 'nÃƒÆ’Ã‚Â£o configurado',
+          status: "skipped",
+          error: "nÃƒÆ’Ã‚Â£o configurado",
           latencyMs: 0,
           attempt,
           fetchedAt: new Date(),
@@ -86,8 +84,8 @@ export class ProviderRegistry {
       } catch (err) {
         const latencyMs = Date.now() - start;
         const error = err as Error;
-        const status: 'failed' | 'timeout' =
-          error.name === 'ProviderTimeout' ? 'timeout' : 'failed';
+        const status: "failed" | "timeout" =
+          error.name === "ProviderTimeout" ? "timeout" : "failed";
 
         const failure: ProviderFailure = {
           ok: false,
@@ -105,33 +103,34 @@ export class ProviderRegistry {
       }
     }
 
-    const allSkipped = failures.every((f) => f.status === 'skipped');
+    const allSkipped = failures.every((f) => f.status === "skipped");
     if (allSkipped) {
-      throw new ProviderNotConfigured(failures[0]?.provider ?? 'unknown', category);
+      throw new ProviderNotConfigured(failures[0]?.provider ?? "unknown", category);
     }
 
-    const lastFailure = failures[failures.length - 1] ?? { provider: 'unknown' };
+    const lastFailure = failures[failures.length - 1] ?? { provider: "unknown" };
     throw new ProviderDataError(
       lastFailure.provider,
       category,
       `Todos os provedores falharam (${failures.length}): ${failures
         .map((f) => `${f.provider}=${f.status} (${f.error})`)
-        .join(' | ')}`,
+        .join(" | ")}`
     );
   }
 
+  // biome-ignore lint/suspicious/noExplicitAny: registry armazena adapters com tipos genericos
   private async logSuccess(success: ProviderSuccess<any>): Promise<void> {
     try {
       await db.insert(providerBreakdown).values({
         provider: success.provider,
         category: success.category,
-        status: 'success',
+        status: "success",
         attempt: success.attempt,
         latencyMs: success.latencyMs,
         fetchedAt: success.fetchedAt,
       });
     } catch (err) {
-      console.error('[ProviderRegistry] Falha ao logar sucesso:', err);
+      console.error("[ProviderRegistry] Falha ao logar sucesso:", err);
     }
   }
 
@@ -147,7 +146,7 @@ export class ProviderRegistry {
         fetchedAt: failure.fetchedAt,
       });
     } catch (err) {
-      console.error('[ProviderRegistry] Falha ao logar falha:', err);
+      console.error("[ProviderRegistry] Falha ao logar falha:", err);
     }
   }
 }

@@ -3,35 +3,30 @@
 // Cap 6 — 6L-1 (Câmbio) — priority 1
 // Documentação: https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/documentacao
 
-import type { ProviderAdapter, ProviderCategory } from '../types';
-import {
-  ProviderAuthError,
-  ProviderDataError,
-  ProviderTimeout,
-  ProviderRateLimit,
-} from '../types';
+import type { ProviderAdapter, ProviderCategory } from "../types";
+import { ProviderAuthError, ProviderDataError, ProviderRateLimit, ProviderTimeout } from "../types";
 
 export interface FxQuoteInput {
-  from: 'USD';
-  to: 'BRL';
+  from: "USD";
+  to: "BRL";
 }
 
 export interface FxQuoteOutput {
   from: string;
   to: string;
-  bid: number;          // cotação de compra
-  ask: number;          // cotação de venda
-  mid: number;          // média (bid+ask)/2
-  timestamp: string;    // ISO
-  source: 'bc_ptax';
+  bid: number; // cotação de compra
+  ask: number; // cotação de venda
+  mid: number; // média (bid+ask)/2
+  timestamp: string; // ISO
+  source: "bc_ptax";
 }
 
-const PTAX_BASE = 'https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata';
+const PTAX_BASE = "https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata";
 
 // formata data como MM-DD-YYYY (exigência do Olinda)
 function fmtDate(d: Date): string {
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
   const yyyy = d.getFullYear();
   return `${mm}-${dd}-${yyyy}`;
 }
@@ -44,11 +39,9 @@ function lastBusinessDays(n: number): { from: string; to: string } {
   return { from: fmtDate(past), to: fmtDate(today) };
 }
 
-export class BCPtaxAdapter
-  implements ProviderAdapter<FxQuoteInput, FxQuoteOutput>
-{
-  readonly name = 'bc_ptax';
-  readonly category: ProviderCategory = 'fx';
+export class BCPtaxAdapter implements ProviderAdapter<FxQuoteInput, FxQuoteOutput> {
+  readonly name = "bc_ptax";
+  readonly category: ProviderCategory = "fx";
   readonly priority = 1; // primário para USD/BRL
 
   isConfigured(): boolean {
@@ -79,7 +72,7 @@ export class BCPtaxAdapter
         response = await fetch(url, { signal: AbortSignal.timeout(10000) });
       } catch (err) {
         const e = err as Error;
-        if (e.name === 'AbortError' || e.name === 'TimeoutError') {
+        if (e.name === "AbortError" || e.name === "TimeoutError") {
           throw new ProviderTimeout(this.name, this.category);
         }
         throw new ProviderDataError(this.name, this.category, e.message);
@@ -110,13 +103,13 @@ export class BCPtaxAdapter
       const item = json.value?.[0];
       if (item && item.cotacaoVenda > 0) {
         return {
-          from: 'USD',
-          to: 'BRL',
+          from: "USD",
+          to: "BRL",
           bid: item.cotacaoCompra,
           ask: item.cotacaoVenda,
           mid: (item.cotacaoCompra + item.cotacaoVenda) / 2,
           timestamp: new Date(item.dataHoraCotacao).toISOString(),
-          source: 'bc_ptax',
+          source: "bc_ptax",
         };
       }
     }
@@ -124,7 +117,7 @@ export class BCPtaxAdapter
     throw new ProviderDataError(
       this.name,
       this.category,
-      'PTAX não retornou cotação em nenhum range (1/3/5/10 dias)',
+      "PTAX não retornou cotação em nenhum range (1/3/5/10 dias)"
     );
   }
 }
