@@ -3,13 +3,8 @@
 // Cap 6 — 6L-1 (Câmbio) — priority 2
 // Documentação: https://frankfurter.dev/
 
-import type { ProviderAdapter, ProviderCategory } from '../types';
-import {
-  ProviderAuthError,
-  ProviderDataError,
-  ProviderTimeout,
-  ProviderRateLimit,
-} from '../types';
+import type { ProviderAdapter, ProviderCategory } from "../types";
+import { ProviderAuthError, ProviderDataError, ProviderRateLimit, ProviderTimeout } from "../types";
 
 export interface FxQuoteInput {
   from: string; // ISO 4217: "USD", "EUR", "GBP", "JPY", "BRL"
@@ -23,23 +18,48 @@ export interface FxQuoteOutput {
   ask: number;
   mid: number;
   date: string; // data da cotação
-  source: 'frankfurter';
+  source: "frankfurter";
 }
 
-const FRANKFURTER_BASE = 'https://api.frankfurter.app';
+const FRANKFURTER_BASE = "https://api.frankfurter.app";
 
 const SUPPORTED = new Set([
-  'AUD', 'BGN', 'BRL', 'CAD', 'CHF', 'CNY', 'CZK', 'DKK', 'EUR',
-  'GBP', 'HKD', 'HUF', 'IDR', 'ILS', 'INR', 'ISK', 'JPY', 'KRW',
-  'MXN', 'MYR', 'NOK', 'NZD', 'PHP', 'PLN', 'RON', 'SEK', 'SGD',
-  'THB', 'TRY', 'USD', 'ZAR',
+  "AUD",
+  "BGN",
+  "BRL",
+  "CAD",
+  "CHF",
+  "CNY",
+  "CZK",
+  "DKK",
+  "EUR",
+  "GBP",
+  "HKD",
+  "HUF",
+  "IDR",
+  "ILS",
+  "INR",
+  "ISK",
+  "JPY",
+  "KRW",
+  "MXN",
+  "MYR",
+  "NOK",
+  "NZD",
+  "PHP",
+  "PLN",
+  "RON",
+  "SEK",
+  "SGD",
+  "THB",
+  "TRY",
+  "USD",
+  "ZAR",
 ]);
 
-export class FrankfurterAdapter
-  implements ProviderAdapter<FxQuoteInput, FxQuoteOutput>
-{
-  readonly name = 'frankfurter';
-  readonly category: ProviderCategory = 'fx';
+export class FrankfurterAdapter implements ProviderAdapter<FxQuoteInput, FxQuoteOutput> {
+  readonly name = "frankfurter";
+  readonly category: ProviderCategory = "fx";
   readonly priority = 2; // fallback do BCPtax + primário para pares sem PTAX
 
   isConfigured(): boolean {
@@ -65,7 +85,7 @@ export class FrankfurterAdapter
       throw new ProviderDataError(
         this.name,
         this.category,
-        `Par ${from}/${to} não suportado pelo Frankfurter`,
+        `Par ${from}/${to} não suportado pelo Frankfurter`
       );
     }
 
@@ -78,7 +98,7 @@ export class FrankfurterAdapter
       response = await fetch(url, { signal: AbortSignal.timeout(10000) });
     } catch (err) {
       const e = err as Error;
-      if (e.name === 'AbortError' || e.name === 'TimeoutError') {
+      if (e.name === "AbortError" || e.name === "TimeoutError") {
         throw new ProviderTimeout(this.name, this.category);
       }
       throw new ProviderDataError(this.name, this.category, e.message);
@@ -106,7 +126,7 @@ export class FrankfurterAdapter
       throw new ProviderDataError(
         this.name,
         this.category,
-        `Frankfurter não retornou taxa ${from}/${to}`,
+        `Frankfurter não retornou taxa ${from}/${to}`
       );
     }
 
@@ -117,7 +137,7 @@ export class FrankfurterAdapter
       ask: rate, // Frankfurter não retorna bid/ask separados
       mid: rate,
       date: json.date,
-      source: 'frankfurter',
+      source: "frankfurter",
     };
   }
 }

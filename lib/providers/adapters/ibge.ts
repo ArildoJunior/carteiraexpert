@@ -3,13 +3,8 @@
 // Cap 6 â€” 6L-1 (Indicadores) â€” priority 2
 // DocumentaÃ§Ã£o: https://servicodados.ibge.gov.br/api/docs
 
-import type { ProviderAdapter, ProviderCategory } from '../types';
-import {
-  ProviderAuthError,
-  ProviderDataError,
-  ProviderTimeout,
-  ProviderRateLimit,
-} from '../types';
+import type { ProviderAdapter, ProviderCategory } from "../types";
+import { ProviderAuthError, ProviderDataError, ProviderRateLimit, ProviderTimeout } from "../types";
 
 export interface IndicatorInput {
   // ID do agregado no SIDRA. IPCA = 1737, PIB = 1620, INPC = 1693
@@ -28,26 +23,24 @@ export interface IndicatorOutput {
   variavel: number;
   name: string;
   series: Array<{ date: string; value: number }>;
-  source: 'ibge';
+  source: "ibge";
 }
 
-const IBGE_BASE = 'https://servicodados.ibge.gov.br/api/v3/agregados';
+const IBGE_BASE = "https://servicodados.ibge.gov.br/api/v3/agregados";
 
 // CatÃ¡logo resumido (variÃ¡veis mais comuns)
 const CATALOG: Record<string, { name: string; variavel: number; desc: string }> = {
-  '1737:63': { name: 'IPCA - VariaÃ§Ã£o mensal', variavel: 63, desc: 'Brasil' },
-  '1737:2265': { name: 'IPCA - Acumulado 12 meses', variavel: 2265, desc: 'Brasil' },
-  '1737:3550': { name: 'IPCA - Acumulado ano', variavel: 3550, desc: 'Brasil' },
-  '1693:63': { name: 'INPC - VariaÃ§Ã£o mensal', variavel: 63, desc: 'Brasil' },
-  '1620:606': { name: 'PIB - VariaÃ§Ã£o trimestral', variavel: 606, desc: 'Brasil' },
-  '1620:9319': { name: 'PIB - VariaÃ§Ã£o acumulada 12 meses', variavel: 9319, desc: 'Brasil' },
+  "1737:63": { name: "IPCA - VariaÃ§Ã£o mensal", variavel: 63, desc: "Brasil" },
+  "1737:2265": { name: "IPCA - Acumulado 12 meses", variavel: 2265, desc: "Brasil" },
+  "1737:3550": { name: "IPCA - Acumulado ano", variavel: 3550, desc: "Brasil" },
+  "1693:63": { name: "INPC - VariaÃ§Ã£o mensal", variavel: 63, desc: "Brasil" },
+  "1620:606": { name: "PIB - VariaÃ§Ã£o trimestral", variavel: 606, desc: "Brasil" },
+  "1620:9319": { name: "PIB - VariaÃ§Ã£o acumulada 12 meses", variavel: 9319, desc: "Brasil" },
 };
 
-export class IBGEAdapter
-  implements ProviderAdapter<IndicatorInput, IndicatorOutput>
-{
-  readonly name = 'ibge';
-  readonly category: ProviderCategory = 'indicator';
+export class IBGEAdapter implements ProviderAdapter<IndicatorInput, IndicatorOutput> {
+  readonly name = "ibge";
+  readonly category: ProviderCategory = "indicator";
   readonly priority = 2; // fallback do BCSgs
 
   isConfigured(): boolean {
@@ -56,10 +49,9 @@ export class IBGEAdapter
 
   async ping(): Promise<boolean> {
     try {
-      const r = await fetch(
-        `${IBGE_BASE}/1737/periodos/-6/variaveis/63?localidades=1`,
-        { signal: AbortSignal.timeout(5000) },
-      );
+      const r = await fetch(`${IBGE_BASE}/1737/periodos/-6/variaveis/63?localidades=1`, {
+        signal: AbortSignal.timeout(5000),
+      });
       return r.ok;
     } catch {
       return false;
@@ -77,7 +69,7 @@ export class IBGEAdapter
       response = await fetch(url, { signal: AbortSignal.timeout(15000) });
     } catch (err) {
       const e = err as Error;
-      if (e.name === 'AbortError' || e.name === 'TimeoutError') {
+      if (e.name === "AbortError" || e.name === "TimeoutError") {
         throw new ProviderTimeout(this.name, this.category);
       }
       throw new ProviderDataError(this.name, this.category, e.message);
@@ -110,7 +102,7 @@ export class IBGEAdapter
       throw new ProviderDataError(
         this.name,
         this.category,
-        `IBGE agregado ${input.agregado}/var ${input.variavel} sem dados`,
+        `IBGE agregado ${input.agregado}/var ${input.variavel} sem dados`
       );
     }
 
@@ -119,7 +111,7 @@ export class IBGEAdapter
       throw new ProviderDataError(
         this.name,
         this.category,
-        `IBGE agregado ${input.agregado}/var ${input.variavel} sem resultados`,
+        `IBGE agregado ${input.agregado}/var ${input.variavel} sem resultados`
       );
     }
     const firstSeries = variable.resultados?.[0]?.series?.[0];
@@ -127,16 +119,16 @@ export class IBGEAdapter
       throw new ProviderDataError(
         this.name,
         this.category,
-        `IBGE sem sÃ©rie de dados para ${input.agregado}/${input.variavel}`,
+        `IBGE sem sÃ©rie de dados para ${input.agregado}/${input.variavel}`
       );
     }
 
     const series = Object.entries(firstSeries.serie)
       .map(([periodo, valor]) => ({
         date: String(periodo), // formato "YYYYMM" ou "YYYYQ1"
-        value: parseFloat(valor),
+        value: Number.parseFloat(valor),
       }))
-      .filter((p) => !isNaN(p.value))
+      .filter((p) => !Number.isNaN(p.value))
       .sort((a, b) => a.date.localeCompare(b.date));
 
     const catalogKey = `${input.agregado}:${input.variavel}`;
@@ -147,7 +139,7 @@ export class IBGEAdapter
       variavel: input.variavel,
       name,
       series,
-      source: 'ibge',
+      source: "ibge",
     };
   }
 }

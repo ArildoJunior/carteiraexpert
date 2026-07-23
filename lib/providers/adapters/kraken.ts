@@ -3,13 +3,8 @@
 // Cap 6 — 6J (Cripto) — priority 3
 // Documentação: https://docs.kraken.com/api/docs/rest-api/get-ticker-information
 
-import type { ProviderAdapter, ProviderCategory } from '../types';
-import {
-  ProviderAuthError,
-  ProviderDataError,
-  ProviderTimeout,
-  ProviderRateLimit,
-} from '../types';
+import type { ProviderAdapter, ProviderCategory } from "../types";
+import { ProviderAuthError, ProviderDataError, ProviderRateLimit, ProviderTimeout } from "../types";
 
 export interface CryptoQuoteInput {
   symbol: string; // ex: "BTC" → mapeia para XBTUSD
@@ -18,36 +13,34 @@ export interface CryptoQuoteInput {
 export interface CryptoQuoteOutput {
   symbol: string;
   price: number;
-  currency: 'USD';
+  currency: "USD";
   change24h: number;
   changePercent24h: number;
   volume24h: number;
   marketTime: string;
-  source: 'kraken';
+  source: "kraken";
 }
 
-const KRAKEN_BASE = 'https://api.kraken.com/0/public';
+const KRAKEN_BASE = "https://api.kraken.com/0/public";
 
 // Kraken tem naming próprio: BTC = XBT, USD = ZUSD
 const KRAKEN_PAIRS: Record<string, string> = {
-  BTC: 'XBTUSD',
-  ETH: 'ETHUSD',
-  SOL: 'SOLUSD',
-  XRP: 'XRPUSD',
-  ADA: 'ADAUSD',
-  DOGE: 'DOGEUSD',
-  AVAX: 'AVAXUSD',
-  DOT: 'DOTUSD',
-  LINK: 'LINKUSD',
-  LTC: 'LTCUSD',
-  ATOM: 'ATOMUSD',
+  BTC: "XBTUSD",
+  ETH: "ETHUSD",
+  SOL: "SOLUSD",
+  XRP: "XRPUSD",
+  ADA: "ADAUSD",
+  DOGE: "DOGEUSD",
+  AVAX: "AVAXUSD",
+  DOT: "DOTUSD",
+  LINK: "LINKUSD",
+  LTC: "LTCUSD",
+  ATOM: "ATOMUSD",
 };
 
-export class KrakenAdapter
-  implements ProviderAdapter<CryptoQuoteInput, CryptoQuoteOutput>
-{
-  readonly name = 'kraken';
-  readonly category: ProviderCategory = 'crypto';
+export class KrakenAdapter implements ProviderAdapter<CryptoQuoteInput, CryptoQuoteOutput> {
+  readonly name = "kraken";
+  readonly category: ProviderCategory = "crypto";
   readonly priority = 3; // fallback 2
 
   isConfigured(): boolean {
@@ -75,7 +68,7 @@ export class KrakenAdapter
       response = await fetch(url, { signal: AbortSignal.timeout(10000) });
     } catch (err) {
       const e = err as Error;
-      if (e.name === 'AbortError' || e.name === 'TimeoutError') {
+      if (e.name === "AbortError" || e.name === "TimeoutError") {
         throw new ProviderTimeout(this.name, this.category);
       }
       throw new ProviderDataError(this.name, this.category, e.message);
@@ -106,11 +99,7 @@ export class KrakenAdapter
     };
 
     if (json.error && json.error.length > 0) {
-      throw new ProviderDataError(
-        this.name,
-        this.category,
-        json.error.join(', '),
-      );
+      throw new ProviderDataError(this.name, this.category, json.error.join(", "));
     }
 
     const entries = Object.values(json.result ?? {});
@@ -119,24 +108,24 @@ export class KrakenAdapter
       throw new ProviderDataError(
         this.name,
         this.category,
-        `Par "${pair}" não encontrado na Kraken`,
+        `Par "${pair}" não encontrado na Kraken`
       );
     }
 
-    const lastPrice = parseFloat(ticker.c[0]);
-    const openPrice = parseFloat(ticker.o);
+    const lastPrice = Number.parseFloat(ticker.c[0]);
+    const openPrice = Number.parseFloat(ticker.o);
     const change = lastPrice - openPrice;
     const changePercent = openPrice !== 0 ? (change / openPrice) * 100 : 0;
 
     return {
       symbol,
       price: lastPrice,
-      currency: 'USD',
+      currency: "USD",
       change24h: change,
       changePercent24h: changePercent,
-      volume24h: parseFloat(ticker.v[1] ?? '0'),
+      volume24h: Number.parseFloat(ticker.v[1] ?? "0"),
       marketTime: new Date().toISOString(),
-      source: 'kraken',
+      source: "kraken",
     };
   }
 }

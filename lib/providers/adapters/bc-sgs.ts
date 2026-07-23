@@ -3,13 +3,8 @@
 // Cap 6 — 6L-1 (Indicadores) — priority 1
 // Documentação: https://www3.bcb.gov.br/sgspub/
 
-import type { ProviderAdapter, ProviderCategory } from '../types';
-import {
-  ProviderAuthError,
-  ProviderDataError,
-  ProviderTimeout,
-  ProviderRateLimit,
-} from '../types';
+import type { ProviderAdapter, ProviderCategory } from "../types";
+import { ProviderAuthError, ProviderDataError, ProviderRateLimit, ProviderTimeout } from "../types";
 
 export interface IndicatorInput {
   // Código da série no SGS. Catálogo: https://www3.bcb.gov.br/sgspub/
@@ -19,7 +14,7 @@ export interface IndicatorInput {
 }
 
 export interface IndicatorDataPoint {
-  date: string;       // YYYY-MM-DD
+  date: string; // YYYY-MM-DD
   value: number;
 }
 
@@ -28,30 +23,28 @@ export interface IndicatorOutput {
   name: string;
   unit: string;
   series: IndicatorDataPoint[];
-  source: 'bc_sgs';
+  source: "bc_sgs";
 }
 
-const SGS_BASE = 'https://api.bcb.gov.br/dados/serie/bcdata.sgs';
+const SGS_BASE = "https://api.bcb.gov.br/dados/serie/bcdata.sgs";
 
 // Nomes amigáveis para os códigos mais comuns (catálogo resumido)
 const SERIES_META: Record<number, { name: string; unit: string }> = {
-  11: { name: 'Taxa Selic (% a.a.)', unit: '% a.a.' },
-  188: { name: 'Meta Selic (% a.a.)', unit: '% a.a.' },
-  432: { name: 'IPCA - Variação mensal', unit: '%' },
-  433: { name: 'IPCA - Acumulado 12 meses', unit: '%' },
-  4389: { name: 'IPCA - Variação 12 meses (núcleo)', unit: '%' },
-  4390: { name: 'CDI - Taxa acumulada 12 meses', unit: '%' },
-  12: { name: 'Selic - Taxa diária', unit: '% a.d.' },
-  1178: { name: 'Selic - Over', unit: '% a.a.' },
-  4189: { name: 'IGP-M - Variação 12 meses', unit: '%' },
-  13521: { name: 'Taxa de câmbio - Livre (R$/US$)', unit: 'R$/US$' },
+  11: { name: "Taxa Selic (% a.a.)", unit: "% a.a." },
+  188: { name: "Meta Selic (% a.a.)", unit: "% a.a." },
+  432: { name: "IPCA - Variação mensal", unit: "%" },
+  433: { name: "IPCA - Acumulado 12 meses", unit: "%" },
+  4389: { name: "IPCA - Variação 12 meses (núcleo)", unit: "%" },
+  4390: { name: "CDI - Taxa acumulada 12 meses", unit: "%" },
+  12: { name: "Selic - Taxa diária", unit: "% a.d." },
+  1178: { name: "Selic - Over", unit: "% a.a." },
+  4189: { name: "IGP-M - Variação 12 meses", unit: "%" },
+  13521: { name: "Taxa de câmbio - Livre (R$/US$)", unit: "R$/US$" },
 };
 
-export class BCSgsAdapter
-  implements ProviderAdapter<IndicatorInput, IndicatorOutput>
-{
-  readonly name = 'bc_sgs';
-  readonly category: ProviderCategory = 'indicator';
+export class BCSgsAdapter implements ProviderAdapter<IndicatorInput, IndicatorOutput> {
+  readonly name = "bc_sgs";
+  readonly category: ProviderCategory = "indicator";
   readonly priority = 1; // primário para indicadores BR
 
   isConfigured(): boolean {
@@ -78,7 +71,7 @@ export class BCSgsAdapter
       response = await fetch(url, { signal: AbortSignal.timeout(10000) });
     } catch (err) {
       const e = err as Error;
-      if (e.name === 'AbortError' || e.name === 'TimeoutError') {
+      if (e.name === "AbortError" || e.name === "TimeoutError") {
         throw new ProviderTimeout(this.name, this.category);
       }
       throw new ProviderDataError(this.name, this.category, e.message);
@@ -100,30 +93,26 @@ export class BCSgsAdapter
     }>;
 
     if (!Array.isArray(json) || json.length === 0) {
-      throw new ProviderDataError(
-        this.name,
-        this.category,
-        `SGS código ${input.code} sem dados`,
-      );
+      throw new ProviderDataError(this.name, this.category, `SGS código ${input.code} sem dados`);
     }
 
     const series: IndicatorDataPoint[] = json.map((p) => {
       // converte DD/MM/YYYY → YYYY-MM-DD
-      const [dd, mm, yyyy] = p.data.split('/');
+      const [dd, mm, yyyy] = p.data.split("/");
       return {
         date: `${yyyy}-${mm}-${dd}`,
-        value: parseFloat(p.valor),
+        value: Number.parseFloat(p.valor),
       };
     });
 
-    const meta = SERIES_META[input.code] ?? { name: `SGS ${input.code}`, unit: '' };
+    const meta = SERIES_META[input.code] ?? { name: `SGS ${input.code}`, unit: "" };
 
     return {
       code: input.code,
       name: meta.name,
       unit: meta.unit,
       series,
-      source: 'bc_sgs',
+      source: "bc_sgs",
     };
   }
 }

@@ -2,22 +2,24 @@
 // Teste da cascata de cotações globais (quote_global)
 // Roda com: npx tsx scripts/test-quote-global.ts VOD.L
 
-import 'dotenv/config';
-import { registerProviders, getProviderRegistry } from '../lib/providers';
-import type { GlobalQuoteInput, GlobalQuoteOutput } from '../lib/providers/adapters/yahoo-finance';
+import "dotenv/config";
+import { getProviderRegistry, registerProviders } from "../lib/providers";
+import type { GlobalQuoteInput, GlobalQuoteOutput } from "../lib/providers/adapters/yahoo-finance";
 
 async function main() {
   registerProviders();
   const registry = getProviderRegistry();
 
-  const ticker = process.argv[2] ?? 'VOD.L';
+  const ticker = process.argv[2] ?? "VOD.L";
   console.log(`\n🔍 Buscando ${ticker} via cascata de provedores (quote_global)...\n`);
 
   const start = Date.now();
-  const result = await registry.fetch<GlobalQuoteInput, GlobalQuoteOutput>('quote_global', { ticker });
+  const result = await registry.fetch<GlobalQuoteInput, GlobalQuoteOutput>("quote_global", {
+    ticker,
+  });
   const total = Date.now() - start;
 
-  console.log('✅ Sucesso:');
+  console.log("✅ Sucesso:");
   console.log(`   Provider: ${result.provider}`);
   console.log(`   Ticker:   ${result.data.ticker}`);
   console.log(`   Mercado:  ${result.data.market}`);
@@ -26,6 +28,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('❌ Erro:', err.message);
+  console.error("❌ Erro:", err.message);
   process.exit(1);
 });

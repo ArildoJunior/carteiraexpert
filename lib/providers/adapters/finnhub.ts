@@ -2,13 +2,8 @@
 // FinnhubAdapter — cotações US (6I) e fundamentos US (6L-2)
 // Aceita category/priority no construtor para reuso entre cascatas
 
-import type { ProviderAdapter, ProviderCategory } from '../types';
-import {
-  ProviderAuthError,
-  ProviderDataError,
-  ProviderTimeout,
-  ProviderRateLimit,
-} from '../types';
+import type { ProviderAdapter, ProviderCategory } from "../types";
+import { ProviderAuthError, ProviderDataError, ProviderRateLimit, ProviderTimeout } from "../types";
 
 export interface FinnhubQuoteInput {
   symbol: string;
@@ -17,45 +12,42 @@ export interface FinnhubQuoteInput {
 export interface FinnhubQuoteOutput {
   symbol: string;
   price: number;
-  currency: 'USD';
+  currency: "USD";
   change: number;
   changePercent: number;
   volume: number;
   marketTime: string;
-  source: 'finnhub';
+  source: "finnhub";
 }
 
 export interface FinnhubFundamentalInput {
   symbol: string;
-  metric?: 'all' | 'price' | 'valuation' | 'growth' | 'margin' | 'management' | 'financialStrength';
+  metric?: "all" | "price" | "valuation" | "growth" | "margin" | "management" | "financialStrength";
 }
 
 export interface FinnhubFundamentalOutput {
   symbol: string;
   metrics: Record<string, number | string | null>;
-  source: 'finnhub';
+  source: "finnhub";
 }
 
-const FINNHUB_BASE = 'https://finnhub.io/api/v1';
+const FINNHUB_BASE = "https://finnhub.io/api/v1";
 
 export class FinnhubAdapter
   implements ProviderAdapter<FinnhubQuoteInput, FinnhubQuoteOutput | FinnhubFundamentalOutput>
 {
-  readonly name = 'finnhub';
+  readonly name = "finnhub";
   readonly category: ProviderCategory;
   readonly priority: number;
 
-  constructor(
-    category: ProviderCategory = 'quote_us',
-    priority = 1,
-  ) {
+  constructor(category: ProviderCategory = "quote_us", priority = 1) {
     this.category = category;
     this.priority = priority;
   }
 
   private get token(): string | undefined {
     const t = process.env.FINNHUB_TOKEN;
-    return t && t !== 'PUBLIC' ? t : undefined;
+    return t && t !== "PUBLIC" ? t : undefined;
   }
 
   isConfigured(): boolean {
@@ -74,12 +66,18 @@ export class FinnhubAdapter
     }
   }
 
-  async fetch(input: FinnhubQuoteInput | FinnhubFundamentalInput): Promise<FinnhubQuoteOutput | FinnhubFundamentalOutput> {
+  async fetch(
+    input: FinnhubQuoteInput | FinnhubFundamentalInput
+  ): Promise<FinnhubQuoteOutput | FinnhubFundamentalOutput> {
     const token = this.token;
     if (!token) throw new ProviderAuthError(this.name, this.category);
 
-    if (this.category === 'fundamental_us') {
-      return this.fetchFundamentals((input as FinnhubFundamentalInput).symbol, token, (input as FinnhubFundamentalInput).metric ?? 'all');
+    if (this.category === "fundamental_us") {
+      return this.fetchFundamentals(
+        (input as FinnhubFundamentalInput).symbol,
+        token,
+        (input as FinnhubFundamentalInput).metric ?? "all"
+      );
     }
     return this.fetchQuote((input as FinnhubQuoteInput).symbol, token);
   }
@@ -93,7 +91,7 @@ export class FinnhubAdapter
       response = await fetch(url, { signal: AbortSignal.timeout(10000) });
     } catch (err) {
       const e = err as Error;
-      if (e.name === 'AbortError' || e.name === 'TimeoutError') {
+      if (e.name === "AbortError" || e.name === "TimeoutError") {
         throw new ProviderTimeout(this.name, this.category);
       }
       throw new ProviderDataError(this.name, this.category, e.message);
@@ -127,16 +125,20 @@ export class FinnhubAdapter
     return {
       symbol: ticker,
       price: json.c,
-      currency: 'USD',
+      currency: "USD",
       change: json.d ?? 0,
       changePercent: json.dp ?? 0,
       volume: 0, // Finnhub /quote não retorna volume; /stock/candle tem
       marketTime: new Date(json.t * 1000).toISOString(),
-      source: 'finnhub',
+      source: "finnhub",
     };
   }
 
-  private async fetchFundamentals(symbol: string, token: string, metric: string): Promise<FinnhubFundamentalOutput> {
+  private async fetchFundamentals(
+    symbol: string,
+    token: string,
+    metric: string
+  ): Promise<FinnhubFundamentalOutput> {
     const ticker = symbol.toUpperCase();
     const url = `${FINNHUB_BASE}/stock/metric?symbol=${ticker}&metric=${metric}&token=${token}`;
 
@@ -145,7 +147,7 @@ export class FinnhubAdapter
       response = await fetch(url, { signal: AbortSignal.timeout(10000) });
     } catch (err) {
       const e = err as Error;
-      if (e.name === 'AbortError' || e.name === 'TimeoutError') {
+      if (e.name === "AbortError" || e.name === "TimeoutError") {
         throw new ProviderTimeout(this.name, this.category);
       }
       throw new ProviderDataError(this.name, this.category, e.message);
@@ -173,7 +175,7 @@ export class FinnhubAdapter
     return {
       symbol: ticker,
       metrics: json.metric,
-      source: 'finnhub',
+      source: "finnhub",
     };
   }
 }

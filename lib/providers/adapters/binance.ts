@@ -3,13 +3,8 @@
 // Cap 6 — 6J (Cripto) — priority 2
 // Documentação: https://developers.binance.com/docs/binance-spot-api/rest-api
 
-import type { ProviderAdapter, ProviderCategory } from '../types';
-import {
-  ProviderAuthError,
-  ProviderDataError,
-  ProviderTimeout,
-  ProviderRateLimit,
-} from '../types';
+import type { ProviderAdapter, ProviderCategory } from "../types";
+import { ProviderAuthError, ProviderDataError, ProviderRateLimit, ProviderTimeout } from "../types";
 
 export interface CryptoQuoteInput {
   symbol: string; // ex: "BTC" → mapeia para BTCUSDT
@@ -18,40 +13,38 @@ export interface CryptoQuoteInput {
 export interface CryptoQuoteOutput {
   symbol: string;
   price: number;
-  currency: 'USD';
+  currency: "USD";
   change24h: number;
   changePercent24h: number;
   volume24h: number;
   marketTime: string;
-  source: 'binance';
+  source: "binance";
 }
 
-const BINANCE_BASE = 'https://api.binance.com/api/v3';
+const BINANCE_BASE = "https://api.binance.com/api/v3";
 
 // Símbolos cotados em USDT (stable). Cobre os top 20 por market cap.
 const USDT_PAIRS: Record<string, string> = {
-  BTC: 'BTCUSDT',
-  ETH: 'ETHUSDT',
-  SOL: 'SOLUSDT',
-  BNB: 'BNBUSDT',
-  XRP: 'XRPUSDT',
-  ADA: 'ADAUSDT',
-  DOGE: 'DOGEUSDT',
-  AVAX: 'AVAXUSDT',
-  MATIC: 'MATICUSDT',
-  DOT: 'DOTUSDT',
-  LINK: 'LINKUSDT',
-  UNI: 'UNIUSDT',
-  LTC: 'LTCUSDT',
-  ATOM: 'ATOMUSDT',
-  XLM: 'XLMUSDT',
+  BTC: "BTCUSDT",
+  ETH: "ETHUSDT",
+  SOL: "SOLUSDT",
+  BNB: "BNBUSDT",
+  XRP: "XRPUSDT",
+  ADA: "ADAUSDT",
+  DOGE: "DOGEUSDT",
+  AVAX: "AVAXUSDT",
+  MATIC: "MATICUSDT",
+  DOT: "DOTUSDT",
+  LINK: "LINKUSDT",
+  UNI: "UNIUSDT",
+  LTC: "LTCUSDT",
+  ATOM: "ATOMUSDT",
+  XLM: "XLMUSDT",
 };
 
-export class BinanceAdapter
-  implements ProviderAdapter<CryptoQuoteInput, CryptoQuoteOutput>
-{
-  readonly name = 'binance';
-  readonly category: ProviderCategory = 'crypto';
+export class BinanceAdapter implements ProviderAdapter<CryptoQuoteInput, CryptoQuoteOutput> {
+  readonly name = "binance";
+  readonly category: ProviderCategory = "crypto";
   readonly priority = 2; // fallback 1
 
   isConfigured(): boolean {
@@ -79,7 +72,7 @@ export class BinanceAdapter
       response = await fetch(url, { signal: AbortSignal.timeout(10000) });
     } catch (err) {
       const e = err as Error;
-      if (e.name === 'AbortError' || e.name === 'TimeoutError') {
+      if (e.name === "AbortError" || e.name === "TimeoutError") {
         throw new ProviderTimeout(this.name, this.category);
       }
       throw new ProviderDataError(this.name, this.category, e.message);
@@ -108,21 +101,21 @@ export class BinanceAdapter
       throw new ProviderDataError(
         this.name,
         this.category,
-        `Par "${pair}" não encontrado na Binance`,
+        `Par "${pair}" não encontrado na Binance`
       );
     }
 
     return {
       symbol,
-      price: parseFloat(json.lastPrice),
-      currency: 'USD',
-      change24h: parseFloat(json.priceChange ?? '0'),
-      changePercent24h: parseFloat(json.priceChangePercent ?? '0'),
-      volume24h: parseFloat(json.volume ?? '0'),
+      price: Number.parseFloat(json.lastPrice),
+      currency: "USD",
+      change24h: Number.parseFloat(json.priceChange ?? "0"),
+      changePercent24h: Number.parseFloat(json.priceChangePercent ?? "0"),
+      volume24h: Number.parseFloat(json.volume ?? "0"),
       marketTime: json.closeTime
         ? new Date(json.closeTime).toISOString()
         : new Date().toISOString(),
-      source: 'binance',
+      source: "binance",
     };
   }
 }
