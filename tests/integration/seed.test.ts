@@ -9,7 +9,7 @@ import {
   watchlists,
 } from "@/db/schema";
 import { db } from "@/lib/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 
 let userId: string;
@@ -45,7 +45,12 @@ describe("seed", () => {
     const [acc] = await db
       .select()
       .from(brokerageAccounts)
-      .where(eq(brokerageAccounts.userId, userId))
+      .where(
+        and(
+          eq(brokerageAccounts.userId, userId),
+          eq(brokerageAccounts.broker, "xp"),
+        ),
+      )
       .limit(1);
     expect(acc).toBeDefined();
     expect(acc?.broker).toBe("xp");

@@ -24,3 +24,4 @@ export * from "./import-queue";
 // Cap. 8
 export * from "./benchmarks-history";
 export * from "./portfolio-snapshots";
+export * from './provider-breakdown';
