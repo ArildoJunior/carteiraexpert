@@ -1,27 +1,22 @@
-// Auth (Cap. 3)
-export * from "./users";
+// db/schema/index.ts
 export * from "./accounts";
-export * from "./verification-tokens";
-export * from "./password-resets";
-export * from "./two-factor-secrets";
-
-// Negocio (Cap. 4)
-export * from "./brokerage-accounts";
-export * from "./assets";
-export * from "./positions";
-export * from "./transactions";
-export * from "./watchlists";
 export * from "./alerts";
-export * from "./user-preferences";
+export * from "./assets";
+export * from "./asset-quotes";
 export * from "./audit-logs";
-
-// Integracao com corretoras (Cap. 7)
-export * from "./brokers";
+export * from "./benchmarks-history";
 export * from "./broker-connections";
+export * from "./brokerage-accounts";
+export * from "./brokers";
 export * from "./import-jobs";
 export * from "./import-queue";
-
-// Cap. 8
-export * from "./benchmarks-history";
+export * from "./password-resets";
 export * from "./portfolio-snapshots";
+export * from "./positions";
 export * from "./provider-breakdown";
+export * from "./transactions";
+export * from "./two-factor-secrets";
+export * from "./user-preferences";
+export * from "./users";
+export * from "./verification-tokens";
+export * from "./watchlists";

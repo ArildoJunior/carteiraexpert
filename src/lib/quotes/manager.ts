@@ -1,77 +1,213 @@
-import type { AssetClass } from "@/lib/db/enums";
-import { cacheGet, cacheGetStale, cacheSet, cacheSetStale } from "@/lib/redis/upstash";
-import { brapiProvider } from "./providers/brapi";
-import { coingeckoProvider } from "./providers/coingecko";
+// src/lib/quotes/manager.ts
+// Cap 6 — Camada dupla:
+//  1) refreshQuote — usado pelos jobs Inngest. Chama provider e grava no banco.
+//  2) getQuote / getQuotesBatch / getProvidersHealth — shims de leitura que
+//     consultam SOMENTE o banco (asset_quotes / provider_breakdown). NUNCA
+//     chamam provider externo. As formas de retorno seguem EXATAMENTE o
+//     shape de @/lib/quotes/types para que posicoes, dashboard/allocation,
+//     dashboard/movers, calculate-portfolio-snapshots e degraded-banner
+//     nao precisem ser alterados.
+
+import { providerBreakdown } from "@/db/schema/provider-breakdown";
+import { db } from "@/lib/db";
+import { env } from "@/lib/env";
+import { gte, sql } from "drizzle-orm";
+import {
+  type AssetQuoteSnapshot,
+  type QuoteCategory,
+  getQuoteByCategory,
+  upsertQuote,
+} from "./repository";
 import { selectProvider } from "./select-provider";
-import type { ProviderHealth, Quote, QuoteResult } from "./types";
+import type { ProviderHealth, Quote, QuoteResult, QuoteSource } from "./types";
 
-const FRESH_TTL = 60;
-const STALE_TTL = 24 * 60 * 60;
+// --- AssetClass ---------------------------------------------------------
 
-export async function getQuote(ticker: string, assetClass: AssetClass): Promise<QuoteResult> {
-  const upper = ticker.toUpperCase();
-  const provider = selectProvider(upper, assetClass);
-  if (!provider) return { ok: false, error: "not-supported" };
+// Internamente o selectProvider so conhece 5 valores.
+type RefreshAssetClass = "stock" | "reit" | "etf" | "bdr" | "crypto";
 
-  const cached = await cacheGet<Quote>(`quote:${upper}`);
-  if (cached) {
-    const age =
-      Math.floor(Date.now() / 1000) - Math.floor(new Date(cached.fetchedAt).getTime() / 1000);
-    if (age < FRESH_TTL) return { ok: true, quote: { ...cached, delaySeconds: Math.max(0, age) } };
-  }
+// Os shims de leitura aceitam o enum completo (11 valores) usado no projeto.
+export type FullAssetClass =
+  | RefreshAssetClass
+  | "fixedIncomePublic"
+  | "fixedIncomePrivate"
+  | "fund"
+  | "pension"
+  | "treasury"
+  | "other";
 
-  const result = await provider.fetchQuote(upper);
-  if (result.ok) {
-    await cacheSet(`quote:${upper}`, result.quote, FRESH_TTL);
-    await cacheSetStale(`quote:${upper}`, result.quote, STALE_TTL);
-    return result;
-  }
+// --- Categorias / TTLs --------------------------------------------------
 
-  const stale = await cacheGetStale<Quote>(`quote:${upper}`);
-  if (stale) {
-    const age =
-      Math.floor(Date.now() / 1000) - Math.floor(new Date(stale.fetchedAt).getTime() / 1000);
-    return {
-      ok: false,
-      error: result.error,
-      staleQuote: { ...stale, source: "stale", delaySeconds: Math.max(0, age) },
-    };
-  }
+const CATEGORY_INTERVAL_KEY: Record<QuoteCategory, keyof typeof env | null> = {
+  quote_br: "QUOTE_REFRESH_INTERVAL_BR_SEC",
+  quote_us: "QUOTE_REFRESH_INTERVAL_US_SEC",
+  crypto: "QUOTE_REFRESH_INTERVAL_CRYPTO_SEC",
+  fundamental_br: "QUOTE_REFRESH_INTERVAL_FUNDAMENTAL_SEC",
+  fundamental_us: "QUOTE_REFRESH_INTERVAL_FUNDAMENTAL_SEC",
+  dividend_br: "QUOTE_REFRESH_INTERVAL_DIVIDEND_SEC",
+  dividend_us: "QUOTE_REFRESH_INTERVAL_DIVIDEND_SEC",
+  fx: null,
+  indicator: null,
+};
 
-  return result;
+function mapAssetClassToCategory(c?: FullAssetClass): QuoteCategory {
+  if (c === "crypto") return "crypto";
+  if (c === "bdr") return "quote_us";
+  return "quote_br";
 }
 
+function resolveExpiresAt(category: QuoteCategory, now: Date): Date {
+  const key = CATEGORY_INTERVAL_KEY[category];
+  const defaultSeconds = category === "dividend_br" || category === "dividend_us" ? 3600 : 300;
+  const seconds = key ? Number(env[key]) || defaultSeconds : defaultSeconds;
+  return new Date(now.getTime() + seconds * 1000);
+}
+
+// --- Jobs: refreshQuote -------------------------------------------------
+
+export type RefreshAttempt = {
+  provider: string;
+  ok: boolean;
+  latencyMs: number;
+  error?: string;
+};
+
+export type RefreshResult = {
+  snapshot: AssetQuoteSnapshot;
+  providerUsed: string;
+  attempts: RefreshAttempt[];
+};
+
+export type RefreshInput = {
+  ticker: string;
+  assetClass: RefreshAssetClass;
+  category?: QuoteCategory;
+};
+
+export async function refreshQuote(input: RefreshInput): Promise<RefreshResult | null> {
+  const upper = input.ticker.toUpperCase();
+  const category = input.category ?? mapAssetClassToCategory(input.assetClass);
+
+  const provider = selectProvider(upper, input.assetClass);
+  if (!provider) return null;
+
+  const startedAt = Date.now();
+  const result = await provider.fetchQuote(upper);
+  const latencyMs = Date.now() - startedAt;
+  if (!result.ok) return null;
+
+  const now = new Date();
+  const expiresAt = resolveExpiresAt(category, now);
+  const snapshot: AssetQuoteSnapshot = {
+    category,
+    ticker: upper,
+    price: result.quote.price,
+    currency: result.quote.currency,
+    change: result.quote.change,
+    changePct: result.quote.changePercent,
+    volume: result.quote.volume ?? null,
+    marketCap: null,
+    fetchedAt: now,
+    expiresAt,
+    provider: result.quote.source,
+    status: "fresh",
+    delayMs: 0,
+  };
+  await upsertQuote(snapshot);
+  return {
+    snapshot,
+    providerUsed: result.quote.source,
+    attempts: [{ provider: result.quote.source, ok: true, latencyMs }],
+  };
+}
+
+// --- Shims de leitura (consultam banco, NAO provider) ------------------
+
+// provider (text no banco) -> QuoteSource (literal do types.ts)
+function toQuoteSource(provider: string): QuoteSource {
+  if (provider === "brapi") return "brapi";
+  if (provider === "coingecko") return "coingecko";
+  if (provider === "manual") return "manual";
+  return "stale";
+}
+
+function toQuote(snap: AssetQuoteSnapshot, originalTicker: string): Quote {
+  const delaySeconds = Math.max(0, Math.round((Date.now() - snap.fetchedAt.getTime()) / 1000));
+  const quote: Quote = {
+    ticker: originalTicker,
+    price: Number(snap.price ?? 0),
+    change: snap.change ?? 0,
+    changePercent: snap.changePct ?? 0,
+    currency: "BRL",
+    source: toQuoteSource(snap.provider),
+    fetchedAt: snap.fetchedAt.toISOString(),
+    delaySeconds,
+  };
+  if (snap.volume !== null && snap.volume !== undefined) {
+    quote.volume = snap.volume;
+  }
+  return quote;
+}
+
+// getQuote: le UMA cotacao do banco. NUNCA chama provider.
+// Retorna QuoteResult no formato de @/lib/quotes/types.
+export async function getQuote(ticker: string, assetClass?: FullAssetClass): Promise<QuoteResult> {
+  const upper = ticker.toUpperCase();
+  const category = mapAssetClassToCategory(assetClass);
+  const snap = await getQuoteByCategory(category, upper);
+  if (!snap) {
+    return { ok: false, error: "not-found" };
+  }
+  const quote = toQuote(snap, ticker);
+  const isFresh = snap.expiresAt.getTime() > Date.now();
+  if (isFresh) {
+    return { ok: true, quote };
+  }
+  return { ok: false, error: "provider-down", staleQuote: quote };
+}
+
+// getQuotesBatch: le N cotacoes em paralelo. Retorna Record indexado pelo
+// ticker ORIGINAL (mesmo case que veio do banco) para o consumidor acessar
+// via `result[r.assetTicker]`.
 export async function getQuotesBatch(
-  items: Array<{ ticker: string; assetClass: AssetClass }>
+  items: { ticker: string; assetClass?: FullAssetClass }[]
 ): Promise<Record<string, QuoteResult>> {
-  const settled = await Promise.allSettled(items.map((it) => getQuote(it.ticker, it.assetClass)));
   const out: Record<string, QuoteResult> = {};
-  items.forEach((it, i) => {
-    const r = settled[i];
-    out[it.ticker] =
-      r && r.status === "fulfilled" ? r.value : { ok: false, error: "provider-down" };
-  });
+  await Promise.all(
+    items.map(async (item) => {
+      out[item.ticker] = await getQuote(item.ticker, item.assetClass);
+    })
+  );
   return out;
 }
 
+// getProvidersHealth: agrega provider_breakdown (ultimos 15 min). NUNCA
+// chama provider. Retorna Record<string, ProviderHealth> no formato
+// de @/lib/quotes/types (name: QuoteSource, ok, latencyMs?, lastChecked, error?).
 export async function getProvidersHealth(): Promise<Record<string, ProviderHealth>> {
-  const now = new Date().toISOString();
-  const checks = await Promise.allSettled([
-    brapiProvider.healthCheck().then((h) => ({ name: "brapi" as const, ...h })),
-    coingeckoProvider.healthCheck().then((h) => ({ name: "coingecko" as const, ...h })),
-  ]);
+  const since = new Date(Date.now() - 15 * 60 * 1000);
+  const rows = await db
+    .select({
+      provider: providerBreakdown.provider,
+      okCount: sql<number>`SUM(CASE WHEN ${providerBreakdown.status} = 'ok' THEN 1 ELSE 0 END)`,
+      totalCount: sql<number>`COUNT(*)`,
+      lastFetchedAt: sql<Date | null>`MAX(${providerBreakdown.fetchedAt})`,
+    })
+    .from(providerBreakdown)
+    .where(gte(providerBreakdown.fetchedAt, since))
+    .groupBy(providerBreakdown.provider);
+
   const out: Record<string, ProviderHealth> = {};
-  for (const c of checks) {
-    if (c.status === "fulfilled") {
-      const v = c.value;
-      out[v.name] = {
-        name: v.name,
-        ok: v.ok,
-        latencyMs: v.latencyMs,
-        lastChecked: now,
-        error: v.error,
-      };
-    }
+  for (const row of rows) {
+    const total = Number(row.totalCount) || 0;
+    const ok = Number(row.okCount) || 0;
+    const source = toQuoteSource(row.provider);
+    const lastChecked = (row.lastFetchedAt ?? new Date()).toISOString();
+    out[source] = {
+      name: source,
+      ok: total > 0 && ok / total > 0.5,
+      lastChecked,
+    };
   }
   return out;
 }
