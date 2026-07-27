@@ -1,46 +1,74 @@
+// src/app/api/v1/quotes/[ticker]/route.ts
 import { auth } from "@/lib/auth";
-import { type AssetClass, assetClassEnum } from "@/lib/db/enums";
-import { getQuote } from "@/lib/quotes/manager";
+import { type QuoteCategory, getQuoteByCategory } from "@/lib/quotes/repository";
+import { cacheGet, cacheSet } from "@/lib/redis/upstash";
 import { NextResponse } from "next/server";
 
-const ASSET_CLASS_SET = new Set<string>(assetClassEnum);
+const CATEGORY_MAP: Record<string, QuoteCategory> = {
+  stock: "quote_br",
+  reit: "quote_br",
+  etf: "quote_br",
+  bdr: "quote_us",
+  crypto: "crypto",
+};
 
-function parseAssetClass(raw: string | null): AssetClass | null {
-  if (!raw) return null;
-  return ASSET_CLASS_SET.has(raw) ? (raw as AssetClass) : null;
-}
+type Params = { ticker: string };
 
-export async function GET(req: Request, { params }: { params: Promise<{ ticker: string }> }) {
+export async function GET(req: Request, context: { params: Promise<Params> }) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ message: "Nao autenticado" }, { status: 401 });
   }
 
-  const { ticker: rawTicker } = await params;
+  const { ticker: rawTicker } = await context.params;
   if (!/^[A-Z0-9-]{3,20}$/i.test(rawTicker)) {
     return NextResponse.json({ message: "Ticker invalido" }, { status: 400 });
   }
 
   const url = new URL(req.url);
-  const assetClass = parseAssetClass(url.searchParams.get("class")) ?? "stock";
-  const result = await getQuote(rawTicker, assetClass);
-
-  if (result.ok) {
-    return NextResponse.json({ data: result.quote });
-  }
-
-  if (result.error === "not-supported") {
+  const assetClassParam = url.searchParams.get("class") ?? "stock";
+  const category = CATEGORY_MAP[assetClassParam];
+  if (!category) {
     return NextResponse.json({ message: "Classe de ativo sem cotacao online" }, { status: 400 });
   }
-  if (result.error === "not-found") {
+
+  const upper = rawTicker.toUpperCase();
+  const cacheKey = `cache:read:asset_quote:${category}:${upper}`;
+
+  // 1) Acelerador opcional: Redis. Se cair, a rota continua via Postgres.
+  const cached = await cacheGet<{ data: unknown }>(cacheKey);
+  if (cached) {
+    return NextResponse.json({ data: cached.data });
+  }
+
+  // 2) Fonte primaria: banco.
+  const snap = await getQuoteByCategory(category, upper);
+  if (!snap) {
     return NextResponse.json({ message: "Ativo nao encontrado" }, { status: 404 });
   }
 
-  if (result.staleQuote) {
-    return NextResponse.json(
-      { message: "Provider offline", data: result.staleQuote },
-      { status: 503 }
-    );
+  const now = Date.now();
+  const data = {
+    ticker: snap.ticker,
+    price: snap.price,
+    change: snap.change,
+    changePercent: snap.changePct,
+    volume: snap.volume ?? undefined,
+    currency: snap.currency,
+    source: snap.provider,
+    fetchedAt: snap.fetchedAt.toISOString(),
+    expiresAt: snap.expiresAt.toISOString(),
+    status: snap.status,
+    delaySeconds: Math.max(0, Math.round((now - snap.fetchedAt.getTime()) / 1000)),
+  };
+
+  // Acelera proxima leitura (TTL curto, 10s, opcional e removivel).
+  await cacheSet(cacheKey, { data }, 10);
+
+  const expired = snap.expiresAt.getTime() < now;
+  if (expired || snap.status !== "fresh") {
+    return NextResponse.json({ message: "Cotacao stale ou expirada", data }, { status: 503 });
   }
-  return NextResponse.json({ message: "Provider indisponivel" }, { status: 503 });
+
+  return NextResponse.json({ data });
 }
