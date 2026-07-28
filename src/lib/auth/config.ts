@@ -17,6 +17,7 @@ export const authConfig = {
     jwt: async ({ token, user, trigger, session }) => {
       if (user) {
         token.id = user.id;
+        token.role = (user as { role?: "user" | "editor" | "admin" }).role ?? "user";
         token.twoFactorEnabled = (user as { twoFactorEnabled?: boolean }).twoFactorEnabled;
         token.twoFactorVerified = !(user as { twoFactorEnabled?: boolean }).twoFactorEnabled;
       }
@@ -30,6 +31,7 @@ export const authConfig = {
     session: ({ session, token }) => {
       if (token.id && session.user) {
         session.user.id = token.id as string;
+        session.user.role = (token.role as "user" | "editor" | "admin") ?? "user";
         session.user.twoFactorEnabled = Boolean(token.twoFactorEnabled);
         session.user.twoFactorVerified = Boolean(token.twoFactorVerified);
       }

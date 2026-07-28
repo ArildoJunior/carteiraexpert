@@ -1,5 +1,6 @@
 // db/schema/index.ts
 export * from "./accounts";
+export * from "./ai-costs";
 export * from "./alerts";
 export * from "./assets";
 export * from "./asset-quotes";
@@ -8,6 +9,8 @@ export * from "./benchmarks-history";
 export * from "./broker-connections";
 export * from "./brokerage-accounts";
 export * from "./brokers";
+export * from "./document-analyses";
+export * from "./documents";
 export * from "./import-jobs";
 export * from "./import-queue";
 export * from "./password-resets";

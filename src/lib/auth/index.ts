@@ -40,6 +40,7 @@ const providers: NextAuthConfig["providers"] = [
         id: user.id,
         email: user.email,
         name: user.name,
+        role: user.role,
         twoFactorEnabled: user.twoFactorEnabled,
       };
     },

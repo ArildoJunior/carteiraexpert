@@ -5,6 +5,7 @@ export interface AuthenticatedUser {
   id: string;
   email: string | null;
   name: string | null;
+  role: "user" | "editor" | "admin";
 }
 
 /**
@@ -19,6 +20,7 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser> {
     id: session.user.id,
     email: session.user.email ?? null,
     name: session.user.name ?? null,
+    role: session.user.role ?? "user",
   };
 }
 

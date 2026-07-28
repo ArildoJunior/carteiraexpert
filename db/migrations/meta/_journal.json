@@ -43,6 +43,20 @@
       "when": 1722100000000,
       "tag": "0005_asset_quotes",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785243230777,
+      "tag": "0006_graceful_lockheed",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1785250385489,
+      "tag": "0007_illegal_firedrake",
+      "breakpoints": true
     }
   ]
 }

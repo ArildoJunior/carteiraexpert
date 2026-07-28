@@ -4,7 +4,7 @@ import { z } from "zod";
 const envSchema = z.object({
   // Ambiente
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  APP_URL: z.string().url().default("http://localhost:3000"),
+  NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
 
   // Banco de dados
   DATABASE_URL: z.string().url(),
@@ -37,10 +37,23 @@ const envSchema = z.object({
 
   // Vercel Blob
   BLOB_READ_WRITE_TOKEN: z.string().optional(),
+  BLOB_STORE_ID: z.string().optional(),
 
-  // LLM
+  // Cap 9 — LLM primario (OpenAI)
   OPENAI_API_KEY: z.string().optional(),
+  OPENAI_MODEL: z.string().default("gpt-4o-mini"),
+  OPENAI_MAX_TOKENS: z.coerce.number().int().positive().default(2000),
+  OPENAI_TEMPERATURE: z.coerce.number().min(0).max(2).default(0.2),
+  OPENAI_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
+
+  // Cap 9 — LLM fallback (Anthropic) — nao ativado enquanto nao houver credito
   ANTHROPIC_API_KEY: z.string().optional(),
+  CLAUDE_MODEL: z.string().default("claude-haiku-4-5"),
+  CLAUDE_MAX_TOKENS: z.coerce.number().int().positive().default(2000),
+
+  // Cap 9 — Limites tecnicos de documentos
+  DOC_MAX_SIZE_MB: z.coerce.number().int().positive().default(25),
+  DOC_MIN_CONFIDENCE: z.coerce.number().min(0).max(1).default(0.6),
 
   // Insights
   INSIGHT_ACCESS_LIMIT_FREE: z.coerce.number().int().nonnegative().default(5),

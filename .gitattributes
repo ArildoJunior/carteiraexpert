@@ -1,0 +1,17 @@
+# Normalização de terminadores de linha — solução definitiva para o warning CRLF/LF.
+# Todo arquivo de texto passa a ser armazenado no Git com LF, independente do
+# terminador usado no checkout local (Windows/PowerShell).
+* text=auto eol=lf
+
+# Arquivos binários — nunca devem passar por conversão de terminador de linha.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.pdf binary

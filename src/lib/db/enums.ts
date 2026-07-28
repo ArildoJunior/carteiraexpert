@@ -77,3 +77,50 @@ export type ReviewStatus = (typeof reviewStatusEnum)[number];
 
 export const importJobStatusEnum = ["running", "success", "error", "partial"] as const;
 export type ImportJobStatus = (typeof importJobStatusEnum)[number];
+
+// Cap. 9A — Papeis de usuario (equipe interna x usuario final)
+export const userRoleEnum = ["user", "editor", "admin"] as const;
+export type UserRole = (typeof userRoleEnum)[number];
+
+// Cap. 9A — Tipos documentais
+export const documentTypeEnum = [
+  "informe_rendimento",
+  "relatorio_fii",
+  "fato_relevante",
+  "dre",
+  "balanco",
+  "prospecto",
+  "release_resultados",
+  "outros",
+] as const;
+export type DocumentType = (typeof documentTypeEnum)[number];
+
+// Cap. 9A — Status tecnico de processamento do documento bruto
+export const documentStatusEnum = [
+  "uploaded",
+  "extracting",
+  "ocr_processing",
+  "extracted",
+  "analyzing",
+  "analyzed",
+  "error",
+] as const;
+export type DocumentStatus = (typeof documentStatusEnum)[number];
+
+// Cap. 9A — Status editorial (por versao de analise)
+export const editorialStatusEnum = [
+  "draft",
+  "review",
+  "approved",
+  "published",
+  "rejected",
+] as const;
+export type EditorialStatus = (typeof editorialStatusEnum)[number];
+
+// Cap. 9A — Sentimento detectado pela IA
+export const sentimentEnum = ["positivo", "neutro", "negativo"] as const;
+export type Sentiment = (typeof sentimentEnum)[number];
+
+// Cap. 9A — Provider de IA
+export const aiProviderEnum = ["openai", "anthropic"] as const;
+export type AiProvider = (typeof aiProviderEnum)[number];
