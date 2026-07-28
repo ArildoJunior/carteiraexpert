@@ -37,7 +37,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20.x # Usar 20.x para flexibilidade dentro da versão 20
+          node-version: 22.x # Atualizado para Node.js 22 LTS
           cache: "pnpm"
 
       - name: Setup pnpm
@@ -45,6 +45,11 @@ jobs:
         with:
           version: 9.12.3
           run_install: false # Não rodar install aqui, faremos manualmente com --frozen-lockfile
+
+      - name: Verificar versões de Node.js e pnpm
+        run: |
+          node -v
+          pnpm -v
 
       - name: Instalar dependencias
         run: pnpm install --frozen-lockfile
