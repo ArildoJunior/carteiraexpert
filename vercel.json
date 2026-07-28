@@ -2,18 +2,17 @@
   "buildCommand": "pnpm run build",
   "installCommand": "pnpm install",
   "framework": "nextjs",
-  "outputDirectory": "dist",
   "devCommand": "pnpm run dev",
   "ignoreBuildStep": false,
   "crons": [],
   "functions": {
     "api/**/*.ts": {
-      "runtime": "nodejs20.x"
+      "runtime": "nodejs22.x"
     }
   },
   "build": {
     "env": {
-      "NODE_VERSION": "20.x",
+      "NODE_VERSION": "22.x",
       "NPM_RC_VERSION": "9.12.3"
     }
   }

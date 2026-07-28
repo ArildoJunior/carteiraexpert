@@ -34,24 +34,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22.x # Atualizado para Node.js 22 LTS
-          cache: "pnpm"
-
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9.12.3
-          run_install: false # Não rodar install aqui, faremos manualmente com --frozen-lockfile
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: pnpm
 
       - name: Verificar versões de Node.js e pnpm
         run: |
           node -v
           pnpm -v
 
-      - name: Instalar dependencias
+      - name: Instalar dependências
         run: pnpm install --frozen-lockfile
 
       - name: Lint (Biome)
@@ -74,9 +74,6 @@ jobs:
 
       - name: Instalar browsers do Playwright
         run: pnpm exec playwright install --with-deps
-
-      - name: Seed do usuario demo
-        run: pnpm seed:demo
 
       - name: E2E (Playwright)
         run: pnpm test:e2e
