@@ -79,8 +79,43 @@ export const importJobStatusEnum = ["running", "success", "error", "partial"] as
 export type ImportJobStatus = (typeof importJobStatusEnum)[number];
 
 // Cap. 9A — Papeis de usuario (equipe interna x usuario final)
+/**
+ * @deprecated Cap. 9B.1.f: enum legado que reflete a coluna `users.role`.
+ * Mantido por compatibilidade (NextAuth `authorize`, audit logs).
+ * Para decisoes de autorizacao, use `can(userId, permission)` de `@/lib/rbac`.
+ */
 export const userRoleEnum = ["user", "editor", "admin"] as const;
 export type UserRole = (typeof userRoleEnum)[number];
+
+// Cap. 9B.1 — RBAC: chaves de permissoes. Mantidas em codigo porque a
+// checagem via string em `can()` e chamada a cada request; carregar do
+// banco seria custoso. A tabela `permissions` espelha este enum para
+// auditoria e gestao via admin. 14 chaves (matriz do cap. 9B.1).
+export const userPermissionEnum = [
+  // Usuarios
+  "users.read",
+  "users.write",
+  "users.delete",
+  // Portfolio (contas / posicoes / transacoes)
+  "accounts.read",
+  "accounts.write",
+  "accounts.delete",
+  "positions.read",
+  "positions.write",
+  "positions.delete",
+  "transactions.read",
+  "transactions.write",
+  "transactions.delete",
+  // Quotes
+  "quotes.read",
+  "quotes.refresh",
+] as const;
+export type UserPermission = (typeof userPermissionEnum)[number];
+
+// Cap. 9B.1 — RBAC: plano comercial. Apenas dois valores no 9B.1;
+// extensivel (ex.: "enterprise") no Cap. 15.
+export const userPlanEnum = ["free", "pro"] as const;
+export type UserPlan = (typeof userPlanEnum)[number];
 
 // Cap. 9A — Tipos documentais
 export const documentTypeEnum = [

@@ -25,8 +25,10 @@ import {
   brokerageAccounts,
   portfolioSnapshots,
   positions,
+  roles,
   transactions,
   userPreferences,
+  userRoles,
   users,
   watchlistItems,
   watchlists,
@@ -86,6 +88,23 @@ async function main() {
     })
     .returning();
   if (!demoUser) throw new Error("Falha ao criar usuario demo");
+
+  // Cap. 9B.1.b.ii — atribuir papel 'user' ao demo (idempotente).
+  // Garante que o usuario demo sempre tenha pelo menos o papel
+  // base. O fluxo de signup (Cap. 9B.1.f) vai replicar a mesma logica.
+  console.log("[seed] Atribuindo papel 'user' ao demo...");
+  const [userRoleRow] = await db
+    .select({ id: roles.id })
+    .from(roles)
+    .where(eq(roles.slug, "user"))
+    .limit(1);
+  if (!userRoleRow) {
+    throw new Error("Papel 'user' nao encontrado no catalogo. Rode: pnpm seed:rbac");
+  }
+  await db
+    .insert(userRoles)
+    .values({ userId: demoUser.id, roleId: userRoleRow.id })
+    .onConflictDoNothing();
 
   console.log("[seed] Criando conta XP...");
   const [demoAccount] = await db

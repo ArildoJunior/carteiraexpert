@@ -63,6 +63,9 @@ jobs:
       - name: Aplicar migrations do banco (Drizzle)
         run: pnpm drizzle-kit migrate
 
+      - name: Seed do catalogo RBAC (4 roles x 14 permissions)
+        run: pnpm seed:rbac
+
       - name: Seed do banco de testes
         run: pnpm seed:demo
 

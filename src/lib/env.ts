@@ -7,7 +7,14 @@ const envSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
 
   // Banco de dados
-  DATABASE_URL: z.string().url(),
+  // Cap. 9B.1.b.i — o .env do projeto vem com aspas externas
+  // literais no valor (DATABASE_URL="postgresql://...") e o
+  // dotenv as vezes nao strip conforme a versao. Normalizamos
+  // antes de validar com z.string().url().
+  DATABASE_URL: z.preprocess(
+    (v) => (typeof v === "string" ? v.replace(/^["']|["']$/g, "") : v),
+    z.string().url()
+  ),
 
   // NextAuth
   AUTH_SECRET: z.string().min(32),

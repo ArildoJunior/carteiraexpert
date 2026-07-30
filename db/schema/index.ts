@@ -13,6 +13,11 @@ export * from "./document-analyses";
 export * from "./documents";
 export * from "./import-jobs";
 export * from "./import-queue";
+// Cap. 9B.1 — RBAC
+export * from "./permissions";
+export * from "./role-permissions";
+export * from "./roles";
+export * from "./user-roles";
 export * from "./password-resets";
 export * from "./portfolio-snapshots";
 export * from "./positions";

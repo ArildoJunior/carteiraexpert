@@ -3,7 +3,9 @@ import "./_setup";
 import {
   assets,
   brokerageAccounts,
+  roles,
   userPreferences,
+  userRoles,
   users,
   watchlistItems,
   watchlists,
@@ -74,5 +76,34 @@ describe("seed", () => {
       .limit(1);
     expect(p).toBeDefined();
     expect(p?.preferences).toContain("theme");
+  });
+
+  // ----- Cap. 9B.1.b.ii — RBAC -----
+  it("demo tem papel 'user' atribuido (RBAC)", async () => {
+    if (!userId) return;
+    const rows = await db
+      .select({ slug: roles.slug })
+      .from(userRoles)
+      .innerJoin(roles, eq(roles.id, userRoles.roleId))
+      .where(eq(userRoles.userId, userId));
+    const slugs = rows.map((r) => r.slug);
+    expect(slugs).toContain("user");
+  });
+
+  it("demo NAO tem papel 'premium' (plan = free)", async () => {
+    if (!userId) return;
+    const rows = await db
+      .select({ slug: roles.slug })
+      .from(userRoles)
+      .innerJoin(roles, eq(roles.id, userRoles.roleId))
+      .where(eq(userRoles.userId, userId));
+    const slugs = rows.map((r) => r.slug);
+    expect(slugs).not.toContain("premium");
+  });
+
+  it("demo tem plan = 'free' (default do 9B.1.a)", async () => {
+    if (!userId) return;
+    const [u] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    expect(u?.plan).toBe("free");
   });
 });

@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=20.11.0",
-    "pnpm": ">=9.12.0"
+    "node": "\u003e=20.11.0",
+    "pnpm": "\u003e=9.12.0"
   },
   "packageManager": "pnpm@9.12.3",
   "scripts": {
@@ -20,7 +20,10 @@
     "test:e2e": "playwright test",
     "seed:demo": "tsx scripts/seed-demo.ts",
     "test:coverage": "vitest run --coverage",
-    "prepare": "husky"
+    "prepare": "husky",
+    "seed:rbac": "tsx scripts/seed-rbac.ts",
+    "validate:rbac": "tsx scripts/validate-rbac.ts",
+    "seed:migrate-roles": "tsx scripts/migrate-user-roles.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.2",
