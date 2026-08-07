@@ -33,7 +33,7 @@ export function DeletePositionButton({ positionId }: Props) {
         return;
       }
       toast.success("Posicao excluida");
-      router.push("/app/posicoes");
+      router.push("/posicoes");
       router.refresh();
     } finally {
       setLoading(false);

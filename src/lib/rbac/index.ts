@@ -13,7 +13,9 @@ export {
   __setPermissionFetcher,
   __resetForTests,
 } from "./can";
+
 export { userPermissionEnum as PERMISSIONS, type UserPermission as Permission } from "./types";
+
 export {
   syncPlanRoles,
   type UserPlan,
@@ -21,3 +23,5 @@ export {
   __setDbExecutor,
   __resetDbExecutor,
 } from "./sync-plan-roles";
+
+export { requirePermission, type AuthContext } from "./require-permission";

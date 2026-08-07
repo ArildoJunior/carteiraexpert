@@ -16,15 +16,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV = [
-  { href: "/app/carteira", label: "Carteira", icon: LayoutDashboard },
-  { href: "/app/contas", label: "Contas", icon: Building2 },
-  { href: "/app/posicoes", label: "Posicoes", icon: Wallet },
-  { href: "/app/imports", label: "Importacoes", icon: FileSpreadsheet },
-  { href: "/app/proventos", label: "Proventos", icon: TrendingUp },
-  { href: "/app/movimentacoes", label: "Movimentacoes", icon: History },
-  { href: "/app/risco", label: "Risco", icon: BarChart3 },
-  { href: "/app/alertas", label: "Alertas", icon: Bell },
-  { href: "/app/configuracoes", label: "Configuracoes", icon: Settings },
+  { href: "/carteira", label: "Carteira", icon: LayoutDashboard },
+  { href: "/contas", label: "Contas", icon: Building2 },
+  { href: "/posicoes", label: "Posicoes", icon: Wallet },
+  { href: "/imports", label: "Importacoes", icon: FileSpreadsheet },
+  { href: "/proventos", label: "Proventos", icon: TrendingUp },
+  { href: "/movimentacoes", label: "Movimentacoes", icon: History },
+  { href: "/risco", label: "Risco", icon: BarChart3 },
+  { href: "/alertas", label: "Alertas", icon: Bell },
+  { href: "/configuracoes", label: "Configuracoes", icon: Settings },
 ] as const;
 
 export function AppSidebar() {
@@ -32,7 +32,7 @@ export function AppSidebar() {
 
   return (
     <nav className="flex h-full flex-col p-4">
-      <Link href="/app/carteira" className="mb-6 px-2 text-lg font-bold tracking-tight">
+      <Link href="/carteira" className="mb-6 px-2 text-lg font-bold tracking-tight">
         carteiraexpert
       </Link>
       <ul className="flex-1 space-y-1">

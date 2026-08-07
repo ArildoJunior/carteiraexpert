@@ -35,6 +35,7 @@ export const authConfig = {
         session.user.twoFactorEnabled = Boolean(token.twoFactorEnabled);
         session.user.twoFactorVerified = Boolean(token.twoFactorVerified);
       }
+
       return session;
     },
     authorized: ({ auth, request }) => {
@@ -57,8 +58,9 @@ export const authConfig = {
 
       if (isAuthRoute) {
         if (isLoggedIn && !needs2FA) {
-          return Response.redirect(new URL("/app", request.nextUrl));
+          return Response.redirect(new URL("/dashboard", request.nextUrl));
         }
+
         return true;
       }
 

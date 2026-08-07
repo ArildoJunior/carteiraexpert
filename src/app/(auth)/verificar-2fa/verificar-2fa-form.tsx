@@ -30,7 +30,7 @@ export function Verificar2FAForm() {
         return;
       }
       await update({ twoFactorVerified: true });
-      router.push("/app");
+      router.push("/");
       router.refresh();
     } catch {
       setError("Erro de conexao");

@@ -49,3 +49,6 @@ public/documents/
 
 # Project notes
 Livro/
+
+internal/*.out
+internal/*.err

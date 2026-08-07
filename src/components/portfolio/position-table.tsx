@@ -85,7 +85,7 @@ export function PositionTable({ data }: Props) {
         </button>
       ),
       cell: ({ row }) => (
-        <Link href={`/app/posicoes/${row.original.id}`} className="font-mono hover:underline">
+        <Link href={`/posicoes/${row.original.id}`} className="font-mono hover:underline">
           {row.original.assetTicker}
         </Link>
       ),

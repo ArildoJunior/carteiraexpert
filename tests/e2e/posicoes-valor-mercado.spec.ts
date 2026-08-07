@@ -12,11 +12,11 @@ test.describe("posicoes - valor de mercado (Cap 6)", () => {
       .getByRole("button", { name: /entrar/i })
       .first()
       .click();
-    await page.waitForURL(/\/app/);
+    await page.waitForURL(/\/dashboard/);
   });
 
-  test("renderiza a pagina /app/posicoes com heading e cotacoes", async ({ page }) => {
-    await page.goto("/app/posicoes");
+  test("renderiza a pagina /posicoes com heading e cotacoes", async ({ page }) => {
+    await page.goto("/posicoes");
     // Heading principal aparece apos o auth + render server-side
     await expect(page.getByRole("heading", { name: "Posicoes" })).toBeVisible();
     const main = page.getByRole("main");

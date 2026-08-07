@@ -41,7 +41,7 @@ export function CadastroForm() {
         setError("Conta criada, mas falha no login automatico");
         return;
       }
-      router.push("/app");
+      router.push("/");
       router.refresh();
     } catch {
       setError("Erro de conexao");

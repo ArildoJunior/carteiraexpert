@@ -12,28 +12,28 @@ async function login(page: import("@playwright/test").Page) {
     .getByRole("button", { name: /entrar/i })
     .first()
     .click();
-  await page.waitForURL(/\/app/);
+  await page.waitForURL(/\/dashboard/);
 }
 
 test.describe("Cap 7D - Revisao de Importacao", () => {
   // Serial porque worker=1 e o DB e compartilhado (so 1 teste roda por vez).
   test.describe.configure({ mode: "serial" });
 
-  test("pagina /app/imports/pendentes carrega com heading", async ({ page }) => {
+  test("pagina /imports/pendentes carrega com heading", async ({ page }) => {
     await login(page);
-    await page.goto("/app/imports/pendentes");
+    await page.goto("/imports/pendentes");
     await expect(page.getByRole("heading", { name: /Itens pendentes/i })).toBeVisible();
   });
 
-  test("pagina /app/imports mostra historico (ou empty state)", async ({ page }) => {
+  test("pagina /imports mostra historico (ou empty state)", async ({ page }) => {
     await login(page);
-    await page.goto("/app/imports");
+    await page.goto("/imports");
     await expect(page.getByRole("heading", { name: /Importações/i })).toBeVisible();
   });
 
   test("toolbar fica desabilitada sem itens selecionados", async ({ page }) => {
     await login(page);
-    await page.goto("/app/imports/pendentes");
+    await page.goto("/imports/pendentes");
     await page.waitForLoadState("domcontentloaded");
 
     const acceptButton = page.getByRole("button", { name: /Aceitar selecionadas/i });
@@ -52,7 +52,7 @@ test.describe("Cap 7D - Revisao de Importacao", () => {
 
   test("selecionar 2 itens + Aceitar dispara toast de sucesso", async ({ page }) => {
     await login(page);
-    await page.goto("/app/imports/pendentes");
+    await page.goto("/imports/pendentes");
     await page.waitForLoadState("domcontentloaded");
 
     // Checkboxes das linhas (exclui o do header que esta no <thead>)

@@ -54,7 +54,7 @@ export function TransactionForm({
   assets,
   defaultAccountId,
   defaultAssetId,
-  onSuccessRedirect = "/app/posicoes",
+  onSuccessRedirect = "/posicoes",
 }: Props) {
   const router = useRouter();
   const [search, setSearch] = useState("");

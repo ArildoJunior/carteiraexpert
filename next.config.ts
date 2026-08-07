@@ -28,7 +28,10 @@ const nextConfig: NextConfig = {
     ];
   },
   async redirects() {
-    return [{ source: "/dashboard", destination: "/app/dashboard", permanent: true }];
+    return [
+      { source: "/app", destination: "/", permanent: true },
+      { source: "/app/:path*", destination: "/:path*", permanent: true },
+    ];
   },
 };
 

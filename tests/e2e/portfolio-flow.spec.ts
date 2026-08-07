@@ -12,7 +12,7 @@ async function login(page: import("@playwright/test").Page) {
     .getByRole("button", { name: /entrar/i })
     .first()
     .click();
-  await page.waitForURL(/\/app/);
+  await page.waitForURL(/\/dashboard/);
 }
 
 test.describe("Cap 5 Ã¢â‚¬â€ Fluxo de Portfolio", () => {
@@ -22,9 +22,9 @@ test.describe("Cap 5 Ã¢â‚¬â€ Fluxo de Portfolio", () => {
   const accountName = `E2E Conta ${suffix}`;
   const ticker = "PETR4";
 
-  test("dashboard /app/dashboard carrega com cards de resumo", async ({ page }) => {
+  test("dashboard /dashboard carrega com cards de resumo", async ({ page }) => {
     await login(page);
-    await page.goto("/app/dashboard");
+    await page.goto("/dashboard");
     await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
     const main = page.getByRole("main");
     await expect(main).toBeVisible();
@@ -34,23 +34,23 @@ test.describe("Cap 5 Ã¢â‚¬â€ Fluxo de Portfolio", () => {
 
   test("lista de contas mostra empty state quando vazia", async ({ page }) => {
     await login(page);
-    await page.goto("/app/contas");
+    await page.goto("/contas");
     await expect(page.getByRole("heading", { name: "Contas" })).toBeVisible();
     await expect(page.getByRole("link", { name: /nova conta/i }).first()).toBeVisible();
   });
 
-  test("criar conta via UI: aparece em /app/contas", async ({ page }) => {
+  test("criar conta via UI: aparece em /contas", async ({ page }) => {
     await login(page);
-    await page.goto("/app/contas/nova");
+    await page.goto("/contas/nova");
     await page.getByLabel(/nome da conta/i).fill(accountName);
     await page.getByRole("button", { name: /criar conta/i }).click();
-    await page.waitForURL(/\/app\/contas/);
+    await page.waitForURL(/\/contas/);
     await expect(page.getByText(accountName).first()).toBeVisible();
   });
 
-  test("criar posicao via UI: aparece em /app/posicoes", async ({ page }) => {
+  test("criar posicao via UI: aparece em /posicoes", async ({ page }) => {
     await login(page);
-    await page.goto("/app/posicoes/nova");
+    await page.goto("/posicoes/nova");
     await page.getByRole("combobox").nth(0).click();
     await page.getByRole("option").first().click();
     // Filtra o ativo via search field (banco tem dezenas de DUPs de testes
@@ -65,23 +65,23 @@ test.describe("Cap 5 Ã¢â‚¬â€ Fluxo de Portfolio", () => {
     await page.getByLabel(/quantidade/i).fill("100");
     await page.getByLabel(/preco unitario/i).fill("38.50");
     await page.getByRole("button", { name: /registrar/i }).click();
-    await page.waitForURL(/\/app\/posicoes/);
+    await page.waitForURL(/\/posicoes/);
     await expect(page.getByText(ticker).first()).toBeVisible();
   });
 
   test("detalhe da posicao mostra cards e tabela de movimentacoes", async ({ page }) => {
     await login(page);
-    await page.goto("/app/posicoes");
+    await page.goto("/posicoes");
     // FIX: :not([href$='/nova']) exclui o botao "Nova posicao" do header
-    // da pagina (que tem href="/app/posicoes/nova" e fica dentro do <main>).
-    // Sobra apenas o link do ticker na tabela -> /app/posicoes/<uuid>.
+    // da pagina (que tem href="/posicoes/nova" e fica dentro do <main>).
+    // Sobra apenas o link do ticker na tabela -> /posicoes/<uuid>.
     const positionLink = page
       .getByRole("main")
-      .locator("a[href^='/app/posicoes/']:not([href$='/nova'])")
+      .locator("a[href^='/posicoes/']:not([href$='/nova'])")
       .first();
     await expect(positionLink).toBeVisible({ timeout: 10000 });
     await positionLink.click();
-    await page.waitForURL(/\/app\/posicoes\/[0-9a-f-]+$/);
+    await page.waitForURL(/\/posicoes\/[0-9a-f-]+$/);
     const main = page.getByRole("main");
     const _cardTitles = main.locator('[data-slot="card-title"]');
     await expect(_cardTitles.filter({ hasText: "Quantidade" })).toBeVisible();
@@ -92,14 +92,14 @@ test.describe("Cap 5 Ã¢â‚¬â€ Fluxo de Portfolio", () => {
 
   test("excluir conta via UI: confirmacao + conta some", async ({ page }) => {
     await login(page);
-    await page.goto("/app/contas");
+    await page.goto("/contas");
     const card = page.locator("[data-slot='card']").filter({ hasText: accountName }).first();
     await expect(card).toBeVisible({ timeout: 10000 });
-    await card.locator("a[href^='/app/contas/']").first().click();
-    await page.waitForURL(/\/app\/contas\/[0-9a-f-]+$/);
+    await card.locator("a[href^='/contas/']").first().click();
+    await page.waitForURL(/\/contas\/[0-9a-f-]+$/);
     await page.getByRole("button", { name: /excluir conta/i }).click();
     await page.getByRole("button", { name: /^excluir$/i }).click();
-    await page.waitForURL(/\/app\/contas/);
+    await page.waitForURL(/\/contas/);
     await expect(page.getByText(accountName)).not.toBeVisible();
   });
 });

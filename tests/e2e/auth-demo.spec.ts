@@ -16,12 +16,12 @@ test.describe("Auth com usuario demo", () => {
       .getByRole("button", { name: /entrar/i })
       .first()
       .click();
-    await page.waitForURL(/\/app/);
-    expect(page.url()).toMatch(/\/app/);
+    await page.waitForURL(/\/dashboard/);
+    expect(page.url()).toMatch(/\/dashboard/);
 
     // reload mantem sessao
     await page.reload();
-    expect(page.url()).toMatch(/\/app/);
+    expect(page.url()).toMatch(/\/dashboard/);
   });
 
   test("sessao tem cookie valido apos login", async ({ page }) => {
@@ -32,7 +32,7 @@ test.describe("Auth com usuario demo", () => {
       .getByRole("button", { name: /entrar/i })
       .first()
       .click();
-    await page.waitForURL(/\/app/);
+    await page.waitForURL(/\/dashboard/);
 
     const cookies = await page.context().cookies();
     const sessionCookie = cookies.find((c) => c.name.includes("session-token"));
@@ -40,7 +40,7 @@ test.describe("Auth com usuario demo", () => {
   });
 
   test("navegacao para area protegida sem login redireciona", async ({ page }) => {
-    await page.goto("/app");
+    await page.goto("/");
     await expect(page).toHaveURL(/\/login/);
   });
 });

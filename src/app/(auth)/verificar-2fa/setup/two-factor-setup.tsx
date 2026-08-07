@@ -135,7 +135,7 @@ export function TwoFactorSetup() {
             >
               Baixar codigos
             </Button>
-            <Button type="button" className="flex-1" onClick={() => router.push("/app")}>
+            <Button type="button" className="flex-1" onClick={() => router.push("/")}>
               Concluir
             </Button>
           </div>

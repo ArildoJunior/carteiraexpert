@@ -67,7 +67,7 @@ export function VerificarEmailStatus() {
         <CardContent>
           <Button
             onClick={() => {
-              router.push("/app");
+              router.push("/");
               router.refresh();
             }}
             className="w-full"

@@ -97,7 +97,7 @@ export function AccountForm({ defaultValues, accountId }: Props) {
         return;
       }
       toast.success(accountId ? "Conta atualizada" : "Conta criada");
-      router.push("/app/contas");
+      router.push("/contas");
       router.refresh();
     } finally {
       setLoading(false);

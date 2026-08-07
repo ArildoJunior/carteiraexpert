@@ -33,7 +33,7 @@ export function DeleteAccountButton({ accountId }: Props) {
         return;
       }
       toast.success("Conta excluída");
-      router.push("/app/contas");
+      router.push("/contas");
       router.refresh();
     } finally {
       setLoading(false);
