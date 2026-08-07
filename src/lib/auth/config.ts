@@ -1,3 +1,5 @@
+//src/lib/auth/config.ts
+
 import type { NextAuthConfig } from "next-auth";
 
 // Edge-safe: NAO importar nada que use Node APIs (argon2, db, drizzle).

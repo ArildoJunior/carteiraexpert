@@ -1,3 +1,5 @@
+//src/lib/auth/session-helper.ts
+
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 

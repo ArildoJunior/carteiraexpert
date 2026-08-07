@@ -27,8 +27,9 @@ export type AuditAction =
   | "import.completed"
   | "import.applied"
   | "import.reviewed"
-  | "deletion.requested"
-  | "import.connection.deleted";
+  | "import.connection.deleted"
+  | "document.uploaded"
+  | "deletion.requested";
 
 export async function logAudit(params: {
   userId?: string;
@@ -50,7 +51,6 @@ export async function logAudit(params: {
       userAgent: params.userAgent,
     });
   } catch (err) {
-    // audit nao pode quebrar fluxo principal
     console.error("[audit] falha ao registrar:", err);
   }
 }
