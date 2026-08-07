@@ -4,6 +4,8 @@ const mocks = vi.hoisted(() => ({
   get: vi.fn(),
   logAudit: vi.fn(),
   extractDocument: vi.fn(),
+  analyzeDocument: vi.fn(),
+  persistDocumentAnalysis: vi.fn(),
   select: vi.fn(),
   update: vi.fn(),
 }));
@@ -33,6 +35,11 @@ vi.mock("@/lib/db/audit", () => ({
 
 vi.mock("@/lib/documents/extractor", () => ({
   extractDocument: mocks.extractDocument,
+}));
+
+vi.mock("@/lib/ai/document-analysis", () => ({
+  analyzeDocument: mocks.analyzeDocument,
+  persistDocumentAnalysis: mocks.persistDocumentAnalysis,
 }));
 
 import { extractDocumentFunction } from "../extract-document";
@@ -125,6 +132,8 @@ describe("extractDocumentFunction", () => {
       },
     });
 
+    mocks.analyzeDocument.mockResolvedValue(null);
+
     mocks.get.mockResolvedValue({
       statusCode: 200,
       stream: new ReadableStream({
@@ -185,6 +194,8 @@ describe("extractDocumentFunction", () => {
     expect(result).toEqual({
       documentId: "document-1",
       extracted: true,
+      analyzed: false,
+      reason: "ai_provider_not_configured",
       characters: "conteúdo extraído".length,
     });
 
@@ -248,6 +259,7 @@ describe("extractDocumentFunction", () => {
     expect(result).toEqual({
       documentId: "document-1",
       extracted: false,
+      analyzed: false,
       error: "falha simulada no download",
     });
 
@@ -283,6 +295,7 @@ describe("extractDocumentFunction", () => {
     expect(result).toEqual({
       documentId: "document-1",
       extracted: false,
+      analyzed: false,
       error: "formato inválido",
     });
 

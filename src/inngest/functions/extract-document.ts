@@ -1,5 +1,6 @@
 import { documents } from "@/db/schema";
 import { inngest } from "@/inngest/client";
+import { analyzeDocument, persistDocumentAnalysis } from "@/lib/ai/document-analysis";
 import { db } from "@/lib/db";
 import { logAudit } from "@/lib/db/audit";
 import { extractDocument } from "@/lib/documents/extractor";
@@ -18,12 +19,12 @@ type DocumentEvent = {
 
 function sanitizeError(error: unknown): string {
   if (!(error instanceof Error)) {
-    return "Falha desconhecida durante a extração.";
+    return "Falha desconhecida durante o processamento documental.";
   }
 
   const message = error.message.trim();
 
-  return message ? message.slice(0, 500) : "Falha desconhecida durante a extração.";
+  return message ? message.slice(0, 500) : "Falha desconhecida durante o processamento documental.";
 }
 
 async function downloadBlob(url: string): Promise<Buffer> {
@@ -44,7 +45,7 @@ async function downloadBlob(url: string): Promise<Buffer> {
 export const extractDocumentFunction = inngest.createFunction(
   {
     id: "extract-document",
-    name: "Extract document text",
+    name: "Extract and analyze document",
     triggers: [{ event: "document/extract.requested" }],
   },
   async ({ event, step }: { event: DocumentEvent; step: Step }) => {
@@ -57,6 +58,8 @@ export const extractDocumentFunction = inngest.createFunction(
           uploadedByUserId: documents.uploadedByUserId,
           originalName: documents.originalName,
           mimeType: documents.mimeType,
+          documentType: documents.documentType,
+          ticker: documents.ticker,
           blobUrl: documents.blobUrl,
           status: documents.status,
           metadata: documents.metadata,
@@ -93,6 +96,8 @@ export const extractDocumentFunction = inngest.createFunction(
         reason: "already_processed_or_in_progress",
       };
     }
+
+    let processingPhase: "extraction" | "analysis" = "extraction";
 
     try {
       const buffer = await step.run("download-blob", async () => {
@@ -145,15 +150,79 @@ export const extractDocumentFunction = inngest.createFunction(
         });
       });
 
+      processingPhase = "analysis";
+
+      const analysis = await step.run("analyze-document", async () => {
+        await logAudit({
+          userId: document.uploadedByUserId,
+          action: "document.analysis_started",
+          resourceType: "document",
+          resourceId: documentId,
+          metadata: {
+            originalName: document.originalName,
+          },
+        });
+
+        return analyzeDocument({
+          text: extracted.text,
+          filename: document.originalName,
+          documentType: document.documentType,
+          ticker: document.ticker,
+        });
+      });
+
+      if (!analysis) {
+        return {
+          documentId,
+          extracted: true,
+          analyzed: false,
+          reason: "ai_provider_not_configured",
+          characters: extracted.text.length,
+        };
+      }
+
+      const persisted = await step.run("persist-analysis", async () => {
+        return persistDocumentAnalysis({
+          documentId,
+          userId: document.uploadedByUserId,
+          analysis,
+        });
+      });
+
+      await step.run("audit-analysis", async () => {
+        await logAudit({
+          userId: document.uploadedByUserId,
+          action:
+            analysis.provider === "anthropic"
+              ? "document.analysis_fallback"
+              : "document.analysis_completed",
+          resourceType: "document",
+          resourceId: documentId,
+          metadata: {
+            analysisId: persisted.analysisId,
+            version: persisted.version,
+            provider: analysis.provider,
+            model: analysis.model,
+            inputTokens: analysis.inputTokens,
+            outputTokens: analysis.outputTokens,
+            costUsd: analysis.costUsd,
+          },
+        });
+      });
+
       return {
         documentId,
         extracted: true,
+        analyzed: true,
+        analysisId: persisted.analysisId,
+        analysisVersion: persisted.version,
+        provider: analysis.provider,
         characters: extracted.text.length,
       };
     } catch (error) {
       const errorMessage = sanitizeError(error);
 
-      await step.run("persist-extraction-error", async () => {
+      await step.run("persist-processing-error", async () => {
         await db
           .update(documents)
           .set({
@@ -164,16 +233,19 @@ export const extractDocumentFunction = inngest.createFunction(
           .where(eq(documents.id, documentId));
       });
 
-      await step.run("audit-extraction-error", async () => {
+      await step.run("audit-processing-error", async () => {
+        const analysisFailed = processingPhase === "analysis";
+
         await logAudit({
           userId: document.uploadedByUserId,
-          action: "document.extraction_failed",
+          action: analysisFailed ? "document.analysis_failed" : "document.extraction_failed",
           resourceType: "document",
           resourceId: documentId,
           metadata: {
             mimeType: document.mimeType,
             originalName: document.originalName,
-            errorCode: "DOCUMENT_EXTRACTION_FAILED",
+            errorCode: analysisFailed ? "DOCUMENT_PROCESSING_FAILED" : "DOCUMENT_EXTRACTION_FAILED",
+            ...(analysisFailed ? { errorMessage } : {}),
           },
         });
       });
@@ -181,6 +253,7 @@ export const extractDocumentFunction = inngest.createFunction(
       return {
         documentId,
         extracted: false,
+        analyzed: false,
         error: errorMessage,
       };
     }

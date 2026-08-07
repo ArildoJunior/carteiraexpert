@@ -31,6 +31,10 @@ export type AuditAction =
   | "document.uploaded"
   | "document.extracted"
   | "document.extraction_failed"
+  | "document.analysis_started"
+  | "document.analysis_completed"
+  | "document.analysis_fallback"
+  | "document.analysis_failed"
   | "deletion.requested";
 
 export async function logAudit(params: {
