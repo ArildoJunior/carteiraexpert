@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { assets, documents } from "@/db/schema";
+import { inngest } from "@/inngest/client";
 import { auth } from "@/lib/auth";
 import { ForbiddenError, UnauthorizedError } from "@/lib/auth/errors";
 import { db } from "@/lib/db";
@@ -262,6 +263,42 @@ export async function POST(req: Request) {
       },
     });
 
+    let returnedStatus = createdDocument.status;
+
+    try {
+      await inngest.send({
+        name: "document/extract.requested",
+        data: {
+          documentId: createdDocument.id,
+        },
+      });
+    } catch (error) {
+      console.error("[documents] falha ao agendar extração:", error);
+
+      returnedStatus = "error";
+
+      await db
+        .update(documents)
+        .set({
+          status: "error",
+          errorMessage: "Não foi possível agendar a extração do documento.",
+          updatedAt: new Date(),
+        })
+        .where(eq(documents.id, createdDocument.id));
+
+      await logAudit({
+        userId,
+        action: "document.extraction_failed",
+        resourceType: "document",
+        resourceId: createdDocument.id,
+        metadata: {
+          mimeType: validatedFile.mimeType,
+          originalName: file.name,
+          errorCode: "DOCUMENT_EXTRACTION_SCHEDULE_FAILED",
+        },
+      });
+    }
+
     return NextResponse.json(
       {
         document: {
@@ -273,7 +310,7 @@ export async function POST(req: Request) {
           document_type: createdDocument.documentType,
           ticker: createdDocument.ticker,
           asset_id: createdDocument.assetId,
-          status: createdDocument.status,
+          status: returnedStatus,
           created_at: createdDocument.createdAt,
         },
       },

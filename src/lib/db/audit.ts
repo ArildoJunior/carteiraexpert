@@ -29,6 +29,8 @@ export type AuditAction =
   | "import.reviewed"
   | "import.connection.deleted"
   | "document.uploaded"
+  | "document.extracted"
+  | "document.extraction_failed"
   | "deletion.requested";
 
 export async function logAudit(params: {
