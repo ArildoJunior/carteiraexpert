@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": "\u003e=20.11.0",
-    "pnpm": "\u003e=9.12.0"
+    "node": ">=20.11.0",
+    "pnpm": ">=9.12.0"
   },
   "packageManager": "pnpm@9.12.3",
   "scripts": {
@@ -39,6 +39,7 @@
     "@radix-ui/react-switch": "^1.1.2",
     "@radix-ui/react-tabs": "^1.1.2",
     "@tanstack/react-table": "^8.21.3",
+    "@vercel/blob": "^2.7.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",

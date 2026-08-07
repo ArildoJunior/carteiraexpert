@@ -5,8 +5,8 @@
  *  2) Remove o orfao `admin.access` que ficou de uma rodada
  *     anterior (a FK role_permissions.permission_id tem
  *     ON DELETE CASCADE, entao a role_permission some junto).
- *  3) Confere as 3 contagens: roles=4, permissions=14,
- *     role_permissions=49.
+ *  3) Confere as 3 contagens: roles=4, permissions=19,
+ *     role_permissions=59.
  *  4) Lista a matriz role -> permissions para inspecao.
  *  5) Confere o enum user_plan e a coluna users.plan.
  *
@@ -59,11 +59,11 @@ async function main() {
 
   console.log("");
   console.log(`[counts] roles:            ${r}  (esperado 4)`);
-  console.log(`[counts] permissions:      ${p}  (esperado 14)`);
-  console.log(`[counts] role_permissions: ${rp} (esperado 49)`);
+  console.log(`[counts] permissions:      ${p}  (esperado 19)`);
+  console.log(`[counts] role_permissions: ${rp} (esperado 59)`);
 
-  if (r !== 4 || p !== 14 || rp !== 49) {
-    throw new Error(`Contagens nao conferem: ${r}/${p}/${rp} (esperado 4/14/49)`);
+  if (r !== 4 || p !== 19 || rp !== 59) {
+    throw new Error(`Contagens nao conferem: ${r}/${p}/${rp} (esperado 4/19/59)`);
   }
 
   // 3) Matriz

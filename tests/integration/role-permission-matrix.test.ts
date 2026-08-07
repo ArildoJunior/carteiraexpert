@@ -13,11 +13,11 @@ import { describe, expect, it } from "vitest";
  * ou um vinculo, atualize ESTE arquivo JUNTO com o seed-rbac.
  *
  * Contagens (validadas pelo validate:rbac):
- *   admin    = 14
- *   editor   = 12
+ *   admin    = 19
+ *   editor   = 17
  *   user     = 11
  *   premium  = 12
- *   total    = 49
+ *   total    = 59
  */
 const EXPECTED_MATRIX: Record<string, ReadonlySet<string>> = {
   admin: new Set([
@@ -35,6 +35,11 @@ const EXPECTED_MATRIX: Record<string, ReadonlySet<string>> = {
     "users.delete",
     "users.read",
     "users.write",
+    "documents.read",
+    "documents.write",
+    "documents.delete",
+    "documents.review",
+    "documents.publish",
   ]),
   editor: new Set([
     "accounts.delete",
@@ -49,6 +54,11 @@ const EXPECTED_MATRIX: Record<string, ReadonlySet<string>> = {
     "transactions.read",
     "transactions.write",
     "users.read",
+    "documents.read",
+    "documents.write",
+    "documents.delete",
+    "documents.review",
+    "documents.publish",
   ]),
   user: new Set([
     "accounts.delete",
@@ -94,17 +104,17 @@ async function loadMatrixFromDb(): Promise<Map<string, Set<string>>> {
 }
 
 describe("matriz role x permission no DB", () => {
-  it("admin tem as 14 permissions esperadas", async () => {
+  it("admin tem as 19 permissions esperadas", async () => {
     const actual = await loadMatrixFromDb();
     const admin = actual.get("admin") ?? new Set<string>();
-    expect(admin.size).toBe(14);
+    expect(admin.size).toBe(19);
     expect(admin).toEqual(EXPECTED_MATRIX.admin);
   });
 
-  it("editor tem as 12 permissions esperadas", async () => {
+  it("editor tem as 17 permissions esperadas", async () => {
     const actual = await loadMatrixFromDb();
     const editor = actual.get("editor") ?? new Set<string>();
-    expect(editor.size).toBe(12);
+    expect(editor.size).toBe(17);
     expect(editor).toEqual(EXPECTED_MATRIX.editor);
   });
 

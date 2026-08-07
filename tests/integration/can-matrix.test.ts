@@ -33,6 +33,11 @@ const MATRIX: Record<RoleSlug, ReadonlySet<UserPermission>> = {
     "users.delete",
     "users.read",
     "users.write",
+    "documents.read",
+    "documents.write",
+    "documents.delete",
+    "documents.review",
+    "documents.publish",
   ]),
   editor: new Set<UserPermission>([
     "accounts.delete",
@@ -47,6 +52,11 @@ const MATRIX: Record<RoleSlug, ReadonlySet<UserPermission>> = {
     "transactions.read",
     "transactions.write",
     "users.read",
+    "documents.read",
+    "documents.write",
+    "documents.delete",
+    "documents.review",
+    "documents.publish",
   ]),
   user: new Set<UserPermission>([
     "accounts.delete",
@@ -123,14 +133,14 @@ beforeEach(() => {
   __resetForTests();
 });
 
-describe("can() percorre a matriz 4 x 14", () => {
+describe("can() percorre a matriz 4 x 19", () => {
   for (const slug of Object.keys(MATRIX) as RoleSlug[]) {
     it(`${slug} tem exatamente as permissions esperadas`, async () => {
       const expected = MATRIX[slug];
       const userId = userIds[slug];
       if (!userId) throw new Error(`userId para '${slug}' nao foi criado`);
 
-      // Percorre as 14 permissions do enum e checa cada can()
+      // Percorre as 19 permissions do enum e checa cada can()
       for (const perm of userPermissionEnum) {
         const expectedResult = expected.has(perm);
         const actualResult = await can(userId, perm);

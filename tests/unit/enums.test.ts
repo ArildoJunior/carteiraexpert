@@ -67,8 +67,8 @@ describe("enums do dominio", () => {
     expect(userPlanEnum).toContain("pro");
   });
 
-  it("userPermissionEnum tem 14 chaves (Cap. 9B.1)", () => {
-    expect(userPermissionEnum).toHaveLength(14);
+  it("userPermissionEnum tem 19 chaves (Cap. 9B.1 e 9B)", () => {
+    expect(userPermissionEnum).toHaveLength(19);
     // Usuarios
     expect(userPermissionEnum).toContain("users.read");
     expect(userPermissionEnum).toContain("users.write");
@@ -86,5 +86,11 @@ describe("enums do dominio", () => {
     // Quotes
     expect(userPermissionEnum).toContain("quotes.read");
     expect(userPermissionEnum).toContain("quotes.refresh");
+    // Documentos e camada editorial interna
+    expect(userPermissionEnum).toContain("documents.read");
+    expect(userPermissionEnum).toContain("documents.write");
+    expect(userPermissionEnum).toContain("documents.delete");
+    expect(userPermissionEnum).toContain("documents.review");
+    expect(userPermissionEnum).toContain("documents.publish");
   });
 });

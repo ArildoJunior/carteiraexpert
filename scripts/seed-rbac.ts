@@ -3,8 +3,8 @@
  *
  * Insere:
  *   - 4 roles: admin, editor, user, premium
- *   - 14 permissions (chaves do `userPermissionEnum`)
- *   - Matriz role_permissions (4 x 14 = 49 entradas) conforme definido no cap.
+ *   - 19 permissions (chaves do `userPermissionEnum`)
+ *   - Matriz role_permissions (4 x 19 = 59 entradas) conforme definido no cap.
  *
  * Idempotente: usa `onConflictDoNothing` em todos os inserts.
  * Pode rodar quantas vezes quiser sem duplicar.
@@ -49,7 +49,7 @@ const ROLES: RoleSeed[] = [
 
 /**
  * Matriz role_permissions do cap. 9B.1.
- * Total: 14 + 12 + 11 + 12 = 49 entradas.
+ * Total: 19 + 17 + 11 + 12 = 59 entradas.
  */
 const MATRIX: Record<string, ReadonlyArray<(typeof userPermissionEnum)[number]>> = {
   // Equipe interna: tudo.
@@ -69,6 +69,11 @@ const MATRIX: Record<string, ReadonlyArray<(typeof userPermissionEnum)[number]>>
     "transactions.delete",
     "quotes.read",
     "quotes.refresh",
+    "documents.read",
+    "documents.write",
+    "documents.delete",
+    "documents.review",
+    "documents.publish",
   ],
 
   // User: CRUD apenas nos proprios recursos; sem refresh de quotes.
@@ -122,7 +127,7 @@ async function main() {
   }
 
   // 3) role_permissions
-  //    Carrega mapa slug->id e key->id em memoria (são apenas 4 + 14 = 18 rows).
+  //    Carrega mapa slug->id e key->id em memoria (são apenas 4 + 19 = 23 rows).
   const allRoles = await db.select({ id: roles.id, slug: roles.slug }).from(roles);
   const allPerms = await db.select({ id: permissions.id, key: permissions.key }).from(permissions);
   const roleBySlug = new Map(allRoles.map((r) => [r.slug, r.id]));
@@ -148,7 +153,7 @@ async function main() {
   const afterSet = new Set(after.map((a) => `${a.id}`));
   let inserted = 0;
   for (const id of afterSet) if (!beforeSet.has(id)) inserted++;
-  const skipped = 49 - inserted;
+  const skipped = 59 - inserted;
   console.log(`  rp:     ${inserted} novos, ${skipped} ja existentes`);
 
   // 4) Validacao final (com guard para noUncheckedIndexedAccess)
@@ -163,12 +168,12 @@ async function main() {
   console.log("");
   console.log("[seed-rbac] OK");
   console.log(`  roles:           ${rolesCount} (esperado 4)`);
-  console.log(`  permissions:     ${permsCount} (esperado 14)`);
-  console.log(`  role_permissions: ${rpCount} (esperado 49)`);
+  console.log(`  permissions:     ${permsCount} (esperado 19)`);
+  console.log(`  role_permissions: ${rpCount} (esperado 59)`);
 
-  if (rolesCount !== 4 || permsCount !== 14 || rpCount !== 49) {
+  if (rolesCount !== 4 || permsCount !== 19 || rpCount !== 59) {
     throw new Error(
-      `Contagens nao conferem: ${rolesCount}/${permsCount}/${rpCount} (esperado 4/14/49)`
+      `Contagens nao conferem: ${rolesCount}/${permsCount}/${rpCount} (esperado 4/19/59)`
     );
   }
 }

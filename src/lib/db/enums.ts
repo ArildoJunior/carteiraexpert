@@ -90,7 +90,7 @@ export type UserRole = (typeof userRoleEnum)[number];
 // Cap. 9B.1 — RBAC: chaves de permissoes. Mantidas em codigo porque a
 // checagem via string em `can()` e chamada a cada request; carregar do
 // banco seria custoso. A tabela `permissions` espelha este enum para
-// auditoria e gestao via admin. 14 chaves (matriz do cap. 9B.1).
+// auditoria e gestao via admin. 19 chaves (matriz dos caps. 9B.1 e 9B).
 export const userPermissionEnum = [
   // Usuarios
   "users.read",
@@ -109,6 +109,12 @@ export const userPermissionEnum = [
   // Quotes
   "quotes.read",
   "quotes.refresh",
+  // Documentos e camada editorial interna
+  "documents.read",
+  "documents.write",
+  "documents.delete",
+  "documents.review",
+  "documents.publish",
 ] as const;
 export type UserPermission = (typeof userPermissionEnum)[number];
 
