@@ -10,6 +10,7 @@ export * from "./broker-connections";
 export * from "./brokerage-accounts";
 export * from "./brokers";
 export * from "./document-analyses";
+export * from "./document-evidence";
 export * from "./documents";
 export * from "./import-jobs";
 export * from "./import-queue";

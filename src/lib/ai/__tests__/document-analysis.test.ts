@@ -36,6 +36,7 @@ vi.mock("@/lib/env", () => ({
     ANTHROPIC_API_KEY: "anthropic-test-key",
     CLAUDE_MODEL: "claude-haiku-4-5",
     CLAUDE_MAX_TOKENS: 2000,
+    ANTHROPIC_TIMEOUT_MS: 30000,
   },
 }));
 
@@ -63,6 +64,20 @@ const validAnalysis = {
   attention_points: ["Verificar evolução da receita."],
   sentiment: "positivo",
   confidence: 0.91,
+  evidence: [
+    {
+      evidence_type: "metric",
+      source_kind: "extracted_text",
+      field_name: "dividend_yield",
+      claim: "O dividend yield foi de 0,85%.",
+      source_text: "Dividend yield: 0,85%",
+      page_number: null,
+      section: null,
+      start_offset: null,
+      end_offset: null,
+      sequence: 0,
+    },
+  ],
 };
 
 describe("document analysis", () => {
@@ -105,7 +120,9 @@ describe("document analysis", () => {
   });
 
   it("usa Anthropic quando OpenAI falha", async () => {
-    mocks.openAiCreate.mockRejectedValue(new Error("OpenAI indisponível"));
+    mocks.openAiCreate.mockRejectedValue(
+      Object.assign(new Error("OpenAI indisponível"), { status: 503 })
+    );
 
     mocks.anthropicCreate.mockResolvedValue({
       stop_reason: "end_turn",
@@ -137,8 +154,12 @@ describe("document analysis", () => {
   });
 
   it("falha quando os dois provedores falham", async () => {
-    mocks.openAiCreate.mockRejectedValue(new Error("OpenAI indisponível"));
-    mocks.anthropicCreate.mockRejectedValue(new Error("Anthropic indisponível"));
+    mocks.openAiCreate.mockRejectedValue(
+      Object.assign(new Error("OpenAI indisponível"), { status: 503 })
+    );
+    mocks.anthropicCreate.mockRejectedValue(
+      Object.assign(new Error("Anthropic indisponível"), { status: 503 })
+    );
 
     await expect(
       analyzeDocument({

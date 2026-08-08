@@ -1,5 +1,6 @@
-import { aiCosts, documentAnalyses, documents } from "@/db/schema";
+import { aiCosts, documentAnalyses, documentEvidence, documents } from "@/db/schema";
 import { db } from "@/lib/db";
+import { buildEvidenceHashes, documentEvidenceSchema } from "@/lib/documents/evidence";
 import { env } from "@/lib/env";
 import Anthropic from "@anthropic-ai/sdk";
 import { desc, eq, sql } from "drizzle-orm";
@@ -29,6 +30,20 @@ export const documentAnalysisSchema = z.object({
   attention_points: z.array(z.string()),
   sentiment: z.enum(["positivo", "neutro", "negativo"]),
   confidence: z.number().min(0).max(1),
+  evidence: z.array(
+    z.object({
+      evidence_type: z.enum(["fact", "metric", "interpretation", "risk", "attention_point"]),
+      source_kind: z.enum(["extracted_text", "document_metadata", "table", "page", "section"]),
+      field_name: z.string().min(1).max(120),
+      claim: z.string().min(1).max(2000),
+      source_text: z.string().min(1).max(10000),
+      page_number: z.number().int().positive().nullable(),
+      section: z.string().nullable(),
+      start_offset: z.number().int().nonnegative().nullable(),
+      end_offset: z.number().int().nonnegative().nullable(),
+      sequence: z.number().int().nonnegative(),
+    })
+  ),
 });
 
 export type DocumentAnalysisPayload = z.infer<typeof documentAnalysisSchema>;
@@ -89,6 +104,43 @@ const analysisJsonSchema = {
       enum: ["positivo", "neutro", "negativo"],
     },
     confidence: { type: "number" },
+    evidence: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          evidence_type: {
+            type: "string",
+            enum: ["fact", "metric", "interpretation", "risk", "attention_point"],
+          },
+          source_kind: {
+            type: "string",
+            enum: ["extracted_text", "document_metadata", "table", "page", "section"],
+          },
+          field_name: { type: "string" },
+          claim: { type: "string" },
+          source_text: { type: "string" },
+          page_number: { type: ["number", "null"] },
+          section: { type: ["string", "null"] },
+          start_offset: { type: ["number", "null"] },
+          end_offset: { type: ["number", "null"] },
+          sequence: { type: "number" },
+        },
+        required: [
+          "evidence_type",
+          "source_kind",
+          "field_name",
+          "claim",
+          "source_text",
+          "page_number",
+          "section",
+          "start_offset",
+          "end_offset",
+          "sequence",
+        ],
+      },
+    },
   },
   required: [
     "detected_type",
@@ -97,6 +149,7 @@ const analysisJsonSchema = {
     "attention_points",
     "sentiment",
     "confidence",
+    "evidence",
   ],
 } as const;
 
@@ -120,6 +173,8 @@ Regras:
 - Os pontos de atenção devem ser objetivos.
 - key_metrics deve conter somente métricas identificadas no texto.
 - O resumo deve ser escrito em português do Brasil.
+- Para cada fato, métrica, interpretação, risco ou ponto de atenção, informe uma evidência com o trecho literal de origem.
+- Nunca invente evidências; quando não houver trecho localizável, use uma lista vazia.
 
 Metadados:
 - Arquivo: ${filename}
@@ -234,6 +289,7 @@ async function analyzeWithAnthropic(params: {
 
   const client = new Anthropic({
     apiKey: env.ANTHROPIC_API_KEY,
+    timeout: env.ANTHROPIC_TIMEOUT_MS,
   });
 
   const response = await client.messages.create({
@@ -249,8 +305,20 @@ async function analyzeWithAnthropic(params: {
     ],
   });
 
-  if (response.stop_reason === "refusal") {
+  const stopReason = String(response.stop_reason ?? "unknown");
+
+  if (stopReason === "refusal") {
     throw new Error("Claude recusou a análise do documento.");
+  }
+
+  if (stopReason === "max_tokens") {
+    throw new Error(
+      "Claude encerrou a resposta por limite de tokens; o JSON pode estar incompleto."
+    );
+  }
+
+  if (stopReason === "model_context_window_exceeded") {
+    throw new Error("Claude excedeu a janela de contexto do documento.");
   }
 
   const textBlock = response.content.find((block) => block.type === "text");
@@ -273,6 +341,28 @@ async function analyzeWithAnthropic(params: {
   };
 }
 
+function isRetryableProviderError(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const candidate = error as {
+    status?: unknown;
+    type?: unknown;
+  };
+
+  const status = Number(candidate.status);
+
+  return (
+    status === 408 ||
+    status === 409 ||
+    status === 429 ||
+    status >= 500 ||
+    candidate.type === "rate_limit_error" ||
+    candidate.type === "overloaded_error" ||
+    candidate.type === "api_error"
+  );
+}
 export async function analyzeDocument(params: {
   text: string;
   filename: string;
@@ -291,8 +381,12 @@ export async function analyzeDocument(params: {
     try {
       return await analyzeWithOpenAI({ prompt });
     } catch (error) {
+      if (!isRetryableProviderError(error)) {
+        throw error;
+      }
+
       openAiError = error;
-      console.error("[document-analysis] OpenAI falhou; tentando Anthropic.", error);
+      console.error("[document-analysis] OpenAI falhou de forma transitória; tentando Anthropic.");
     }
   }
 
@@ -318,91 +412,180 @@ export async function persistDocumentAnalysis(params: {
   documentId: string;
   userId: string;
   analysis: AiProviderResult;
-}): Promise<{ analysisId: string; version: number }> {
-  const [latest] = await db
-    .select({
-      version: documentAnalyses.version,
-    })
-    .from(documentAnalyses)
-    .where(eq(documentAnalyses.documentId, params.documentId))
-    .orderBy(desc(documentAnalyses.version))
-    .limit(1);
+}): Promise<{ analysisId: string; version: number; evidenceCount: number }> {
+  return db.transaction(async (tx) => {
+    const [document] = await tx
+      .select({
+        id: documents.id,
+        contentHash: documents.contentHash,
+        extractedText: documents.extractedText,
+      })
+      .from(documents)
+      .where(eq(documents.id, params.documentId))
+      .limit(1);
 
-  const version = (latest?.version ?? 0) + 1;
-  const payload = params.analysis.result;
+    if (!document) {
+      throw new Error("Documento não encontrado para persistir a análise.");
+    }
 
-  const [created] = await db
-    .insert(documentAnalyses)
-    .values({
-      documentId: params.documentId,
-      version,
-      detectedType: payload.detected_type,
-      keyMetrics: payload.key_metrics,
-      summary: payload.summary,
-      attentionPoints: payload.attention_points,
-      sentiment: payload.sentiment,
-      confidence: payload.confidence.toFixed(3),
-      provider: params.analysis.provider,
-      model: params.analysis.model,
-      inputTokens: params.analysis.inputTokens,
-      outputTokens: params.analysis.outputTokens,
-      costUsd: params.analysis.costUsd.toFixed(6),
-      editorialStatus: "draft",
-      errorMessage: null,
-      updatedAt: new Date(),
-    })
-    .returning({
-      id: documentAnalyses.id,
-      version: documentAnalyses.version,
+    if (
+      !document.contentHash ||
+      document.extractedText === null ||
+      document.extractedText === undefined
+    ) {
+      throw new Error("Documento sem hash ou texto extraÃ­do para validar evidÃªncias.");
+    }
+
+    const extractedText = document.extractedText;
+
+    const [latest] = await tx
+      .select({
+        version: documentAnalyses.version,
+      })
+      .from(documentAnalyses)
+      .where(eq(documentAnalyses.documentId, params.documentId))
+      .orderBy(desc(documentAnalyses.version))
+      .limit(1);
+
+    const version = (latest?.version ?? 0) + 1;
+    const payload = params.analysis.result;
+    const evidenceRows = payload.evidence.map((evidence) => {
+      const sourceStart = extractedText.indexOf(evidence.source_text);
+
+      if (sourceStart < 0) {
+        throw new Error(
+          `Evidência inválida: o trecho informado nÃ£o foi localizado no texto extraÃ­do (field_name=${evidence.field_name}, sequence=${evidence.sequence}).`
+        );
+      }
+
+      const sourceEnd = sourceStart + evidence.source_text.length;
+      const hashes = buildEvidenceHashes({
+        documentHash: document.contentHash,
+        sourceText: evidence.source_text,
+        claim: evidence.claim,
+        fieldName: evidence.field_name,
+        sequence: evidence.sequence,
+      });
+
+      const row = documentEvidenceSchema.parse({
+        documentId: params.documentId,
+        analysisId: null,
+        evidenceType: evidence.evidence_type,
+        sourceKind: evidence.source_kind,
+        fieldName: evidence.field_name,
+        claim: evidence.claim,
+        sourceText: evidence.source_text,
+        ...hashes,
+        pageNumber: evidence.page_number,
+        section: evidence.section,
+        startOffset: sourceStart,
+        endOffset: sourceEnd,
+        sequence: evidence.sequence,
+        metadata: null,
+      });
+
+      return {
+        documentId: row.documentId,
+        evidenceType: row.evidenceType,
+        sourceKind: row.sourceKind,
+        fieldName: row.fieldName,
+        claim: row.claim,
+        sourceText: row.sourceText,
+        documentHash: row.documentHash,
+        sourceTextHash: row.sourceTextHash,
+        evidenceHash: row.evidenceHash,
+        pageNumber: row.pageNumber ?? null,
+        section: row.section ?? null,
+        startOffset: row.startOffset ?? null,
+        endOffset: row.endOffset ?? null,
+        sequence: row.sequence,
+        metadata: row.metadata ?? null,
+      };
     });
 
-  if (!created) {
-    throw new Error("Não foi possível persistir a análise documental.");
-  }
-
-  const yearMonth = new Date().toISOString().slice(0, 7);
-
-  await db
-    .insert(aiCosts)
-    .values({
-      userId: params.userId,
-      yearMonth,
-      provider: params.analysis.provider,
-      model: params.analysis.model,
-      inputTokens: params.analysis.inputTokens,
-      outputTokens: params.analysis.outputTokens,
-      costUsd: params.analysis.costUsd.toFixed(6),
-      documentsCount: 1,
-      providerBreakdown: {
-        [params.analysis.provider]: {
-          inputTokens: params.analysis.inputTokens,
-          outputTokens: params.analysis.outputTokens,
-          costUsd: params.analysis.costUsd,
-        },
-      },
-    })
-    .onConflictDoUpdate({
-      target: [aiCosts.userId, aiCosts.yearMonth, aiCosts.provider, aiCosts.model],
-      set: {
-        inputTokens: sql`${aiCosts.inputTokens} + ${params.analysis.inputTokens}`,
-        outputTokens: sql`${aiCosts.outputTokens} + ${params.analysis.outputTokens}`,
-        costUsd: sql`${aiCosts.costUsd} + ${params.analysis.costUsd.toFixed(6)}`,
-        documentsCount: sql`${aiCosts.documentsCount} + 1`,
+    const [created] = await tx
+      .insert(documentAnalyses)
+      .values({
+        documentId: params.documentId,
+        version,
+        detectedType: payload.detected_type,
+        keyMetrics: payload.key_metrics,
+        summary: payload.summary,
+        attentionPoints: payload.attention_points,
+        sentiment: payload.sentiment,
+        confidence: payload.confidence.toFixed(3),
+        provider: params.analysis.provider,
+        model: params.analysis.model,
+        inputTokens: params.analysis.inputTokens,
+        outputTokens: params.analysis.outputTokens,
+        costUsd: params.analysis.costUsd.toFixed(6),
+        editorialStatus: "draft",
+        errorMessage: null,
         updatedAt: new Date(),
-      },
-    });
+      })
+      .returning({
+        id: documentAnalyses.id,
+        version: documentAnalyses.version,
+      });
 
-  await db
-    .update(documents)
-    .set({
-      status: "analyzed",
-      errorMessage: null,
-      updatedAt: new Date(),
-    })
-    .where(eq(documents.id, params.documentId));
+    if (!created) {
+      throw new Error("NÃ£o foi possÃ­vel persistir a anÃ¡lise documental.");
+    }
 
-  return {
-    analysisId: created.id,
-    version: created.version,
-  };
+    if (evidenceRows.length > 0) {
+      await tx.insert(documentEvidence).values(
+        evidenceRows.map((row) => ({
+          ...row,
+          analysisId: created.id,
+        }))
+      );
+    }
+
+    const yearMonth = new Date().toISOString().slice(0, 7);
+
+    await tx
+      .insert(aiCosts)
+      .values({
+        userId: params.userId,
+        yearMonth,
+        provider: params.analysis.provider,
+        model: params.analysis.model,
+        inputTokens: params.analysis.inputTokens,
+        outputTokens: params.analysis.outputTokens,
+        costUsd: params.analysis.costUsd.toFixed(6),
+        documentsCount: 1,
+        providerBreakdown: {
+          [params.analysis.provider]: {
+            inputTokens: params.analysis.inputTokens,
+            outputTokens: params.analysis.outputTokens,
+            costUsd: params.analysis.costUsd,
+          },
+        },
+      })
+      .onConflictDoUpdate({
+        target: [aiCosts.userId, aiCosts.yearMonth, aiCosts.provider, aiCosts.model],
+        set: {
+          inputTokens: sql`${aiCosts.inputTokens} + ${params.analysis.inputTokens}`,
+          outputTokens: sql`${aiCosts.outputTokens} + ${params.analysis.outputTokens}`,
+          costUsd: sql`${aiCosts.costUsd} + ${params.analysis.costUsd.toFixed(6)}`,
+          documentsCount: sql`${aiCosts.documentsCount} + 1`,
+          updatedAt: new Date(),
+        },
+      });
+
+    await tx
+      .update(documents)
+      .set({
+        status: "analyzed",
+        errorMessage: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(documents.id, params.documentId));
+
+    return {
+      analysisId: created.id,
+      version: created.version,
+      evidenceCount: evidenceRows.length,
+    };
+  });
 }

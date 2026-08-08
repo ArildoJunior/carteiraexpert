@@ -57,6 +57,7 @@ const envSchema = z.object({
   ANTHROPIC_API_KEY: z.string().optional(),
   CLAUDE_MODEL: z.string().default("claude-haiku-4-5"),
   CLAUDE_MAX_TOKENS: z.coerce.number().int().positive().default(2000),
+  ANTHROPIC_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
 
   // Cap 9 — Limites tecnicos de documentos
   DOC_MAX_SIZE_MB: z.coerce.number().int().positive().default(25),
