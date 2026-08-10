@@ -1,0 +1,32 @@
+# Dependências
+node_modules/
+
+# Builds e arquivos gerados
+.next/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Variáveis de ambiente e segredos
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Arquivos do sistema
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+# Arquivos temporários
+tmp/
+temp/
