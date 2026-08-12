@@ -1,43 +1,31 @@
-# Avisos Obrigatórios da Plataforma
+# Comunicação responsável e avisos da plataforma
 
-## Aviso institucional
+## Comunicado institucional de rodapé
 
-A plataforma possui caráter informativo, organizacional e educacional.
-Não constitui recomendação de investimento, oferta, solicitação, aconselhamento
-financeiro, tributário, jurídico ou contábil.
+O CarteiraExpert não tem como objetivo recomendar ou sugerir a compra, venda, manutenção ou rolagem de ativos. O site possui caráter meramente informativo, organizacional e educativo, utilizando, quando aplicável, informações de fontes públicas ou licenciadas, como B3, CVM, relações com investidores das empresas e provedores de dados identificados.
 
-## Investimentos
+As informações podem conter atrasos, inconsistências, limitações de cobertura ou depender de premissas informadas pelo usuário. O CarteiraExpert não se responsabiliza por decisões de investimento tomadas com base nas informações exibidas. O usuário deve realizar sua própria análise e, quando necessário, buscar orientação de profissional habilitado.
 
-O CarteiraExpert não recomenda compra, venda, manutenção, rolagem ou qualquer
-estratégia envolvendo ativos financeiros.
+## Regras de apresentação
 
-O CarteiraExpert não executa operações, não transmite ordens, não atua como
-corretora, exchange, banco, custodiante ou intermediário financeiro.
+- Exibir o comunicado em todas as páginas públicas e áreas autenticadas, com legibilidade adequada e acesso ao texto completo.
+- Não usar o aviso como substituto de controles técnicos, revisão de conteúdo ou transparência sobre fontes e horários.
+- Exibir aviso contextual próximo a projeções, valuations, filtros, indicadores, gráficos e alertas.
+- Não usar expressões como “compre”, “venda”, “oportunidade”, “ação recomendada”, “preço garantido” ou equivalentes.
+- “Preço teto”, “margem de segurança”, “sinal”, “score” e “taxa” devem ser identificados como resultado de uma metodologia ou premissa, nunca como recomendação.
 
-## Dados de mercado
+## Aviso para análises, filtros e valuations
 
-Os dados de mercado podem apresentar atraso, inclusive de pelo menos 15 minutos,
-conforme ativo, fonte, horário e condições de fornecimento.
+Esta análise é informativa e educacional. Indicadores, filtros, valuations e projeções são resultados de dados, fórmulas e premissas que podem estar incompletos, atrasados ou incorretos. Eles não constituem recomendação, sugestão ou indicação de compra, venda, manutenção ou rolagem de ativos.
 
-A data, hora, moeda, mercado e fonte devem ser apresentados quando disponíveis.
+## Aviso para projeções do usuário
 
-## Simulações
+A projeção utiliza premissas inseridas ou aceitas pelo usuário. Ela representa um cenário hipotético, não uma previsão ou promessa de resultado. Alterações nas premissas podem alterar significativamente o resultado.
 
-Projeções e simulações são estimativas baseadas em premissas e dados de referência.
-Resultados passados não garantem resultados futuros.
+## Aviso para dados de mercado
 
-## Tributação
+Informar fonte, data/hora de referência, moeda, mercado, atraso conhecido e estado de qualidade sempre que disponíveis. Dados gratuitos não devem ser apresentados como tempo real sem base técnica e contratual.
 
-A área tributária possui finalidade de apoio, organização e acompanhamento.
-Ela não substitui contador ou profissional habilitado e não gera DARF, pagamentos
-ou obrigação fiscal definitiva.
+## Limites permanentes
 
-## Opções
-
-Alertas de vencimento, exercício, risco e rolagem possuem caráter organizacional.
-A plataforma não recomenda estratégias e não executa operações.
-
-## Conteúdo editorial
-
-Conteúdos editoriais podem ser produzidos com apoio de IA e revisão humana.
-Eles possuem caráter informativo e não constituem recomendação de investimento.
+A plataforma não executa ordens, não transmite ordens, não recomenda estratégias, não realiza rolagens, não emite DARF, não efetua pagamentos e não substitui contador, assessor, consultor, advogado ou outro profissional habilitado.

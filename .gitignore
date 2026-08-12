@@ -10,8 +10,7 @@ coverage/
 
 # Variáveis de ambiente e segredos
 .env
-.env.local
-.env.*.local
+.env.*
 !.env.example
 
 # Logs
