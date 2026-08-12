@@ -1,0 +1,48 @@
+{
+  "name": "carteiraexpert",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "biome lint ./src",
+    "lint:fix": "biome lint --apply ./src",
+    "format": "biome format ./src",
+    "format:fix": "biome format --write ./src",
+    "check": "biome check --apply-unsafe ./src",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --exclude \"tests/integration/**\"",
+    "test:unit": "vitest run --exclude \"tests/integration/**\"",
+    "test:integration": "vitest run tests/integration",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "decimal.js": "10.6.0",
+    "drizzle-orm": "0.45.2",
+    "next": "16.3.0",
+    "postgres": "3.4.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.7",
+    "@playwright/test": "1.62.1",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "26.2.0",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "@vitejs/plugin-react": "^6.0.5",
+    "@vitest/coverage-v8": "4.1.10",
+    "biome": "0.3.3",
+    "drizzle-kit": "0.31.10",
+    "jsdom": "^30.0.1",
+    "playwright": "1.62.1",
+    "tailwindcss": "^4",
+    "typescript": "7.0.2",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "4.1.10",
+    "zod": "4.4.3"
+  },
+  "packageManager": "pnpm@11.21.0"
+}

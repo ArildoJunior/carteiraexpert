@@ -2,12 +2,15 @@
 
 ## Última atualização
 
-2026-08-10
+2026-08-12
 
 ## Estado geral
 
-Planejamento e documentação inicial concluídos.
-Implementação funcional ainda não iniciada.
+A fundação técnica inicial do projeto foi estabelecida.
+
+A Fase 01 (Foundation) foi inteiramente concluída com as entregas dos Pacotes 01.01 e 01.02. A infraestrutura de banco de dados, o Decimal e a auditoria base estão validados.
+
+Nenhuma funcionalidade de domínio financeiro foi implementada até o momento.
 
 ## Stack definida
 
@@ -39,36 +42,81 @@ Implementação funcional ainda não iniciada.
 
 ## Em andamento
 
-Nenhuma implementação em andamento.
+- Nenhum pacote em implementação no momento.
 
 ## Concluído
 
-- Definição de visão do produto;
-- Definição de arquitetura;
-- Definição de princípios de privacidade;
-- Definição de planos;
-- Definição das fases;
-- Definição de protocolo para uso de IA.
+### Documentação e governança
+
+- Definição da visão do produto;
+- Definição do escopo inicial e dos não objetivos;
+- Definição da arquitetura;
+- Definição dos princípios de privacidade;
+- Definição dos planos e entitlements;
+- Definição das fases e dos pacotes de entrega;
+- Definição do protocolo para uso de IA;
+- Registro dos ADRs iniciais;
+- Criação e versionamento da documentação do projeto.
+
+### Pacote 01.01 — Estrutura, qualidade e testes
+
+- Configuração da estrutura do projeto Next.js;
+- Configuração da estrutura inicial de módulos em `src/modules`;
+- Configuração do Biome para linting e formatação;
+- Configuração do TypeScript para verificação de tipos;
+- Configuração do Vitest para testes unitários;
+- Configuração do Playwright para testes E2E;
+- Configuração do processo de build da aplicação;
+- Confirmação da presença e da estrutura da documentação do projeto.
+
+### Pacote 01.02 — Banco, Decimal e auditoria base
+
+- Instalação e configuração do Drizzle ORM com o driver PostgreSQL (`postgres.js`);
+- Instalação e centralização do Decimal (`decimal.js`) para cálculos financeiros;
+- Definição do princípio NUMERIC, com bloqueio dos tipos float/real para dados financeiros, e uso do fuso horário UTC para colunas temporais;
+- Criação e execução da migration inicial com a tabela `audit_logs`;
+- Implementação de helper de inserção imutável e política de sanitização com allowlist;
+- Testes unitários do Decimal e do sanitizador, incluindo o tratamento de tipos e os limites de payload;
+- Testes de integração de conexão e persistência de auditoria em banco de dados isolado real.
+
+## Validações confirmadas no ambiente local
+
+Os itens abaixo foram totalmente validados e executados com sucesso:
+
+- [x] `pnpm run lint`
+- [x] `pnpm run typecheck`
+- [x] `pnpm run test` — testes unitários e mocks;
+- [x] `pnpm run test:integration` — PostgreSQL real;
+- [x] `pnpm run test:e2e`
+- [x] `pnpm run build`
 
 ## Não iniciado
 
-- Banco de dados;
 - Autenticação;
+- Consentimentos e LGPD operacional;
 - Carteiras;
 - Operações;
+- Cálculo de posição e custo médio;
 - Eventos corporativos;
-- Planos;
 - Dados de mercado;
 - Gráficos;
 - Importações;
-- Exterior;
-- Cripto;
-- Opções;
-- Tributário;
+- Ativos internacionais e câmbio;
+- Criptoativos;
+- Opções e alertas;
+- Apoio tributário;
 - IA editorial;
 - Cobrança;
-- Publicação.
+- Publicação e preparação de lançamento.
 
 ## Próxima entrega
 
-Fase 01 / Pacote 01.01 — Fundação do projeto e convenções técnicas.
+Fase 02 / Pacote 02.01 — Cadastro, login e sessão.
+
+## Regras preservadas
+
+- A plataforma organiza e alerta; não recomenda estratégias, não executa rolagens e não envia ordens.
+- O titular pagante de plano compartilhado não acessa dados financeiros dos demais membros.
+- Os cálculos financeiros devem usar Decimal e persistência NUMERIC.
+- Os dados importados devem ser revisáveis e auditáveis.
+- A IA é destinada exclusivamente ao apoio editorial interno, com revisão humana obrigatória antes da publicação.
