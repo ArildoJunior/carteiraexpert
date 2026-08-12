@@ -40,7 +40,7 @@ describe('Decimal Unit Tests (Cálculos Financeiros de Alta Precisão)', () => {
     const one = new Decimal('1');
     const three = new Decimal('3');
     const div = one.div(three);
-    
+
     expect(div.toString()).toBe('0.3333333333333333333333333333333333333333');
     expect(div.toString().split('.')[1].length).toBe(40);
   });

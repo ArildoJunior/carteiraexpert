@@ -49,7 +49,7 @@ describe('Audit Logs Database Integration Tests', () => {
     // Busca do banco usando a conexão de teste limpa
     const results = await db.select().from(auditLogs);
     expect(results).toHaveLength(1);
-    
+
     const row = results[0];
     expect(row.id).toBeDefined();
     expect(row.tableName).toBe('test_table_integration');

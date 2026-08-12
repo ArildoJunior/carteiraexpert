@@ -37,8 +37,8 @@ if (isTestEnv && !process.env.DATABASE_URL_TEST) {
   db = {} as any;
 } else {
   // Em testes de integração, usa DATABASE_URL_TEST; em produção/desenvolvimento, usa DATABASE_URL
-  const connectionString = isTestEnv 
-    ? (process.env.DATABASE_URL_TEST || '') 
+  const connectionString = isTestEnv
+    ? (process.env.DATABASE_URL_TEST || '')
     : databaseUrl;
 
   // Validação adicional de DATABASE_URL_TEST para testes de integração

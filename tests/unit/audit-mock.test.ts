@@ -41,7 +41,7 @@ describe('Audit Logger Mock Unit Tests', () => {
 
     // Verifica se db.insert foi chamado com a tabela de auditoria
     expect(db.insert).toHaveBeenCalled();
-    
+
     // Verifica se os valores passados para db.values estão mapeados corretamente
     const valuesSpy = db.insert(auditLogs).values;
     expect(valuesSpy).toHaveBeenCalledWith(
@@ -88,7 +88,7 @@ describe('Audit Logger Mock Unit Tests', () => {
 
   it('deve documentar explicitamente a limitação dos testes com mock', () => {
     // AVISO DE GOVERNANÇA E CONTROLE:
-    // Mocks não provam que a migration rodou, que a tabela audit_logs realmente existe 
+    // Mocks não provam que a migration rodou, que a tabela audit_logs realmente existe
     // ou que o Drizzle e o PostgreSQL real estão sincronizados.
     // Para esses critérios de aceitação (CA05, CA06, CA14), a suíte de testes de integração é obrigatória.
     expect(db.insert).toBeDefined();

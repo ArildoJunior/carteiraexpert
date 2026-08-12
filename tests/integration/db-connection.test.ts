@@ -4,7 +4,7 @@ import postgres from 'postgres';
 describe('PostgreSQL Connection Integration Test', () => {
   it('deve conectar ao banco de testes isolado e executar uma consulta simples', async () => {
     const connectionString = process.env.DATABASE_URL_TEST;
-    
+
     // CA-INT: Falha explicitamente se DATABASE_URL_TEST estiver ausente, impedindo aprovação falsa com mocks
     if (!connectionString) {
       throw new Error(

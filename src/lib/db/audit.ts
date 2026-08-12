@@ -80,7 +80,7 @@ export function sanitizeValue(
     if (!Number.isFinite(value)) {
       throw new Error(`Valor infinito detectado no campo "${path.join('.')}".`);
     }
-    
+
     const fieldName = path[path.length - 1];
     const isAllowedNumber = options.allowedNumbers?.includes(fieldName);
     if (!isAllowedNumber) {
@@ -185,12 +185,12 @@ export async function insertAuditLog(
     throw new Error(`Ação de auditoria inválida: "${log.action}".`);
   }
 
-  const sanitizedOld = payloads?.oldValue !== undefined 
-    ? sanitizePayload(payloads.oldValue, options) 
+  const sanitizedOld = payloads?.oldValue !== undefined
+    ? sanitizePayload(payloads.oldValue, options)
     : null;
-    
-  const sanitizedNew = payloads?.newValue !== undefined 
-    ? sanitizePayload(payloads.newValue, options) 
+
+  const sanitizedNew = payloads?.newValue !== undefined
+    ? sanitizePayload(payloads.newValue, options)
     : null;
 
   // Geração do UUID na aplicação (Opção B)
