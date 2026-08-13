@@ -1,6 +1,37 @@
 import { test, expect } from '@playwright/test';
+import postgres from 'postgres';
+import crypto from 'node:crypto';
+import { hashPassword } from '../src/modules/identity/domain/password';
 
 test.describe('Consentimentos (E2E)', () => {
+  let queryClient: ReturnType<typeof postgres> | null = null;
+  let testUserId: string | null = null;
+  const legacyEmail = `legacy.terms.${Date.now()}@carteiraexpert.invalid`;
+  const legacyPassword = 'Password123!';
+
+  test.beforeAll(async () => {
+    const connectionString = process.env.DATABASE_URL_TEST;
+    if (connectionString) {
+      queryClient = postgres(connectionString);
+      testUserId = crypto.randomUUID();
+      const passwordHash = await hashPassword(legacyPassword);
+      // Cria usuário SEM registros na tabela user_consents para simular aceite pendente
+      await queryClient`
+        INSERT INTO users (id, name, email, password_hash, status, created_at, updated_at)
+        VALUES (${testUserId}, 'Legacy Terms User', ${legacyEmail}, ${passwordHash}, 'active', NOW(), NOW())
+      `;
+    }
+  });
+
+  test.afterAll(async () => {
+    if (queryClient && testUserId) {
+      await queryClient`DELETE FROM sessions WHERE user_id = ${testUserId}`;
+      await queryClient`DELETE FROM audit_logs WHERE actor_id = ${testUserId}`;
+      await queryClient`DELETE FROM users WHERE id = ${testUserId}`;
+      await queryClient.end();
+    }
+  });
+
   test('Deve impedir o cadastro se checkboxes obrigatórios não forem marcados', async ({ page }) => {
     await page.goto('/register');
     
@@ -12,23 +43,33 @@ test.describe('Consentimentos (E2E)', () => {
     // Sem marcar os checkboxes
     await page.click('#register-submit');
     
-    // Deve mostrar erros nos checkboxes
-    try {
-      await expect(page.locator('#register-terms-error')).toBeVisible({ timeout: 5000 });
-    } catch (e) {
-      console.log(await page.content());
-      throw e;
-    }
+    await expect(page.locator('#register-terms-error')).toBeVisible({ timeout: 5000 });
     await expect(page.locator('#register-privacy-error')).toBeVisible();
   });
 
-  test('Deve bloquear usuário legado sem consentimento e redirecionar para /terms-acceptance', async ({ page, request }) => {
-    // 1. Criar usuário sem consentimentos usando API mock ou assumir um db script (para fins de E2E, se possível criar)
-    // Como o e2e precisa de usuário legado real, podemos interceptar e injetar estado, 
-    // ou acessar com uma conta já criada previamente pelo backend via fixtures.
-    // Vamos apenas verificar a página de termos.
+  test('Deve redirecionar /terms-acceptance para /login se o usuário não estiver autenticado', async ({ page }) => {
     await page.goto('/terms-acceptance');
-    // Como não está logado, deve redirecionar para login.
+    await expect(page).toHaveURL(/.*\/login.*/);
+  });
+
+  test('Deve permitir que usuário na tela de termos faça logout pelo botão Sair', async ({ page }) => {
+    // 1. Fazer login com o usuário legado (sem consentimento vigente)
+    await page.goto('/login');
+    await page.fill('#login-email', legacyEmail);
+    await page.fill('#login-password', legacyPassword);
+    await page.click('#login-submit');
+
+    // 2. O DashboardLayout deve interceptar e redirecionar para /terms-acceptance
+    await page.waitForURL('**/terms-acceptance');
+    await expect(page).toHaveURL(/.*\/terms-acceptance.*/);
+    await expect(page.locator('#terms-logout-button')).toBeVisible();
+
+    // 3. Fazer logout a partir do botão Sair na tela de termos (#terms-logout-button)
+    await page.click('#terms-logout-button');
+    await expect(page).toHaveURL(/.*\/login.*/);
+
+    // 4. Confirmar que a sessão foi destruída ao tentar acessar /dashboard
+    await page.goto('/dashboard');
     await expect(page).toHaveURL(/.*\/login.*/);
   });
 });

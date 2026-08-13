@@ -1,12 +1,17 @@
 'use client';
 
 import { useActionState } from 'react';
-import { acceptTermsAction, type ActionResult } from '@/app/(auth)/actions';
+import { acceptTermsAction, logoutAction, type ActionResult } from '@/app/(auth)/actions';
 
 const initialState: ActionResult = { success: false };
 
 export function TermsAcceptanceForm() {
   const [state, formAction, pending] = useActionState(acceptTermsAction, initialState);
+
+  const handleLogout = async () => {
+    await logoutAction();
+    window.location.href = '/login';
+  };
 
   return (
     <form action={formAction} className="space-y-6" noValidate>
@@ -85,12 +90,14 @@ export function TermsAcceptanceForm() {
 
       {/* Ações */}
       <div className="flex items-center space-x-3 pt-4">
-        <a 
-          href="/api/auth/logout"
-          className="flex items-center justify-center flex-1 py-2.5 px-4 text-sm font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
+        <button
+          id="terms-logout-button"
+          type="button"
+          onClick={handleLogout}
+          className="flex items-center justify-center flex-1 py-2.5 px-4 text-sm font-medium text-slate-300 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
         >
           Sair
-        </a>
+        </button>
         <button
           id="terms-submit"
           type="submit"

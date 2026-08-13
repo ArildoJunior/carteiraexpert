@@ -12,20 +12,10 @@ const PUBLIC_PATHS = new Set([
   '/reset-password',
 ]);
 
-// ─── Rotas de API públicas ────────────────────────────────────────────────────
-// Route Handlers que não requerem sessão.
-const PUBLIC_API_PREFIXES = [
-  '/api/auth/register',
-  '/api/auth/login',
-  '/api/auth/forgot-password',
-  '/api/auth/reset-password',
-];
-
 function isPublicPath(pathname: string): boolean {
-  if (PUBLIC_PATHS.has(pathname)) return true;
-  if (PUBLIC_API_PREFIXES.some((p) => pathname.startsWith(p))) return true;
-  return false;
+  return PUBLIC_PATHS.has(pathname);
 }
+
 
 function isApiRoute(pathname: string): boolean {
   return pathname.startsWith('/api/');

@@ -6,6 +6,7 @@ import { insertAuditLog } from '../../../lib/db/audit';
 import { anonymizeIp, sanitizeUserAgent } from './session';
 import { CURRENT_CONSENT_VERSIONS, ConsentDocumentType } from '../domain/consent-constants';
 import type { RecordConsentOptions, ConsentRecord } from '../domain/consent.types';
+import { assertSchemaCompatible } from '../../../lib/db/verify-schema';
 
 const CONSENT_ADVISORY_NAMESPACE = 1129270867; // 'CONS' in ASCII
 
@@ -41,6 +42,8 @@ export async function recordConsent(
   opts: RecordConsentOptions,
   executor: any = db
 ): Promise<void> {
+  await assertSchemaCompatible(executor);
+
   await executor.transaction(async (tx: any) => {
     // 1. Adquire trava transacional com namespace 1129270867 e hash de (userId:consentType)
     await tx.execute(

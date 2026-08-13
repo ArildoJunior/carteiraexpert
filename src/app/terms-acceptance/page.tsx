@@ -1,16 +1,20 @@
-import { requireAuth } from '@/modules/identity/server/current-user';
+import type { Metadata } from 'next';
+import { getCurrentUser } from '@/modules/identity/server/current-user';
 import { hasAcceptedCurrentTerms } from '@/modules/identity/server/consent-service';
 import { TermsAcceptanceForm } from '@/modules/identity/ui/TermsAcceptanceForm';
 import { redirect } from 'next/navigation';
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Atualização dos Termos | CarteiraExpert',
 };
 
 export default async function TermsAcceptancePage() {
-  const user = await requireAuth();
-  
-  // Se já aceitou, redireciona para o dashboard
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect('/login');
+  }
+
+  // Se já aceitou os termos vigentes, redireciona diretamente para o dashboard
   const hasConsent = await hasAcceptedCurrentTerms(user.id);
   if (hasConsent) {
     redirect('/dashboard');

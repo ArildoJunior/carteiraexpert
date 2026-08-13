@@ -7,7 +7,7 @@ import { TestFakeEmailSender } from '../../../src/modules/identity/domain/email-
 import { hashToken } from '../../../src/modules/identity/server/session';
 import * as authService from '../../../src/modules/identity/server/auth.service';
 import { isBlocked, loginKey, recordFailure } from '../../../src/modules/identity/server/rate-limiter';
-import { eq, sql } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 
 // ─── Configuração ─────────────────────────────────────────────────────────────
 const connectionString = process.env.DATABASE_URL_TEST;
@@ -33,8 +33,11 @@ if (!connectionString) {
     
     // Desativa trigger para permitir limpeza da tabela de consentimentos nos testes
     await db.execute(sql`ALTER TABLE user_consents DISABLE TRIGGER ALL;`);
-    await db.delete(userConsents);
-    await db.execute(sql`ALTER TABLE user_consents ENABLE TRIGGER ALL;`);
+    try {
+      await db.delete(userConsents);
+    } finally {
+      await db.execute(sql`ALTER TABLE user_consents ENABLE TRIGGER ALL;`);
+    }
     
     await db.delete(users);
     emailSender.clear();
@@ -196,6 +199,29 @@ if (!connectionString) {
       expect(sess.revokedAt).not.toBeNull();
     });
 
+    it('registra evento de auditoria no encerramento de sessão', async () => {
+      const regResult = await authService.register('Audit User', 'logout-audit@test.com', 'SenhaForte@1', { marketingCommunications: false });
+      if (!regResult.success) throw new Error('setup falhou');
+
+      await authService.logout(regResult.sessionId, regResult.user.id);
+
+      const [audit] = await db
+        .select()
+        .from(schema.auditLogs)
+        .where(
+          and(
+            eq(schema.auditLogs.tableName, 'sessions'),
+            eq(schema.auditLogs.recordId, regResult.sessionId),
+            eq(schema.auditLogs.action, 'UPDATE')
+          )
+        );
+
+      expect(audit).toBeDefined();
+      expect(audit.actorId).toBe(regResult.user.id);
+      expect(audit.actorType).toBe('user');
+      expect((audit.newValue as { reason?: string })?.reason).toBe('user_requested');
+    });
+
     it('é idempotente: chamar logout duas vezes não gera erro', async () => {
       const regResult = await authService.register('User', 'logout2@test.com', 'SenhaForte@1', { marketingCommunications: false });
       if (!regResult.success) throw new Error('setup falhou');
@@ -210,6 +236,7 @@ if (!connectionString) {
       await expect(authService.logout(null, null)).resolves.not.toThrow();
     });
   });
+
 
   // ─── Recuperação de Senha ─────────────────────────────────────────────────────
   describe('requestPasswordReset', () => {

@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { sessions } from '@/lib/db/schema/identity';
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq, and, isNull, gt } from 'drizzle-orm';
 import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from '@/modules/identity/domain/user.schema';
 import * as authService from '@/modules/identity/server/auth.service';
 import { getSessionId } from '@/modules/identity/server/current-user';
@@ -31,6 +31,16 @@ function getEmailSender(): EmailSenderService {
 
 function getClientIp(hdrs: Headers): string | null {
   return hdrs.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
+}
+
+function isNextRedirect(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'digest' in err &&
+    typeof (err as { digest?: string }).digest === 'string' &&
+    (err as { digest: string }).digest.startsWith('NEXT_REDIRECT')
+  );
 }
 
 // ─── Tipagem de ActionResult ──────────────────────────────────────────────────
@@ -59,7 +69,6 @@ export async function registerAction(
 
   const parsed = registerSchema.safeParse(raw);
   const consentParsed = termsAcceptanceSchema.safeParse(consentRaw);
-  console.log('Register action hit:', { raw, consentRaw, consentSuccess: consentParsed.success });
 
   if (!parsed.success || !consentParsed.success) {
     const fieldErrors = {
@@ -69,28 +78,39 @@ export async function registerAction(
     return { success: false, fieldErrors };
   }
 
-  const hdrs = await headers();
-  const ip = getClientIp(hdrs) ?? undefined;
-  const ua = hdrs.get('user-agent') ?? undefined;
+  try {
+    const hdrs = await headers();
+    const ip = getClientIp(hdrs) ?? undefined;
+    const ua = hdrs.get('user-agent') ?? undefined;
 
-  const result = await authService.register(
-    parsed.data.name,
-    parsed.data.email,
-    parsed.data.password,
-    { marketingCommunications: consentParsed.data.marketingCommunications },
-    ip,
-    ua
-  );
+    const result = await authService.register(
+      parsed.data.name,
+      parsed.data.email,
+      parsed.data.password,
+      { marketingCommunications: consentParsed.data.marketingCommunications },
+      ip,
+      ua
+    );
 
-  if (!result.success) {
-    return { success: false, error: result.error };
+    if (!result.success) {
+      return { success: false, error: result.error };
+    }
+
+    const cookieStore = await cookies();
+    const opts = getSessionCookieOptions(result.expiresAt);
+    cookieStore.set(SESSION_COOKIE_NAME, result.token, opts);
+
+    redirect('/dashboard');
+  } catch (err: unknown) {
+    if (isNextRedirect(err)) {
+      throw err;
+    }
+    console.error('[registerAction] Falha inesperada no cadastro');
+    return {
+      success: false,
+      error: 'Ocorreu um erro inesperado ao processar o cadastro. Tente novamente mais tarde.',
+    };
   }
-
-  const cookieStore = await cookies();
-  const opts = getSessionCookieOptions(result.expiresAt);
-  cookieStore.set(SESSION_COOKIE_NAME, result.token, opts);
-
-  redirect('/dashboard');
 }
 
 // ─── LOGIN ────────────────────────────────────────────────────────────────────
@@ -108,55 +128,83 @@ export async function loginAction(
     return { success: false, fieldErrors: parsed.error.flatten().fieldErrors };
   }
 
-  const hdrs = await headers();
-  const ip = getClientIp(hdrs) ?? undefined;
-  const ua = hdrs.get('user-agent') ?? undefined;
+  try {
+    const hdrs = await headers();
+    const ip = getClientIp(hdrs) ?? undefined;
+    const ua = hdrs.get('user-agent') ?? undefined;
 
-  const result = await authService.login(
-    parsed.data.email,
-    parsed.data.password,
-    ip,
-    ua
-  );
+    const result = await authService.login(
+      parsed.data.email,
+      parsed.data.password,
+      ip,
+      ua
+    );
 
-  if (!result.success) {
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.rateLimited
+          ? 'Muitas tentativas. Tente novamente em alguns minutos.'
+          : result.error,
+      };
+    }
+
+    const cookieStore = await cookies();
+    const opts = getSessionCookieOptions(result.expiresAt);
+    cookieStore.set(SESSION_COOKIE_NAME, result.token, opts);
+
+    redirect('/dashboard');
+  } catch (err: unknown) {
+    if (isNextRedirect(err)) {
+      throw err;
+    }
+    console.error('[loginAction] Falha inesperada no login');
     return {
       success: false,
-      error: result.rateLimited
-        ? 'Muitas tentativas. Tente novamente em alguns minutos.'
-        : result.error,
+      error: 'Ocorreu um erro inesperado ao realizar login. Tente novamente mais tarde.',
     };
   }
-
-  const cookieStore = await cookies();
-  const opts = getSessionCookieOptions(result.expiresAt);
-  cookieStore.set(SESSION_COOKIE_NAME, result.token, opts);
-
-  redirect('/dashboard');
 }
 
 // ─── LOGOUT ───────────────────────────────────────────────────────────────────
 export async function logoutAction(): Promise<ActionResult> {
+  const cookieStore = await cookies();
   try {
-    const cookieStore = await cookies();
     const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
     if (token) {
       const tokenHash = hashToken(token);
-      await db
-        .update(sessions)
-        .set({ revokedAt: new Date() })
-        .where(and(eq(sessions.tokenHash, tokenHash), isNull(sessions.revokedAt)))
-        .catch(() => {});
+      const now = new Date();
+      const [session] = await db
+        .select({ id: sessions.id, userId: sessions.userId })
+        .from(sessions)
+        .where(
+          and(
+            eq(sessions.tokenHash, tokenHash),
+            isNull(sessions.revokedAt),
+            gt(sessions.expiresAt, now)
+          )
+        )
+        .limit(1);
+
+      if (session) {
+        await authService.logout(session.id, session.userId);
+      }
     }
 
     cookieStore.delete(SESSION_COOKIE_NAME);
-  } catch (err) {
-    console.error('[logoutAction] erro ao encerrar sessão:', err);
+    return { success: true };
+  } catch {
+    console.error('[logoutAction] Falha inesperada ao encerrar sessão');
+    try {
+      cookieStore.delete(SESSION_COOKIE_NAME);
+    } catch {
+      // Falha ao deletar cookie no catch é ignorada
+    }
+    return { success: false, error: 'Erro ao encerrar sessão.' };
   }
-
-  return { success: true };
 }
+
 
 // ─── ESQUECI MINHA SENHA ──────────────────────────────────────────────────────
 export async function forgotPasswordAction(
@@ -288,13 +336,14 @@ export async function acceptTermsAction(
 
     redirect('/dashboard');
   } catch (err: unknown) {
-    // Se o erro for do redirect, relance-o para o Next.js interceptar
-    if (typeof err === 'object' && err !== null && 'digest' in err && (err as any).digest?.startsWith('NEXT_REDIRECT')) {
+    if (isNextRedirect(err)) {
       throw err;
     }
-    return { success: false, error: 'Erro ao registrar consentimento.' };
+    console.error('[acceptTermsAction] Falha inesperada ao registrar consentimento');
+    return { success: false, error: 'Erro ao registrar consentimento. Tente novamente mais tarde.' };
   }
 }
+
 
 export async function updateOptionalConsentAction(
   consentType: string,

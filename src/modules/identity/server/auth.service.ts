@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { eq, and, isNull, gt } from 'drizzle-orm';
 import { db } from '../../../lib/db';
-import { users, passwordResetTokens } from '../../../lib/db/schema/identity';
+import { users, sessions, passwordResetTokens } from '../../../lib/db/schema/identity';
 import { insertAuditLog } from '../../../lib/db/audit';
 import {
   hashPassword,
@@ -54,6 +54,7 @@ export interface AuthError {
 
 import { recordConsent } from './consent-service';
 import { CURRENT_CONSENT_VERSIONS } from '../domain/consent-constants';
+import { assertSchemaCompatible } from '../../../lib/db/verify-schema';
 
 // ─── CADASTRO ─────────────────────────────────────────────────────────────────
 export async function register(
@@ -64,6 +65,8 @@ export async function register(
   ip?: string | null,
   userAgent?: string | null
 ): Promise<AuthResult | AuthError> {
+  await assertSchemaCompatible();
+
   const userId = crypto.randomUUID();
   const passwordHash = await hashPassword(password);
 
@@ -179,6 +182,8 @@ export async function login(
   ip?: string | null,
   userAgent?: string | null
 ): Promise<AuthResult | AuthError> {
+  await assertSchemaCompatible();
+
   const rateLimitKey = loginKey(ip ?? 'unknown', email);
 
   const { isBlocked: blocked } = await isBlocked(rateLimitKey);
@@ -261,19 +266,20 @@ export async function login(
 export async function logout(sessionId: string | null, userId: string | null): Promise<void> {
   if (!sessionId) return;
 
-  // Revogar sessão via SQL raw para evitar problema de tipagem do Drizzle com NULL
-  await db.execute(
-    `UPDATE sessions SET revoked_at = NOW() WHERE id = '${sessionId}' AND revoked_at IS NULL`
-  );
+  await db
+    .update(sessions)
+    .set({ revokedAt: new Date() })
+    .where(and(eq(sessions.id, sessionId), isNull(sessions.revokedAt)));
 
   if (userId) {
     await insertAuditLog(
       { tableName: 'sessions', recordId: sessionId, action: 'UPDATE', actorId: userId, actorType: 'user', source: 'manual' },
       { newValue: { userId, reason: 'user_requested' } },
       { preMinimized: true }
-    ).catch(() => {});
+    );
   }
 }
+
 
 // ─── ESQUECI MINHA SENHA ──────────────────────────────────────────────────────
 export async function requestPasswordReset(
@@ -281,6 +287,8 @@ export async function requestPasswordReset(
   emailSender: EmailSenderService,
   ip?: string | null
 ): Promise<void> {
+  await assertSchemaCompatible();
+
   const ipKey = resetByIpKey(ip ?? 'unknown');
   const emailKey = resetByEmailKey(email);
 
@@ -342,6 +350,8 @@ export async function resetPassword(
   rawToken: string,
   newPassword: string
 ): Promise<{ success: boolean; error?: string }> {
+  await assertSchemaCompatible();
+
   const tokenHash = hashToken(rawToken);
   const now = new Date();
 

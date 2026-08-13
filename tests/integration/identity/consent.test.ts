@@ -23,8 +23,11 @@ describe('Integração: Consentimentos (user_consents)', () => {
     // Como a tabela user_consents não permite DELETE normal via Drizzle/Trigger,
     // usaremos TRUNCATE CASCADE apenas no banco de teste ou desativamos a trigger temporariamente
     await db.execute(sql`ALTER TABLE user_consents DISABLE TRIGGER ALL;`);
-    await db.delete(userConsents).where(eq(userConsents.userId, testUserId));
-    await db.execute(sql`ALTER TABLE user_consents ENABLE TRIGGER ALL;`);
+    try {
+      await db.delete(userConsents).where(eq(userConsents.userId, testUserId));
+    } finally {
+      await db.execute(sql`ALTER TABLE user_consents ENABLE TRIGGER ALL;`);
+    }
     await db.delete(auditLogs).where(eq(auditLogs.actorId, testUserId));
   });
 
@@ -87,6 +90,29 @@ describe('Integração: Consentimentos (user_consents)', () => {
     });
 
     expect(await hasAcceptedCurrentTerms(testUserId)).toBe(true);
+  });
+
+  it('deve identificar consentimento desatualizado quando a versão for anterior à vigente', async () => {
+    // Aceite com versão legada/desatualizada
+    await recordConsent({
+      userId: testUserId,
+      consentType: 'terms_of_service',
+      version: '0.1-legacy',
+      action: 'granted',
+      ip: undefined,
+      userAgent: undefined,
+    });
+
+    await recordConsent({
+      userId: testUserId,
+      consentType: 'privacy_policy',
+      version: CURRENT_CONSENT_VERSIONS.privacy_policy.version,
+      action: 'granted',
+      ip: undefined,
+      userAgent: undefined,
+    });
+
+    expect(await hasAcceptedCurrentTerms(testUserId)).toBe(false);
   });
 
   it('deve ser idempotente em retries (mesma ação/versão não insere nova linha)', async () => {

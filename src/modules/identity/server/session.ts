@@ -119,9 +119,13 @@ export async function revokeAllUserSessions(userId: string): Promise<void> {
 
 // ─── Cookie Options ───────────────────────────────────────────────────────────
 export function getSessionCookieOptions(expiresAt: Date) {
+  const isSecure =
+    process.env.NODE_ENV === 'production' ||
+    process.env.SECURE_COOKIES === 'true';
+
   return {
     httpOnly: true,
-    secure: process.env.SECURE_COOKIES === 'true',
+    secure: isSecure,
     sameSite: 'lax' as const,
     path: '/',
     expires: expiresAt,
@@ -129,9 +133,13 @@ export function getSessionCookieOptions(expiresAt: Date) {
 }
 
 export function getClearCookieOptions() {
+  const isSecure =
+    process.env.NODE_ENV === 'production' ||
+    process.env.SECURE_COOKIES === 'true';
+
   return {
     httpOnly: true,
-    secure: process.env.SECURE_COOKIES === 'true',
+    secure: isSecure,
     sameSite: 'lax' as const,
     path: '/',
     maxAge: 0,

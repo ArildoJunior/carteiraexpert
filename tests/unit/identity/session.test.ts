@@ -1,9 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import {
   generateSessionToken,
   hashToken,
   anonymizeIp,
   sanitizeUserAgent,
+  getSessionCookieOptions,
+  getClearCookieOptions,
 } from '../../../src/modules/identity/server/session';
 
 // ─── generateSessionToken ─────────────────────────────────────────────────────
@@ -84,5 +86,68 @@ describe('sanitizeUserAgent', () => {
 
   it('retorna null para null', () => {
     expect(sanitizeUserAgent(null)).toBeNull();
+  });
+});
+
+// ─── Cookie Options ───────────────────────────────────────────────────────────
+describe('Cookie Options (getSessionCookieOptions & getClearCookieOptions)', () => {
+  const originalEnv = { ...process.env };
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+  });
+
+  const sampleDate = new Date('2026-12-31T23:59:59.000Z');
+
+  it('em produção sem SECURE_COOKIES, secure deve ser SEMPRE true', () => {
+    (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
+    delete process.env.SECURE_COOKIES;
+
+    const sessionOpts = getSessionCookieOptions(sampleDate);
+    expect(sessionOpts.secure).toBe(true);
+    expect(sessionOpts.httpOnly).toBe(true);
+    expect(sessionOpts.sameSite).toBe('lax');
+    expect(sessionOpts.path).toBe('/');
+    expect(sessionOpts.expires).toEqual(sampleDate);
+
+    const clearOpts = getClearCookieOptions();
+    expect(clearOpts.secure).toBe(true);
+    expect(clearOpts.httpOnly).toBe(true);
+    expect(clearOpts.sameSite).toBe('lax');
+    expect(clearOpts.path).toBe('/');
+    expect(clearOpts.maxAge).toBe(0);
+  });
+
+  it('em produção com SECURE_COOKIES=false, secure deve continuar SEMPRE true', () => {
+    (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
+    process.env.SECURE_COOKIES = 'false';
+
+    const sessionOpts = getSessionCookieOptions(sampleDate);
+    expect(sessionOpts.secure).toBe(true);
+
+    const clearOpts = getClearCookieOptions();
+    expect(clearOpts.secure).toBe(true);
+  });
+
+  it('em desenvolvimento com SECURE_COOKIES=false, secure deve ser false', () => {
+    (process.env as Record<string, string | undefined>).NODE_ENV = 'development';
+    process.env.SECURE_COOKIES = 'false';
+
+    const sessionOpts = getSessionCookieOptions(sampleDate);
+    expect(sessionOpts.secure).toBe(false);
+
+    const clearOpts = getClearCookieOptions();
+    expect(clearOpts.secure).toBe(false);
+  });
+
+  it('em desenvolvimento com SECURE_COOKIES=true, secure deve ser true', () => {
+    (process.env as Record<string, string | undefined>).NODE_ENV = 'development';
+    process.env.SECURE_COOKIES = 'true';
+
+    const sessionOpts = getSessionCookieOptions(sampleDate);
+    expect(sessionOpts.secure).toBe(true);
+
+    const clearOpts = getClearCookieOptions();
+    expect(clearOpts.secure).toBe(true);
   });
 });
