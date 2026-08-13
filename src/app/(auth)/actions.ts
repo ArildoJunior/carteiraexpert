@@ -9,6 +9,10 @@ import { eq, and, isNull } from 'drizzle-orm';
 import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from '@/modules/identity/domain/user.schema';
 import * as authService from '@/modules/identity/server/auth.service';
 import { getSessionId } from '@/modules/identity/server/current-user';
+import { requireAuth } from '@/modules/identity/server/current-user';
+import { termsAcceptanceSchema } from '@/modules/identity/domain/consent.schema';
+import { recordConsent } from '@/modules/identity/server/consent-service';
+import { CURRENT_CONSENT_VERSIONS } from '@/modules/identity/domain/consent-constants';
 import { hashToken, getSessionCookieOptions, getClearCookieOptions, SESSION_COOKIE_NAME } from '@/modules/identity/server/session';
 import { TestFakeEmailSender } from '@/modules/identity/domain/email-sender';
 import type { EmailSenderService } from '@/modules/identity/domain/email-sender';
@@ -47,20 +51,33 @@ export async function registerAction(
     password: formData.get('password'),
     confirmPassword: formData.get('confirmPassword'),
   };
+  const consentRaw = {
+    termsOfService: formData.get('termsOfService') === 'on',
+    privacyPolicy: formData.get('privacyPolicy') === 'on',
+    marketingCommunications: formData.get('marketingCommunications') === 'on',
+  };
 
   const parsed = registerSchema.safeParse(raw);
-  if (!parsed.success) {
-    return { success: false, fieldErrors: parsed.error.flatten().fieldErrors };
+  const consentParsed = termsAcceptanceSchema.safeParse(consentRaw);
+  console.log('Register action hit:', { raw, consentRaw, consentSuccess: consentParsed.success });
+
+  if (!parsed.success || !consentParsed.success) {
+    const fieldErrors = {
+      ...(parsed.success ? {} : parsed.error.flatten().fieldErrors),
+      ...(consentParsed.success ? {} : consentParsed.error.flatten().fieldErrors),
+    };
+    return { success: false, fieldErrors };
   }
 
   const hdrs = await headers();
-  const ip = getClientIp(hdrs);
-  const ua = hdrs.get('user-agent');
+  const ip = getClientIp(hdrs) ?? undefined;
+  const ua = hdrs.get('user-agent') ?? undefined;
 
   const result = await authService.register(
     parsed.data.name,
     parsed.data.email,
     parsed.data.password,
+    { marketingCommunications: consentParsed.data.marketingCommunications },
     ip,
     ua
   );
@@ -92,8 +109,8 @@ export async function loginAction(
   }
 
   const hdrs = await headers();
-  const ip = getClientIp(hdrs);
-  const ua = hdrs.get('user-agent');
+  const ip = getClientIp(hdrs) ?? undefined;
+  const ua = hdrs.get('user-agent') ?? undefined;
 
   const result = await authService.login(
     parsed.data.email,
@@ -207,5 +224,103 @@ export async function resetPasswordAction(
       }
     }
     throw err;
+  }
+}
+
+// ─── ACEITE DE TERMOS ─────────────────────────────────────────────────────────
+export async function acceptTermsAction(
+  _prev: ActionResult,
+  formData: FormData
+): Promise<ActionResult> {
+  let user;
+  try {
+    user = await requireAuth();
+  } catch {
+    return { success: false, error: 'Usuário não autenticado.' };
+  }
+
+  const consentRaw = {
+    termsOfService: formData.get('termsOfService') === 'on',
+    privacyPolicy: formData.get('privacyPolicy') === 'on',
+    marketingCommunications: formData.get('marketingCommunications') === 'on',
+  };
+
+  const consentParsed = termsAcceptanceSchema.safeParse(consentRaw);
+  if (!consentParsed.success) {
+    return { success: false, fieldErrors: consentParsed.error.flatten().fieldErrors };
+  }
+
+  const hdrs = await headers();
+  const ip = getClientIp(hdrs) ?? undefined;
+  const ua = hdrs.get('user-agent') ?? undefined;
+
+  try {
+    await db.transaction(async (tx) => {
+      await recordConsent({
+        userId: user.id,
+        consentType: 'terms_of_service',
+        version: CURRENT_CONSENT_VERSIONS.terms_of_service.version,
+        action: 'granted',
+        ip,
+        userAgent: ua,
+      }, tx);
+
+      await recordConsent({
+        userId: user.id,
+        consentType: 'privacy_policy',
+        version: CURRENT_CONSENT_VERSIONS.privacy_policy.version,
+        action: 'granted',
+        ip,
+        userAgent: ua,
+      }, tx);
+
+      if (consentParsed.data.marketingCommunications) {
+        await recordConsent({
+          userId: user.id,
+          consentType: 'marketing_communications',
+          version: CURRENT_CONSENT_VERSIONS.marketing_communications.version,
+          action: 'granted',
+          ip,
+          userAgent: ua,
+        }, tx);
+      }
+    });
+
+    redirect('/dashboard');
+  } catch (err: unknown) {
+    // Se o erro for do redirect, relance-o para o Next.js interceptar
+    if (typeof err === 'object' && err !== null && 'digest' in err && (err as any).digest?.startsWith('NEXT_REDIRECT')) {
+      throw err;
+    }
+    return { success: false, error: 'Erro ao registrar consentimento.' };
+  }
+}
+
+export async function updateOptionalConsentAction(
+  consentType: string,
+  granted: boolean
+): Promise<ActionResult> {
+  try {
+    const user = await requireAuth();
+    if (consentType !== 'marketing_communications') {
+      return { success: false, error: 'Tipo de consentimento inválido.' };
+    }
+
+    const hdrs = await headers();
+    const ip = getClientIp(hdrs) ?? undefined;
+    const ua = hdrs.get('user-agent') ?? undefined;
+
+    await recordConsent({
+      userId: user.id,
+      consentType,
+      version: CURRENT_CONSENT_VERSIONS[consentType].version,
+      action: granted ? 'granted' : 'revoked',
+      ip,
+      userAgent: ua,
+    });
+
+    return { success: true };
+  } catch {
+    return { success: false, error: 'Não foi possível atualizar a preferência.' };
   }
 }

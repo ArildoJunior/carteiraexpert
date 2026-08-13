@@ -24,7 +24,7 @@ export function hashToken(token: string): string {
 // ─── Anonimização de IP ───────────────────────────────────────────────────────
 /** Anonimiza o endereço IP antes de persistir (LGPD — minimização de dados). */
 export function anonymizeIp(ip: string | null | undefined): string | null {
-  if (!ip) return null;
+  if (!ip || typeof ip !== 'string') return null;
   // IPv4: zera o último octeto
   if (/^\d+\.\d+\.\d+\.\d+$/.test(ip)) {
     return ip.replace(/\.\d+$/, '.0');

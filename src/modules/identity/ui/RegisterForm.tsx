@@ -109,6 +109,68 @@ export function RegisterForm() {
         )}
       </div>
 
+      {/* Consentimentos */}
+      <div className="space-y-3 pt-2">
+        <div className="flex items-start">
+          <div className="flex items-center h-5">
+            <input
+              id="register-terms"
+              name="termsOfService"
+              type="checkbox"
+              required
+              className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-950"
+            />
+          </div>
+          <div className="ml-3 text-sm">
+            <label htmlFor="register-terms" className="font-medium text-slate-300">
+              Li e concordo com os <a href="/terms" target="_blank" className="text-emerald-400 hover:underline">Termos de Uso</a>
+            </label>
+            {state.fieldErrors?.termsOfService && (
+              <p id="register-terms-error" className="text-red-400 text-xs mt-1">{state.fieldErrors.termsOfService[0]}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-start">
+          <div className="flex items-center h-5">
+            <input
+              id="register-privacy"
+              name="privacyPolicy"
+              type="checkbox"
+              required
+              className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-950"
+            />
+          </div>
+          <div className="ml-3 text-sm">
+            <label htmlFor="register-privacy" className="font-medium text-slate-300">
+              Li e concordo com a <a href="/privacy" target="_blank" className="text-emerald-400 hover:underline">Política de Privacidade</a>
+            </label>
+            {state.fieldErrors?.privacyPolicy && (
+              <p id="register-privacy-error" className="text-red-400 text-xs mt-1">{state.fieldErrors.privacyPolicy[0]}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-start">
+          <div className="flex items-center h-5">
+            <input
+              id="register-marketing"
+              name="marketingCommunications"
+              type="checkbox"
+              className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-950"
+            />
+          </div>
+          <div className="ml-3 text-sm">
+            <label htmlFor="register-marketing" className="font-medium text-slate-300">
+              Aceito receber comunicações de marketing e ofertas
+            </label>
+            {state.fieldErrors?.marketingCommunications && (
+              <p id="register-marketing-error" className="text-red-400 text-xs mt-1">{state.fieldErrors.marketingCommunications[0]}</p>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Submit */}
       <button
         id="register-submit"

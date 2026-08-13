@@ -63,6 +63,8 @@ test.describe('Cadastro', () => {
     await page.fill('#register-email', email);
     await page.fill('#register-password', 'SenhaForte@1');
     await page.fill('#register-confirm-password', 'SenhaForte@1');
+    await page.check('#register-terms');
+    await page.check('#register-privacy');
     await page.click('#register-submit');
 
     // Após cadastro bem-sucedido, redireciona para dashboard
@@ -101,6 +103,8 @@ test.describe('Login', () => {
     await page.fill('#register-email', email);
     await page.fill('#register-password', 'SenhaForte@1');
     await page.fill('#register-confirm-password', 'SenhaForte@1');
+    await page.check('#register-terms');
+    await page.check('#register-privacy');
     await page.click('#register-submit');
     await page.waitForURL('**/dashboard');
     await expect(page.locator('h1')).toContainText('Olá');
@@ -121,6 +125,8 @@ test.describe('Logout', () => {
     await page.fill('#register-email', email);
     await page.fill('#register-password', 'SenhaForte@1');
     await page.fill('#register-confirm-password', 'SenhaForte@1');
+    await page.check('#register-terms');
+    await page.check('#register-privacy');
     await page.click('#register-submit');
     await page.waitForURL('**/dashboard');
     await expect(page.locator('h1')).toContainText('Olá');

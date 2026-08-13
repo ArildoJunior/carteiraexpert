@@ -2,12 +2,12 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import * as schema from '../../../src/lib/db/schema';
-import { users, sessions, passwordResetTokens, authRateLimits } from '../../../src/lib/db/schema';
+import { users, sessions, passwordResetTokens, authRateLimits, userConsents } from '../../../src/lib/db/schema';
 import { TestFakeEmailSender } from '../../../src/modules/identity/domain/email-sender';
 import { hashToken } from '../../../src/modules/identity/server/session';
 import * as authService from '../../../src/modules/identity/server/auth.service';
 import { isBlocked, loginKey, recordFailure } from '../../../src/modules/identity/server/rate-limiter';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
 // ─── Configuração ─────────────────────────────────────────────────────────────
 const connectionString = process.env.DATABASE_URL_TEST;
@@ -30,6 +30,12 @@ if (!connectionString) {
     await db.delete(authRateLimits);
     await db.delete(passwordResetTokens);
     await db.delete(sessions);
+    
+    // Desativa trigger para permitir limpeza da tabela de consentimentos nos testes
+    await db.execute(sql`ALTER TABLE user_consents DISABLE TRIGGER ALL;`);
+    await db.delete(userConsents);
+    await db.execute(sql`ALTER TABLE user_consents ENABLE TRIGGER ALL;`);
+    
     await db.delete(users);
     emailSender.clear();
   });
@@ -44,8 +50,7 @@ if (!connectionString) {
       const result = await authService.register(
         'João Teste',
         'joao@test.com',
-        'SenhaForte@1',
-        '127.0.0.1',
+        'SenhaForte@1', { marketingCommunications: false }, '127.0.0.1',
         'Vitest/1.0'
       );
 
@@ -77,9 +82,9 @@ if (!connectionString) {
     });
 
     it('rejeita e-mail duplicado sem revelar detalhes técnicos', async () => {
-      await authService.register('Primeiro', 'dup@test.com', 'SenhaForte@1');
+      await authService.register('Primeiro', 'dup@test.com', 'SenhaForte@1', { marketingCommunications: false });
 
-      const result = await authService.register('Segundo', 'dup@test.com', 'OutraSenh@1');
+      const result = await authService.register('Segundo', 'dup@test.com', 'OutraSenh@1', { marketingCommunications: false });
       expect(result.success).toBe(false);
       if (result.success) return;
 
@@ -89,8 +94,8 @@ if (!connectionString) {
     });
 
     it('idempotência: registrar duas vezes o mesmo e-mail não duplica usuários', async () => {
-      await authService.register('User A', 'unico@test.com', 'SenhaForte@1');
-      await authService.register('User B', 'unico@test.com', 'OutraSenh@1');
+      await authService.register('User A', 'unico@test.com', 'SenhaForte@1', { marketingCommunications: false });
+      await authService.register('User B', 'unico@test.com', 'OutraSenh@1', { marketingCommunications: false });
 
       const allUsers = await db
         .select()
@@ -103,7 +108,7 @@ if (!connectionString) {
   // ─── Login ────────────────────────────────────────────────────────────────────
   describe('login', () => {
     beforeEach(async () => {
-      await authService.register('Usuário Teste', 'login@test.com', 'SenhaForte@1');
+      await authService.register('Usuário Teste', 'login@test.com', 'SenhaForte@1', { marketingCommunications: false });
     });
 
     it('autentica com credenciais corretas e retorna sessão', async () => {
@@ -178,7 +183,7 @@ if (!connectionString) {
   // ─── Logout ───────────────────────────────────────────────────────────────────
   describe('logout', () => {
     it('revoga a sessão e ela não fica mais acessível', async () => {
-      const regResult = await authService.register('User', 'logout@test.com', 'SenhaForte@1');
+      const regResult = await authService.register('User', 'logout@test.com', 'SenhaForte@1', { marketingCommunications: false });
       if (!regResult.success) throw new Error('setup falhou');
 
       await authService.logout(regResult.sessionId, regResult.user.id);
@@ -192,7 +197,7 @@ if (!connectionString) {
     });
 
     it('é idempotente: chamar logout duas vezes não gera erro', async () => {
-      const regResult = await authService.register('User', 'logout2@test.com', 'SenhaForte@1');
+      const regResult = await authService.register('User', 'logout2@test.com', 'SenhaForte@1', { marketingCommunications: false });
       if (!regResult.success) throw new Error('setup falhou');
 
       await authService.logout(regResult.sessionId, regResult.user.id);
@@ -209,7 +214,7 @@ if (!connectionString) {
   // ─── Recuperação de Senha ─────────────────────────────────────────────────────
   describe('requestPasswordReset', () => {
     it('cria token de reset no banco após solicitação', async () => {
-      await authService.register('User', 'reset@test.com', 'SenhaForte@1');
+      await authService.register('User', 'reset@test.com', 'SenhaForte@1', { marketingCommunications: false });
       await authService.requestPasswordReset('reset@test.com', emailSender, '127.0.0.1');
 
       // Token criado e disponível pelo fake email sender
@@ -242,7 +247,7 @@ if (!connectionString) {
   // ─── Redefinição de Senha ─────────────────────────────────────────────────────
   describe('resetPassword', () => {
     it('redefine senha e revoga todas as sessões ativas', async () => {
-      await authService.register('User', 'newpass@test.com', 'SenhaForte@1');
+      await authService.register('User', 'newpass@test.com', 'SenhaForte@1', { marketingCommunications: false });
       await authService.requestPasswordReset('newpass@test.com', emailSender, '127.0.0.1');
 
       const msg = emailSender.getLastSentEmail();
@@ -262,7 +267,7 @@ if (!connectionString) {
     });
 
     it('rejeita token já utilizado', async () => {
-      await authService.register('User', 'token2@test.com', 'SenhaForte@1');
+      await authService.register('User', 'token2@test.com', 'SenhaForte@1', { marketingCommunications: false });
       await authService.requestPasswordReset('token2@test.com', emailSender, '127.0.0.1');
 
       const msg = emailSender.getLastSentEmail();
@@ -284,7 +289,7 @@ if (!connectionString) {
     });
 
     it('rejeita nova senha igual à atual', async () => {
-      await authService.register('User', 'same@test.com', 'SenhaForte@1');
+      await authService.register('User', 'same@test.com', 'SenhaForte@1', { marketingCommunications: false });
       await authService.requestPasswordReset('same@test.com', emailSender, '127.0.0.1');
 
       const msg = emailSender.getLastSentEmail();

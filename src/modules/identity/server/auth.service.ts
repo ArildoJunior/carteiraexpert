@@ -52,11 +52,15 @@ export interface AuthError {
   rateLimited?: boolean;
 }
 
+import { recordConsent } from './consent-service';
+import { CURRENT_CONSENT_VERSIONS } from '../domain/consent-constants';
+
 // ─── CADASTRO ─────────────────────────────────────────────────────────────────
 export async function register(
   name: string,
   email: string,
   password: string,
+  consents: { marketingCommunications: boolean },
   ip?: string | null,
   userAgent?: string | null
 ): Promise<AuthResult | AuthError> {
@@ -116,6 +120,36 @@ export async function register(
         { preMinimized: true },
         tx
       );
+
+      // Registrar consentimentos iniciais na mesma transação
+      await recordConsent({
+        userId,
+        consentType: 'terms_of_service',
+        version: CURRENT_CONSENT_VERSIONS.terms_of_service.version,
+        action: 'granted',
+        ip: ip ?? undefined,
+        userAgent: userAgent ?? undefined,
+      }, tx);
+
+      await recordConsent({
+        userId,
+        consentType: 'privacy_policy',
+        version: CURRENT_CONSENT_VERSIONS.privacy_policy.version,
+        action: 'granted',
+        ip: ip ?? undefined,
+        userAgent: userAgent ?? undefined,
+      }, tx);
+
+      if (consents.marketingCommunications) {
+        await recordConsent({
+          userId,
+          consentType: 'marketing_communications',
+          version: CURRENT_CONSENT_VERSIONS.marketing_communications.version,
+          action: 'granted',
+          ip: ip ?? undefined,
+          userAgent: userAgent ?? undefined,
+        }, tx);
+      }
     });
 
     return { success: true, token, sessionId, expiresAt, user: createdUser! };

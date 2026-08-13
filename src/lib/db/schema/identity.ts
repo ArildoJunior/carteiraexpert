@@ -65,3 +65,21 @@ export const authRateLimits = pgTable('auth_rate_limits', {
   // Preenchido após a 5ª falha consecutiva dentro da janela de 15 minutos
   blockedUntil: timestamp('blocked_until', { withTimezone: true }),
 });
+
+// ─── user_consents ────────────────────────────────────────────────────────────
+// Histórico estritamente append-only de aceites e revogações de consentimentos.
+// UPDATE e DELETE são bloqueados via trigger PostgreSQL trg_prevent_user_consents_modification.
+export const userConsents = pgTable('user_consents', {
+  id: uuid('id').primaryKey(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'restrict' }),
+  consentType: text('consent_type').notNull(),
+  version: text('version').notNull(),
+  action: text('action').notNull(),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  correlationId: uuid('correlation_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
