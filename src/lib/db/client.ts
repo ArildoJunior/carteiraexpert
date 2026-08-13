@@ -12,6 +12,27 @@ const envSchema = z.object({
   }),
 });
 
+// Startup Guard — valida segredos obrigatórios em produção.
+// AUTH_SECRET: segredo de sessão (min 32 chars).
+// AUTH_RATE_LIMIT_SECRET: segredo de HMAC do rate limiter (min 32 chars).
+const authEnvSchema = z.object({
+  AUTH_SECRET: z.string().min(32, 'AUTH_SECRET deve ter no mínimo 32 caracteres.'),
+  AUTH_RATE_LIMIT_SECRET: z.string().min(32, 'AUTH_RATE_LIMIT_SECRET deve ter no mínimo 32 caracteres.'),
+});
+
+if (process.env.NODE_ENV === 'production') {
+  try {
+    authEnvSchema.parse({
+      AUTH_SECRET: process.env.AUTH_SECRET,
+      AUTH_RATE_LIMIT_SECRET: process.env.AUTH_RATE_LIMIT_SECRET,
+    });
+  } catch {
+    throw new Error(
+      'FATAL: Segredos de autenticação inválidos ou ausentes. A inicialização da aplicação foi abortada por segurança.'
+    );
+  }
+}
+
 // Identifica se estamos em ambiente de testes (unitários ou integração)
 const isTestEnv = process.env.VITEST === 'true';
 

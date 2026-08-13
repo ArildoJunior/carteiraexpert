@@ -1,0 +1,22 @@
+﻿RELATÓRIO SANITIZADO DE AUDITORIA DE SEGREDOS
+
+Commit analisado: c44106cc
+Data do commit: 2026-08-12T16:11:49-03:00
+Título do commit: docs: add project decisions and delivery guidance
+
+STATUS GERAL: BLOQUEADO
+Possíveis exposições reais: 2
+
+OCORRÊNCIAS SANITIZADAS:
+- Arquivo: .env.example | Linha: 25 | Variável: OPENAI_MAX_TOKENS | Categoria: Valor sensível não identificado como placeholder
+- Arquivo: .env.example | Linha: 32 | Variável: CLAUDE_MAX_TOKENS | Categoria: Valor sensível não identificado como placeholder
+
+COMMIT PRESENTE EM REFERÊNCIAS REMOTAS: SIM
+Quantidade de referências remotas: 2
+COMMIT PRESENTE EM TAGS: NÃO CONFIRMADO
+
+SEGREDOS EXIBIDOS: NÃO
+Valores, senhas, tokens, chaves, URLs completas e linhas de código não foram exibidos.
+ALTERAÇÃO NO REPOSITÓRIO: NÃO
+Nenhum commit, push, reset, checkout, rebase ou reescrita de histórico foi executado.
+AÇÃO: revisar e rotacionar as credenciais apontadas antes de qualquer publicação.

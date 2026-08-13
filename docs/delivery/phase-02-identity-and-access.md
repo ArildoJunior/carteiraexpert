@@ -28,11 +28,11 @@ Garantir que usuários tenham acesso apenas aos próprios dados antes da criaç�
 
 ### Critérios de aceite
 
-- [ ] Usuário consegue criar conta;
-- [ ] Senha não é armazenada em texto puro;
-- [ ] Sessão inválida não acessa área privada;
-- [ ] Entradas inválidas são rejeitadas;
-- [ ] Há testes de autenticação.
+- [x] Usuário consegue criar conta;
+- [x] Senha não é armazenada em texto puro (Argon2id com parâmetros OWASP);
+- [x] Sessão inválida não acessa área privada;
+- [x] Entradas inválidas são rejeitadas (validação Zod Unicode-aware);
+- [x] Há testes de autenticação (unitários, integração e E2E).
 
 ## Pacote 02.02 — Consentimentos, autorização e isolamento
 

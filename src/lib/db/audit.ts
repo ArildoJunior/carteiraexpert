@@ -173,7 +173,8 @@ export async function insertAuditLog(
     oldValue?: any;
     newValue?: any;
   },
-  options: SanitizerOptions = {}
+  options: SanitizerOptions = {},
+  executor: any = db
 ): Promise<void> {
   if (!log.tableName) {
     throw new Error('O campo tableName é obrigatório para registrar auditoria.');
@@ -196,7 +197,7 @@ export async function insertAuditLog(
   // Geração do UUID na aplicação (Opção B)
   const id = crypto.randomUUID();
 
-  await db.insert(auditLogs).values({
+  await executor.insert(auditLogs).values({
     id,
     tableName: log.tableName,
     recordId: log.recordId,

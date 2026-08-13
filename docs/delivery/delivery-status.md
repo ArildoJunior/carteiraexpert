@@ -42,9 +42,21 @@ Nenhuma funcionalidade de domínio financeiro foi implementada até o momento.
 
 ## Em andamento
 
-- Nenhum pacote em implementação no momento.
+- Fase 02 — Identidade e Acesso (Pacote 02.02 a planejar).
 
 ## Concluído
+
+### Fase 02 — Identidade e Acesso
+
+- **Pacote 02.01 — Cadastro, login e sessão**:
+  - Tabela `users` com hash Argon2id (parâmetros OWASP), status e e-mail único.
+  - Tabela `sessions` com tokens SHA-256, TTL fixo de 7 dias, cookie `__Host-` em produção e anonimização de IP.
+  - Tabela `password_reset_tokens` com consumo atômico via `UPDATE ... RETURNING` e expiração em 15 min.
+  - Tabela `auth_rate_limits` com controle de tentativas por IP/e-mail via PostgreSQL (chaves HMAC-SHA256).
+  - Proteção CSRF com validação de `Origin` e `Referer` contra `ALLOWED_ORIGINS`.
+  - Middleware Next.js com verificação de sessão e rotas protegidas.
+  - Formulários UI com React 19 `useActionState` para login, cadastro, esqueci senha e redefinição.
+  - Suíte de testes unitários (83/83), integração (18/18) e E2E Playwright.
 
 ### Documentação e governança
 
