@@ -155,4 +155,49 @@ export const createPortfolioEventSchema = z
     }
   );
 
-export type CreatePortfolioEventInput = z.infer<typeof createPortfolioEventSchema>;
+export type CreatePortfolioEventInput = z.input<typeof createPortfolioEventSchema>;
+export type CreatePortfolioEventOutput = z.output<typeof createPortfolioEventSchema>;
+
+// ─── Schema de Cancelamento de Evento de Carteira ───────────────────────────
+export const cancelPortfolioEventSchema = z.object({
+  cancellationReason: z
+    .string()
+    .min(5, 'A justificativa de cancelamento deve ter no mínimo 5 caracteres.')
+    .max(500, 'A justificativa de cancelamento não pode exceder 500 caracteres.')
+    .transform((val) => val.trim())
+    .refine((val) => val.length >= 5, {
+      message: 'A justificativa de cancelamento deve ter no mínimo 5 caracteres válidos.',
+    }),
+});
+
+export type CancelPortfolioEventInput = z.input<typeof cancelPortfolioEventSchema>;
+export type CancelPortfolioEventOutput = z.output<typeof cancelPortfolioEventSchema>;
+
+// ─── Schema de Listagem/Filtro de Eventos de Carteira ───────────────────────
+export const listPortfolioEventsSchema = z
+  .object({
+    type: z.enum(PORTFOLIO_EVENT_TYPES).optional(),
+    startDate: eventDateSchema.optional(),
+    endDate: eventDateSchema.optional(),
+    limit: z
+      .number()
+      .int('O limite deve ser um número inteiro.')
+      .min(1, 'O limite mínimo é 1.')
+      .max(100, 'O limite máximo é 100.')
+      .default(50),
+  })
+  .refine(
+    (data) => {
+      if (data.startDate && data.endDate) {
+        return data.endDate.getTime() >= data.startDate.getTime();
+      }
+      return true;
+    },
+    {
+      message: 'A data final (endDate) não pode ser anterior à data inicial (startDate).',
+      path: ['endDate'],
+    }
+  );
+
+export type ListPortfolioEventsInput = z.input<typeof listPortfolioEventsSchema>;
+export type ListPortfolioEventsOutput = z.output<typeof listPortfolioEventsSchema>;
