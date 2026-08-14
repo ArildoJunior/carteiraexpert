@@ -125,7 +125,7 @@ export async function getPortfolioById(
     throw new PortfolioNotFoundError();
   }
 
-  await assertOwnership(portfolio.userId, user, 'portfolio');
+  await assertOwnership(portfolio.userId, user, 'portfolio', executor);
 
   return portfolio;
 }
@@ -156,7 +156,7 @@ export async function updatePortfolio(
     throw new PortfolioNotFoundError();
   }
 
-  await assertOwnership(existing.userId, user, 'portfolio');
+  await assertOwnership(existing.userId, user, 'portfolio', executor);
 
   const updateData: {
     name?: string;
@@ -256,7 +256,7 @@ export async function deletePortfolio(
     throw new PortfolioNotFoundError();
   }
 
-  await assertOwnership(existing.userId, user, 'portfolio');
+  await assertOwnership(existing.userId, user, 'portfolio', executor);
 
   const now = new Date();
 

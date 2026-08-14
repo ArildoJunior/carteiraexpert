@@ -39,3 +39,10 @@ export class PortfolioEventNotFoundError extends Error {
     this.name = 'PortfolioEventNotFoundError';
   }
 }
+
+export class DuplicateAssetError extends Error {
+  constructor(message = 'Já existe um ativo customizado com este ticker para o usuário.') {
+    super(message);
+    this.name = 'DuplicateAssetError';
+  }
+}

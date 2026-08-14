@@ -69,7 +69,8 @@ export const createAssetSchema = z
     }
   );
 
-export type CreateAssetInput = z.infer<typeof createAssetSchema>;
+export type CreateAssetInput = z.input<typeof createAssetSchema>;
+export type CreateAssetOutput = z.output<typeof createAssetSchema>;
 
 export const createCustomAssetSchema = z.object({
   ticker: tickerSchema,
@@ -93,7 +94,8 @@ export const createCustomAssetSchema = z.object({
   userId: z.string().uuid('ID do usuário deve ser um UUID válido.'),
 });
 
-export type CreateCustomAssetInput = z.infer<typeof createCustomAssetSchema>;
+export type CreateCustomAssetInput = z.input<typeof createCustomAssetSchema>;
+export type CreateCustomAssetOutput = z.output<typeof createCustomAssetSchema>;
 
 export const updateCustomAssetSchema = z.object({
   name: z
@@ -107,4 +109,22 @@ export const updateCustomAssetSchema = z.object({
   currency: z.enum(CURRENCIES).optional(),
 });
 
-export type UpdateCustomAssetInput = z.infer<typeof updateCustomAssetSchema>;
+export type UpdateCustomAssetInput = z.input<typeof updateCustomAssetSchema>;
+export type UpdateCustomAssetOutput = z.output<typeof updateCustomAssetSchema>;
+
+export const searchAssetsSchema = z.object({
+  query: z
+    .string()
+    .max(100, 'A busca não pode exceder 100 caracteres.')
+    .default(''),
+  assetType: z.enum(ASSET_TYPES).optional(),
+  limit: z
+    .number()
+    .int('O limite deve ser um número inteiro.')
+    .min(1, 'O limite mínimo é 1.')
+    .max(50, 'O limite máximo é 50.')
+    .default(20),
+});
+
+export type SearchAssetsInput = z.input<typeof searchAssetsSchema>;
+export type SearchAssetsOutput = z.output<typeof searchAssetsSchema>;

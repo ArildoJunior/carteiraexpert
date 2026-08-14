@@ -196,7 +196,7 @@ describe('Unidade: PortfolioService', () => {
       const result = await getPortfolioById(portfolioId, user1, mockDb);
 
       expect(result).toEqual(mockItem);
-      expect(assertOwnershipSpy).toHaveBeenCalledWith(user1.id, user1, 'portfolio');
+      expect(assertOwnershipSpy).toHaveBeenCalledWith(user1.id, user1, 'portfolio', mockDb);
     });
 
     it('deve lançar PortfolioNotFoundError para ID inválido', async () => {
@@ -245,7 +245,7 @@ describe('Unidade: PortfolioService', () => {
       await expect(getPortfolioById(portfolioId, user1, mockDb)).rejects.toThrow(
         AuthorizationError
       );
-      expect(assertOwnershipSpy).toHaveBeenCalledWith(user2.id, user1, 'portfolio');
+      expect(assertOwnershipSpy).toHaveBeenCalledWith(user2.id, user1, 'portfolio', mockDb);
     });
   });
 
