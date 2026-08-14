@@ -13,7 +13,7 @@ import { requireAuth } from '@/modules/identity/server/current-user';
 import { termsAcceptanceSchema } from '@/modules/identity/domain/consent.schema';
 import { recordConsent } from '@/modules/identity/server/consent-service';
 import { CURRENT_CONSENT_VERSIONS } from '@/modules/identity/domain/consent-constants';
-import { hashToken, getSessionCookieOptions, getClearCookieOptions, SESSION_COOKIE_NAME } from '@/modules/identity/server/session';
+import { hashToken, getSessionCookieOptions, getClearCookieOptions, SESSION_COOKIE_NAME, extractRequestContext } from '@/modules/identity/server/session';
 import { TestFakeEmailSender } from '@/modules/identity/domain/email-sender';
 import type { EmailSenderService } from '@/modules/identity/domain/email-sender';
 import { headers } from 'next/headers';
@@ -80,6 +80,7 @@ export async function registerAction(
 
   try {
     const hdrs = await headers();
+    const reqContext = extractRequestContext(hdrs);
     const ip = getClientIp(hdrs) ?? undefined;
     const ua = hdrs.get('user-agent') ?? undefined;
 
@@ -97,7 +98,7 @@ export async function registerAction(
     }
 
     const cookieStore = await cookies();
-    const opts = getSessionCookieOptions(result.expiresAt);
+    const opts = getSessionCookieOptions(result.expiresAt, reqContext);
     cookieStore.set(SESSION_COOKIE_NAME, result.token, opts);
 
     redirect('/dashboard');
@@ -130,6 +131,7 @@ export async function loginAction(
 
   try {
     const hdrs = await headers();
+    const reqContext = extractRequestContext(hdrs);
     const ip = getClientIp(hdrs) ?? undefined;
     const ua = hdrs.get('user-agent') ?? undefined;
 
@@ -150,7 +152,7 @@ export async function loginAction(
     }
 
     const cookieStore = await cookies();
-    const opts = getSessionCookieOptions(result.expiresAt);
+    const opts = getSessionCookieOptions(result.expiresAt, reqContext);
     cookieStore.set(SESSION_COOKIE_NAME, result.token, opts);
 
     redirect('/dashboard');
@@ -169,6 +171,8 @@ export async function loginAction(
 // ─── LOGOUT ───────────────────────────────────────────────────────────────────
 export async function logoutAction(): Promise<ActionResult> {
   const cookieStore = await cookies();
+  const hdrs = await headers();
+  const reqContext = extractRequestContext(hdrs);
   try {
     const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
@@ -192,12 +196,14 @@ export async function logoutAction(): Promise<ActionResult> {
       }
     }
 
-    cookieStore.delete(SESSION_COOKIE_NAME);
+    const clearOpts = getClearCookieOptions(reqContext);
+    cookieStore.set(SESSION_COOKIE_NAME, '', clearOpts);
     return { success: true };
   } catch {
     console.error('[logoutAction] Falha inesperada ao encerrar sessão');
     try {
-      cookieStore.delete(SESSION_COOKIE_NAME);
+      const clearOpts = getClearCookieOptions(reqContext);
+      cookieStore.set(SESSION_COOKIE_NAME, '', clearOpts);
     } catch {
       // Falha ao deletar cookie no catch é ignorada
     }

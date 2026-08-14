@@ -74,7 +74,7 @@ export default defineConfig({
   webServer: {
     command: 'npx next start -p 3005', // Inicia o servidor de produção na porta 3005
     url: BASE_URL,
-    reuseExistingServer: false, // Garante ambiente limpo com DATABASE_URL_TEST e código atualizado
+    reuseExistingServer: false, // Garante que o Playwright sempre inicie um processo novo
     timeout: 120 * 1000, // Tempo limite para o servidor iniciar
     env: {
       DATABASE_URL: process.env.DATABASE_URL_TEST,

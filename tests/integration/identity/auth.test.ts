@@ -4,7 +4,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import * as schema from '../../../src/lib/db/schema';
 import { users, sessions, passwordResetTokens, authRateLimits, userConsents } from '../../../src/lib/db/schema';
 import { TestFakeEmailSender } from '../../../src/modules/identity/domain/email-sender';
-import { hashToken } from '../../../src/modules/identity/server/session';
+import { hashToken, getSessionCookieOptions, getClearCookieOptions, extractRequestContext } from '../../../src/modules/identity/server/session';
 import * as authService from '../../../src/modules/identity/server/auth.service';
 import { isBlocked, loginKey, recordFailure } from '../../../src/modules/identity/server/rate-limiter';
 import { eq, and, sql } from 'drizzle-orm';
@@ -325,6 +325,58 @@ if (!connectionString) {
       await expect(
         authService.resetPassword(msg.token, 'SenhaForte@1')
       ).rejects.toThrow('PASSWORD_SAME');
+    });
+  });
+
+  // ─── Fluxo Completo de Sessão e Emissão/Limpeza de Cookies ───────────────────
+  describe('Fluxo Completo de Sessão e Emissão/Limpeza de Cookies', () => {
+    it('login emite token válido com opções corretas e logout revoga e limpa o cookie', async () => {
+      // 1. Cadastro
+      const reg = await authService.register('Alice Flow', 'alice.flow@test.com', 'SenhaForte@1', { marketingCommunications: false });
+      expect(reg.success).toBe(true);
+
+      // 2. Login com contexto de produção (carteiraexpert.com.br)
+      const loginRes = await authService.login('alice.flow@test.com', 'SenhaForte@1', '203.0.113.10', 'BrowserAgent/1.0');
+      expect(loginRes.success).toBe(true);
+      if (!loginRes.success) return;
+
+      const prodHdrs = new Headers({ host: 'carteiraexpert.com.br' });
+      const prodCtx = extractRequestContext(prodHdrs);
+      const prodOpts = getSessionCookieOptions(loginRes.expiresAt, prodCtx);
+
+      expect(prodOpts.secure).toBe(true);
+      expect(prodOpts.httpOnly).toBe(true);
+      expect(prodOpts.sameSite).toBe('lax');
+      expect(prodOpts.path).toBe('/');
+      expect(prodOpts.expires).toEqual(loginRes.expiresAt);
+
+      // 3. Logout revoga a sessão no banco e gera opções de limpeza coerentes
+      const [session] = await db.select().from(sessions).where(eq(sessions.tokenHash, hashToken(loginRes.token)));
+      expect(session).toBeDefined();
+      expect(session.revokedAt).toBeNull();
+
+      await authService.logout(session.id, session.userId);
+
+      const [revokedSession] = await db.select().from(sessions).where(eq(sessions.id, session.id));
+      expect(revokedSession.revokedAt).not.toBeNull();
+
+      const clearOpts = getClearCookieOptions(prodCtx);
+      expect(clearOpts.secure).toBe(true);
+      expect(clearOpts.httpOnly).toBe(true);
+      expect(clearOpts.sameSite).toBe('lax');
+      expect(clearOpts.path).toBe('/');
+      expect(clearOpts.maxAge).toBe(0);
+
+      // 4. Teste de cabeçalhos forjados em produção (X-Forwarded-* ignorados)
+      const forgedHdrs = new Headers({
+        'x-forwarded-for': '10.0.0.1',
+        'x-forwarded-host': 'localhost:3000',
+        'x-forwarded-proto': 'http',
+        host: 'carteiraexpert.com.br',
+      });
+      const forgedCtx = extractRequestContext(forgedHdrs);
+      const forgedOpts = getSessionCookieOptions(loginRes.expiresAt, forgedCtx);
+      expect(forgedOpts.secure).toBe(true); // Neutralizado: permanece secure!
     });
   });
 }

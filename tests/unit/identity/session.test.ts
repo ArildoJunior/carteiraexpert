@@ -4,6 +4,9 @@ import {
   hashToken,
   anonymizeIp,
   sanitizeUserAgent,
+  resolveIsSecureCookie,
+  extractRequestContext,
+  isLocalLoopbackHost,
   getSessionCookieOptions,
   getClearCookieOptions,
 } from '../../../src/modules/identity/server/session';
@@ -90,7 +93,7 @@ describe('sanitizeUserAgent', () => {
 });
 
 // ─── Cookie Options ───────────────────────────────────────────────────────────
-describe('Cookie Options (getSessionCookieOptions & getClearCookieOptions)', () => {
+describe('Cookie Options (resolveIsSecureCookie, extractRequestContext, isLocalLoopbackHost, getSessionCookieOptions & getClearCookieOptions)', () => {
   const originalEnv = { ...process.env };
 
   afterEach(() => {
@@ -99,55 +102,194 @@ describe('Cookie Options (getSessionCookieOptions & getClearCookieOptions)', () 
 
   const sampleDate = new Date('2026-12-31T23:59:59.000Z');
 
-  it('em produção sem SECURE_COOKIES, secure deve ser SEMPRE true', () => {
-    (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
-    delete process.env.SECURE_COOKIES;
+  describe('isLocalLoopbackHost', () => {
+    it('reconhece hosts de loopback válidos (com ou sem porta)', () => {
+      expect(isLocalLoopbackHost('localhost')).toBe(true);
+      expect(isLocalLoopbackHost('localhost:3000')).toBe(true);
+      expect(isLocalLoopbackHost('localhost:3005')).toBe(true);
+      expect(isLocalLoopbackHost('127.0.0.1')).toBe(true);
+      expect(isLocalLoopbackHost('127.0.0.1:3005')).toBe(true);
+      expect(isLocalLoopbackHost('::1')).toBe(true);
+      expect(isLocalLoopbackHost('[::1]')).toBe(true);
+      expect(isLocalLoopbackHost('[::1]:3005')).toBe(true);
+    });
 
-    const sessionOpts = getSessionCookieOptions(sampleDate);
-    expect(sessionOpts.secure).toBe(true);
-    expect(sessionOpts.httpOnly).toBe(true);
-    expect(sessionOpts.sameSite).toBe('lax');
-    expect(sessionOpts.path).toBe('/');
-    expect(sessionOpts.expires).toEqual(sampleDate);
-
-    const clearOpts = getClearCookieOptions();
-    expect(clearOpts.secure).toBe(true);
-    expect(clearOpts.httpOnly).toBe(true);
-    expect(clearOpts.sameSite).toBe('lax');
-    expect(clearOpts.path).toBe('/');
-    expect(clearOpts.maxAge).toBe(0);
+    it('rejeita hosts externos, subdomínios maliciosos e IPs não loopback', () => {
+      expect(isLocalLoopbackHost('carteiraexpert.com.br')).toBe(false);
+      expect(isLocalLoopbackHost('app.carteiraexpert.com.br')).toBe(false);
+      expect(isLocalLoopbackHost('localhost.evil.com')).toBe(false);
+      expect(isLocalLoopbackHost('evil-localhost.com')).toBe(false);
+      expect(isLocalLoopbackHost('192.168.1.10')).toBe(false);
+      expect(isLocalLoopbackHost('10.0.0.1')).toBe(false);
+      expect(isLocalLoopbackHost(null)).toBe(false);
+      expect(isLocalLoopbackHost(undefined)).toBe(false);
+      expect(isLocalLoopbackHost('')).toBe(false);
+    });
   });
 
-  it('em produção com SECURE_COOKIES=false, secure deve continuar SEMPRE true', () => {
-    (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
-    process.env.SECURE_COOKIES = 'false';
+  describe('extractRequestContext e proteção contra cabeçalhos forjados', () => {
+    it('ignora sumariamente x-forwarded-host e x-forwarded-proto mesmo com X-Forwarded-For em TRUSTED_PROXIES', () => {
+      (process.env as Record<string, string | undefined>).TRUSTED_PROXIES = '10.0.0.1,192.168.1.1';
 
-    const sessionOpts = getSessionCookieOptions(sampleDate);
-    expect(sessionOpts.secure).toBe(true);
+      const hdrs = new Headers({
+        'x-forwarded-for': '10.0.0.1', // IP supostamente de proxy confiável
+        'x-forwarded-proto': 'http',
+        'x-forwarded-host': 'localhost:3000',
+        host: 'carteiraexpert.com.br',
+        origin: 'https://carteiraexpert.com.br',
+      });
 
-    const clearOpts = getClearCookieOptions();
-    expect(clearOpts.secure).toBe(true);
+      const ctx = extractRequestContext(hdrs);
+      // X-Forwarded-Host e X-Forwarded-Proto são ignorados em Server Actions
+      expect(ctx.host).toBe('carteiraexpert.com.br');
+      expect(ctx.protocol).toBe('https');
+      expect(resolveIsSecureCookie(ctx)).toBe(true);
+    });
+
+    it('cliente externo enviando x-forwarded-host=localhost é neutralizado e retorna secure === true', () => {
+      const hdrs = new Headers({
+        'x-forwarded-host': 'localhost:3000',
+        'x-forwarded-proto': 'http',
+        host: 'carteiraexpert.com.br',
+      });
+
+      const ctx = extractRequestContext(hdrs);
+      expect(ctx.host).toBe('carteiraexpert.com.br');
+      expect(resolveIsSecureCookie(ctx)).toBe(true);
+    });
+
+    it('cliente externo enviando x-forwarded-proto=http com host externo resulta em secure === true', () => {
+      const hdrs = new Headers({
+        'x-forwarded-proto': 'http',
+        host: 'carteiraexpert.com.br',
+      });
+
+      const ctx = extractRequestContext(hdrs);
+      expect(resolveIsSecureCookie(ctx)).toBe(true);
+    });
+
+    it('cliente externo enviando Origin de localhost contra host de produção tem o protocolo descartado', () => {
+      const hdrs = new Headers({
+        host: 'carteiraexpert.com.br',
+        origin: 'http://localhost:3000',
+      });
+
+      const ctx = extractRequestContext(hdrs);
+      expect(ctx.host).toBe('carteiraexpert.com.br');
+      expect(ctx.protocol).toBeNull(); // Não herda 'http' de origin não-correspondente
+      expect(resolveIsSecureCookie(ctx)).toBe(true);
+    });
+
+    it('extrai protocolo de origin legítima em desenvolvimento local quando origin coincide com host direto', () => {
+      const hdrs = new Headers({
+        host: 'localhost:3005',
+        origin: 'http://localhost:3005',
+      });
+
+      const ctx = extractRequestContext(hdrs);
+      expect(ctx.protocol).toBe('http');
+      expect(ctx.host).toBe('localhost:3005');
+      expect(resolveIsSecureCookie(ctx)).toBe(false);
+    });
+
+    it('trata headers ausentes ou nulos sem falhar', () => {
+      expect(extractRequestContext(null)).toEqual({});
+      expect(extractRequestContext(undefined)).toEqual({});
+    });
   });
 
-  it('em desenvolvimento com SECURE_COOKIES=false, secure deve ser false', () => {
-    (process.env as Record<string, string | undefined>).NODE_ENV = 'development';
-    process.env.SECURE_COOKIES = 'false';
+  describe('resolveIsSecureCookie e blindagem de produção', () => {
+    it('em produção sem contexto, secure deve ser SEMPRE true independentemente de variáveis de ambiente', () => {
+      (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
+      process.env.SECURE_COOKIES = 'false';
+      process.env.PLAYWRIGHT_TEST = 'true';
+      process.env.APP_ENV = 'e2e';
+      process.env.CI = 'true';
 
-    const sessionOpts = getSessionCookieOptions(sampleDate);
-    expect(sessionOpts.secure).toBe(false);
+      // Nenhuma combinação de variáveis desabilita secure em produção sem contexto de requisição
+      expect(resolveIsSecureCookie()).toBe(true);
 
-    const clearOpts = getClearCookieOptions();
-    expect(clearOpts.secure).toBe(false);
-  });
+      const sessionOpts = getSessionCookieOptions(sampleDate);
+      expect(sessionOpts.secure).toBe(true);
+      expect(sessionOpts.httpOnly).toBe(true);
+      expect(sessionOpts.sameSite).toBe('lax');
+      expect(sessionOpts.path).toBe('/');
+      expect(sessionOpts.expires).toEqual(sampleDate);
 
-  it('em desenvolvimento com SECURE_COOKIES=true, secure deve ser true', () => {
-    (process.env as Record<string, string | undefined>).NODE_ENV = 'development';
-    process.env.SECURE_COOKIES = 'true';
+      const clearOpts = getClearCookieOptions();
+      expect(clearOpts.secure).toBe(true);
+      expect(clearOpts.httpOnly).toBe(true);
+      expect(clearOpts.sameSite).toBe('lax');
+      expect(clearOpts.path).toBe('/');
+      expect(clearOpts.maxAge).toBe(0);
+    });
 
-    const sessionOpts = getSessionCookieOptions(sampleDate);
-    expect(sessionOpts.secure).toBe(true);
+    it('em produção com host externo (ex.: carteiraexpert.com.br), secure é SEMPRE true mesmo com HTTP', () => {
+      (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
+      process.env.SECURE_COOKIES = 'false';
+      process.env.PLAYWRIGHT_TEST = 'true';
 
-    const clearOpts = getClearCookieOptions();
-    expect(clearOpts.secure).toBe(true);
+      const ctxHttp = { host: 'carteiraexpert.com.br', protocol: 'http' };
+      expect(resolveIsSecureCookie(ctxHttp)).toBe(true);
+
+      const ctxHttps = { host: 'carteiraexpert.com.br', protocol: 'https' };
+      expect(resolveIsSecureCookie(ctxHttps)).toBe(true);
+
+      const ctxSubdomain = { host: 'app.carteiraexpert.com.br', protocol: 'https' };
+      expect(resolveIsSecureCookie(ctxSubdomain)).toBe(true);
+    });
+
+    it('qualquer requisição HTTPS resulta em secure === true (inclusive em localhost)', () => {
+      expect(resolveIsSecureCookie({ host: 'localhost:3005', protocol: 'https' })).toBe(true);
+      expect(resolveIsSecureCookie({ host: '127.0.0.1:3005', protocol: 'https' })).toBe(true);
+      expect(resolveIsSecureCookie({ protocol: 'https' })).toBe(true);
+    });
+
+    it('requisição HTTP em host loopback local (localhost ou 127.0.0.1) resulta em secure === false', () => {
+      expect(resolveIsSecureCookie({ host: 'localhost:3005', protocol: 'http' })).toBe(false);
+      expect(resolveIsSecureCookie({ host: '127.0.0.1:3005', protocol: 'http' })).toBe(false);
+      expect(resolveIsSecureCookie({ host: '[::1]:3005', protocol: 'http' })).toBe(false);
+      expect(resolveIsSecureCookie({ host: 'localhost:3005' })).toBe(false);
+
+      const sessionOpts = getSessionCookieOptions(sampleDate, { host: 'localhost:3005', protocol: 'http' });
+      expect(sessionOpts.secure).toBe(false);
+      expect(sessionOpts.httpOnly).toBe(true);
+
+      const clearOpts = getClearCookieOptions({ host: 'localhost:3005', protocol: 'http' });
+      expect(clearOpts.secure).toBe(false);
+      expect(clearOpts.httpOnly).toBe(true);
+    });
+
+    it('em desenvolvimento sem contexto e sem SECURE_COOKIES, secure é false', () => {
+      (process.env as Record<string, string | undefined>).NODE_ENV = 'development';
+      delete process.env.SECURE_COOKIES;
+
+      expect(resolveIsSecureCookie()).toBe(false);
+    });
+
+    it('em desenvolvimento sem contexto com SECURE_COOKIES=true, secure é true', () => {
+      (process.env as Record<string, string | undefined>).NODE_ENV = 'development';
+      process.env.SECURE_COOKIES = 'true';
+
+      expect(resolveIsSecureCookie()).toBe(true);
+    });
+
+    it('opções de emissão e limpeza são coerentes entre si para o mesmo contexto', () => {
+      const contexts = [
+        undefined,
+        { host: 'localhost:3005', protocol: 'http' },
+        { host: 'carteiraexpert.com.br', protocol: 'https' },
+      ];
+
+      for (const ctx of contexts) {
+        const sessionOpts = getSessionCookieOptions(sampleDate, ctx);
+        const clearOpts = getClearCookieOptions(ctx);
+
+        expect(sessionOpts.httpOnly).toBe(clearOpts.httpOnly);
+        expect(sessionOpts.sameSite).toBe(clearOpts.sameSite);
+        expect(sessionOpts.path).toBe(clearOpts.path);
+        expect(sessionOpts.secure).toBe(clearOpts.secure);
+      }
+    });
   });
 });

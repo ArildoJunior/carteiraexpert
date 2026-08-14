@@ -95,9 +95,9 @@ Crie um arquivo `.env` na raiz do projeto com base nas seguintes variáveis:
 | `AUTH_SECRET` | Chave secreta de alta entropia para derivação de tokens e sessões. | Sim (em produção) |
 | `AUTH_RATE_LIMIT_SECRET` | Chave secreta para cálculo de hash HMAC-SHA256 no limitador de taxa. | Sim (em produção) |
 | `ALLOWED_ORIGINS` | Lista de origens permitidas separadas por vírgula para proteção CSRF. | Sim |
-| `TRUSTED_PROXIES` | Lista de IPs de proxies reversos confiáveis para extração de cabeçalhos de IP. | Opcional |
+| `TRUSTED_PROXIES` | Lista de IPs de proxies reversos confiáveis para extração de cabeçalhos de IP do cliente (para fins de auditoria/rate limiting). | Opcional |
 | `ALLOW_DATABASE_MUTATION` | Defina como `true` para autorizar migrações na `DATABASE_URL` principal. | Sim (ao migrar) |
-| `SECURE_COOKIES` | Força o atributo `Secure` em cookies HTTP (`true` / `false`). | Opcional em dev |
+| `SECURE_COOKIES` | Em `development`, defina como `true` para forçar o atributo `Secure` (ex.: com TLS local). Em `production`, `SECURE_COOKIES=false` NUNCA desabilita `Secure`; o padrão seguro em produção é sempre `secure=true`, e a emissão de cookies de sessão utiliza exclusivamente o Host direto verificado e Origin correspondente, descartando sumariamente cabeçalhos encaminhados forjáveis. | Opcional em dev |
 | `NODE_ENV` | Modo de execução (`development`, `production` ou `test`). | Automático |
 
 ---
