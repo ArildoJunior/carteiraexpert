@@ -1,22 +1,26 @@
 import type { NextRequest } from 'next/server';
 
 // ─── CSRF Protection ──────────────────────────────────────────────────────────
-// Proteção para requisições mutáveis (POST, PUT, PATCH, DELETE) em Route Handlers.
-// Server Actions são validadas automaticamente pelo Next.js (Origin/Host check).
+// Proteção para requisições mutáveis (POST, PUT, PATCH, DELETE) em Route Handlers de API.
+// Server Actions são validadas nativamente pelo Next.js (verificação estrita de Origin/Host).
 //
-// Política:
-// 1. Origin presente e na ALLOWED_ORIGINS → permitido.
-// 2. Origin ausente → usa Referer. Referer com origem na ALLOWED_ORIGINS → permitido.
-// 3. Origin ausente E Referer ausente → rejeitado (403).
-// 4. Origin ou Referer divergentes de ALLOWED_ORIGINS → rejeitado (403).
-// 5. X-Forwarded-Host: aceito apenas se o IP remoto estiver em TRUSTED_PROXIES.
+// Política de Segurança Inviolável:
+// 1. Métodos seguros/não-mutáveis (GET, HEAD, OPTIONS) → permitidos automaticamente.
+// 2. Métodos mutáveis (POST, PUT, PATCH, DELETE):
+//    - Origin presente: deve coincidir exatamente com uma das origens em ALLOWED_ORIGINS → permitido.
+//    - Origin ausente: extrai a origem de Referer (protocolo + host + porta). Se coincidir com ALLOWED_ORIGINS → permitido.
+//    - Origin e Referer ausentes → rejeitado (403).
+//    - Origin ou Referer divergentes de ALLOWED_ORIGINS → rejeitado (403).
+// 3. O cabeçalho Host e cabeçalhos encaminhados (X-Forwarded-*, X-Real-IP) NUNCA são tratados
+//    como origens confiáveis por si só. Toda validação compara estritamente contra origens
+//    explicitamente configuradas em ALLOWED_ORIGINS (ou padrões locais em desenvolvimento).
 
 const MUTABLE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 function getAllowedOrigins(): string[] {
   const raw = process.env.ALLOWED_ORIGINS ?? '';
   if (!raw) {
-    // Em desenvolvimento local, permite localhost
+    // Em desenvolvimento ou teste local sem ALLOWED_ORIGINS configurada, permite portas locais conhecidas
     if (process.env.NODE_ENV !== 'production') {
       return [
         'http://localhost:3000',
@@ -30,11 +34,6 @@ function getAllowedOrigins(): string[] {
   return raw.split(',').map((o) => o.trim()).filter(Boolean);
 }
 
-function getTrustedProxies(): string[] {
-  const raw = process.env.TRUSTED_PROXIES ?? '';
-  return raw.split(',').map((p) => p.trim()).filter(Boolean);
-}
-
 function extractOriginFromReferer(referer: string | null): string | null {
   if (!referer) return null;
   try {
@@ -45,11 +44,6 @@ function extractOriginFromReferer(referer: string | null): string | null {
   }
 }
 
-function isIpTrustedProxy(ip: string): boolean {
-  const trusted = getTrustedProxies();
-  return trusted.includes(ip);
-}
-
 export interface CsrfCheckResult {
   allowed: boolean;
   reason?: string;
@@ -58,7 +52,7 @@ export interface CsrfCheckResult {
 export function checkCsrf(req: NextRequest): CsrfCheckResult {
   const method = req.method?.toUpperCase() ?? '';
 
-  // Requisições não-mutáveis não precisam de proteção CSRF
+  // Requisições não-mutáveis (GET, HEAD, OPTIONS) não alteram estado e são permitidas
   if (!MUTABLE_METHODS.has(method)) {
     return { allowed: true };
   }
@@ -67,26 +61,15 @@ export function checkCsrf(req: NextRequest): CsrfCheckResult {
   const origin = req.headers.get('origin');
   const referer = req.headers.get('referer');
 
-  // Determina o host efetivo (considerando proxy confiável)
-  const remoteIp = req.headers.get('x-real-ip') ?? '';
-  const forwardedHost = req.headers.get('x-forwarded-host');
-  const host = (forwardedHost && isIpTrustedProxy(remoteIp))
-    ? forwardedHost
-    : req.headers.get('host') ?? '';
-
-  // 1. Origin presente → é o cabeçalho preferencial
+  // 1. Origin presente → cabeçalho preferencial
   if (origin) {
     if (allowedOrigins.includes(origin)) {
-      return { allowed: true };
-    }
-    // Em desenvolvimento, permite origins do mesmo host
-    if (process.env.NODE_ENV !== 'production' && origin.includes(host)) {
       return { allowed: true };
     }
     return { allowed: false, reason: `Origin '${origin}' não está na lista de origens permitidas.` };
   }
 
-  // 2. Origin ausente → usa Referer como fallback
+  // 2. Origin ausente → usa Referer como fallback seguro
   const refererOrigin = extractOriginFromReferer(referer);
 
   if (!refererOrigin) {
@@ -97,9 +80,6 @@ export function checkCsrf(req: NextRequest): CsrfCheckResult {
     return { allowed: true };
   }
 
-  if (process.env.NODE_ENV !== 'production' && refererOrigin.includes(host)) {
-    return { allowed: true };
-  }
-
   return { allowed: false, reason: `Referer '${refererOrigin}' não está na lista de origens permitidas.` };
 }
+
