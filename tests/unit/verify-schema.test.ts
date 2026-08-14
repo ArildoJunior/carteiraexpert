@@ -83,6 +83,9 @@ function createMockDb(overrides: {
           { table_name: 'password_reset_tokens' },
           { table_name: 'auth_rate_limits' },
           { table_name: 'user_consents' },
+          { table_name: 'portfolios' },
+          { table_name: 'assets' },
+          { table_name: 'portfolio_events' },
         ];
       }
 
@@ -135,6 +138,19 @@ function createMockDb(overrides: {
         if (targetTableName === 'user_consents') {
           return [{ column_name: 'user_id', foreign_table_name: 'users', foreign_column_name: 'id', delete_rule: 'RESTRICT' }];
         }
+        if (targetTableName === 'portfolios') {
+          return [{ column_name: 'user_id', foreign_table_name: 'users', foreign_column_name: 'id', delete_rule: 'RESTRICT' }];
+        }
+        if (targetTableName === 'assets') {
+          return [{ column_name: 'user_id', foreign_table_name: 'users', foreign_column_name: 'id', delete_rule: 'RESTRICT' }];
+        }
+        if (targetTableName === 'portfolio_events') {
+          return [
+            { column_name: 'portfolio_id', foreign_table_name: 'portfolios', foreign_column_name: 'id', delete_rule: 'RESTRICT' },
+            { column_name: 'asset_id', foreign_table_name: 'assets', foreign_column_name: 'id', delete_rule: 'RESTRICT' },
+            { column_name: 'created_by', foreign_table_name: 'users', foreign_column_name: 'id', delete_rule: 'RESTRICT' },
+          ];
+        }
         return [];
       }
 
@@ -153,6 +169,7 @@ function createMockDb(overrides: {
           { id: 1, hash: 'hash_0000', created_at: 1000 },
           { id: 2, hash: 'hash_0001', created_at: 2000 },
           { id: 3, hash: 'hash_0002', created_at: 3000 },
+          { id: 4, hash: 'hash_0003', created_at: 4000 },
         ];
       }
 
@@ -173,7 +190,7 @@ describe('Unit: Schema Inspector e assertSchemaCompatible', () => {
 
     expect(result.isValid).toBe(true);
     expect(result.errors).toHaveLength(0);
-    expect(result.inspectedTables).toHaveLength(6);
+    expect(result.inspectedTables).toHaveLength(9);
   });
 
   it('deve apontar erro caso a coluna table_name esteja ausente na tabela audit_logs (caso do incidente)', async () => {

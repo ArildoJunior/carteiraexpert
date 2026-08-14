@@ -159,6 +159,95 @@ export const EXPECTED_SCHEMA_MATRIX: Record<string, ExpectedTable> = {
       { name: 'created_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: false, hasDefault: true },
     ],
   },
+  portfolios: {
+    name: 'portfolios',
+    primaryKey: 'id',
+    foreignKeys: [
+      {
+        column: 'user_id',
+        foreignTable: 'users',
+        foreignColumn: 'id',
+        deleteRule: 'RESTRICT',
+      },
+    ],
+    columns: [
+      { name: 'id', type: 'uuid', isNullable: false },
+      { name: 'user_id', type: 'uuid', isNullable: false },
+      { name: 'name', type: 'text', isNullable: false },
+      { name: 'description', type: 'text', isNullable: true },
+      { name: 'base_currency', type: 'text', isNullable: false, hasDefault: true },
+      { name: 'status', type: 'text', isNullable: false, hasDefault: true },
+      { name: 'created_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: false, hasDefault: true },
+      { name: 'updated_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: false, hasDefault: true },
+      { name: 'deleted_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: true },
+    ],
+  },
+  assets: {
+    name: 'assets',
+    primaryKey: 'id',
+    foreignKeys: [
+      {
+        column: 'user_id',
+        foreignTable: 'users',
+        foreignColumn: 'id',
+        deleteRule: 'RESTRICT',
+      },
+    ],
+    columns: [
+      { name: 'id', type: 'uuid', isNullable: false },
+      { name: 'ticker', type: 'text', isNullable: false },
+      { name: 'name', type: 'text', isNullable: false },
+      { name: 'asset_type', type: 'text', isNullable: false },
+      { name: 'market', type: 'text', isNullable: false, hasDefault: true },
+      { name: 'currency', type: 'text', isNullable: false, hasDefault: true },
+      { name: 'is_custom', type: 'boolean', isNullable: false, hasDefault: true },
+      { name: 'user_id', type: 'uuid', isNullable: true },
+      { name: 'created_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: false, hasDefault: true },
+      { name: 'updated_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: false, hasDefault: true },
+    ],
+  },
+  portfolio_events: {
+    name: 'portfolio_events',
+    primaryKey: 'id',
+    foreignKeys: [
+      {
+        column: 'portfolio_id',
+        foreignTable: 'portfolios',
+        foreignColumn: 'id',
+        deleteRule: 'RESTRICT',
+      },
+      {
+        column: 'asset_id',
+        foreignTable: 'assets',
+        foreignColumn: 'id',
+        deleteRule: 'RESTRICT',
+      },
+      {
+        column: 'created_by',
+        foreignTable: 'users',
+        foreignColumn: 'id',
+        deleteRule: 'RESTRICT',
+      },
+    ],
+    columns: [
+      { name: 'id', type: 'uuid', isNullable: false },
+      { name: 'portfolio_id', type: 'uuid', isNullable: false },
+      { name: 'asset_id', type: 'uuid', isNullable: false },
+      { name: 'type', type: 'text', isNullable: false },
+      { name: 'trade_date', type: ['timestamp with time zone', 'timestamptz'], isNullable: false },
+      { name: 'settlement_date', type: ['timestamp with time zone', 'timestamptz'], isNullable: true },
+      { name: 'quantity', type: 'numeric', isNullable: false },
+      { name: 'unit_price', type: 'numeric', isNullable: false },
+      { name: 'fees', type: 'numeric', isNullable: false, hasDefault: true },
+      { name: 'currency', type: 'text', isNullable: false, hasDefault: true },
+      { name: 'notes', type: 'text', isNullable: true },
+      { name: 'source', type: 'text', isNullable: false, hasDefault: true },
+      { name: 'created_by', type: 'uuid', isNullable: false },
+      { name: 'created_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: false, hasDefault: true },
+      { name: 'deleted_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: true },
+      { name: 'cancellation_reason', type: 'text', isNullable: true },
+    ],
+  },
 };
 
 /**
@@ -408,9 +497,9 @@ export async function inspectPhysicalSchema(
         );
 
         const rows = migrationRowsQuery as unknown as Array<{ id: number; hash: string; created_at: string | number }>;
-        if (rows.length < 3) {
+        if (rows.length < 4) {
           errors.push(
-            `Histórico de migrações incompleto: esperado no mínimo 3 migrações registradas, encontrado ${rows.length}.`
+            `Histórico de migrações incompleto: esperado no mínimo 4 migrações registradas, encontrado ${rows.length}.`
           );
         }
       }
