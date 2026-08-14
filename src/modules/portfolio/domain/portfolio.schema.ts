@@ -16,7 +16,8 @@ export const createPortfolioSchema = z.object({
   baseCurrency: z.enum(['BRL', 'USD', 'EUR']).default('BRL'),
 });
 
-export type CreatePortfolioInput = z.infer<typeof createPortfolioSchema>;
+export type CreatePortfolioInput = z.input<typeof createPortfolioSchema>;
+export type CreatePortfolioOutput = z.output<typeof createPortfolioSchema>;
 
 export const updatePortfolioSchema = z.object({
   name: z
@@ -35,4 +36,5 @@ export const updatePortfolioSchema = z.object({
   status: z.enum(['active', 'archived']).optional(),
 });
 
-export type UpdatePortfolioInput = z.infer<typeof updatePortfolioSchema>;
+export type UpdatePortfolioInput = z.input<typeof updatePortfolioSchema>;
+export type UpdatePortfolioOutput = z.output<typeof updatePortfolioSchema>;
