@@ -2,7 +2,16 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest';
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import * as schema from '../../../src/lib/db/schema';
-import { users, sessions, passwordResetTokens, authRateLimits, userConsents } from '../../../src/lib/db/schema';
+import {
+  users,
+  sessions,
+  passwordResetTokens,
+  authRateLimits,
+  userConsents,
+  portfolios,
+  assets,
+  portfolioEvents,
+} from '../../../src/lib/db/schema';
 import { TestFakeEmailSender } from '../../../src/modules/identity/domain/email-sender';
 import { hashToken, getSessionCookieOptions, getClearCookieOptions, extractRequestContext } from '../../../src/modules/identity/server/session';
 import * as authService from '../../../src/modules/identity/server/auth.service';
@@ -27,6 +36,9 @@ if (!connectionString) {
 
   beforeEach(async () => {
     // Limpeza completa entre testes (ordem respeitando FKs)
+    await db.delete(portfolioEvents);
+    await db.delete(portfolios);
+    await db.delete(assets);
     await db.delete(authRateLimits);
     await db.delete(passwordResetTokens);
     await db.delete(sessions);

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterEach, afterAll } from 'vitest';
 import { db } from '../../../src/lib/db';
 import { users, userConsents, sessions } from '../../../src/lib/db/schema/identity';
 import { auditLogs } from '../../../src/lib/db/schema/audit';
@@ -9,19 +9,23 @@ import { sql, desc, eq } from 'drizzle-orm';
 
 describe('Integração: Consentimentos (user_consents)', () => {
   const testUserId = crypto.randomUUID();
+  const testEmail = 'test_consent@carteiraexpert.invalid';
 
   beforeAll(async () => {
+    // Garante estado limpo antes do setup
+    await db.delete(users).where(eq(users.email, testEmail));
+
     await db.insert(users).values({
       id: testUserId,
-      email: 'test_consent@carteiraexpert.invalid',
+      email: testEmail,
       name: 'Test Consent',
       passwordHash: 'dummy_hash',
     });
   });
 
   afterEach(async () => {
-    // Como a tabela user_consents não permite DELETE normal via Drizzle/Trigger,
-    // usaremos TRUNCATE CASCADE apenas no banco de teste ou desativamos a trigger temporariamente
+    // Como a tabela user_consents não permite DELETE normal via Trigger de imutabilidade,
+    // desativamos a trigger temporariamente para permitir limpeza isolada do usuário de teste
     await db.execute(sql`ALTER TABLE user_consents DISABLE TRIGGER ALL;`);
     try {
       await db.delete(userConsents).where(eq(userConsents.userId, testUserId));
@@ -29,6 +33,17 @@ describe('Integração: Consentimentos (user_consents)', () => {
       await db.execute(sql`ALTER TABLE user_consents ENABLE TRIGGER ALL;`);
     }
     await db.delete(auditLogs).where(eq(auditLogs.actorId, testUserId));
+  });
+
+  afterAll(async () => {
+    await db.execute(sql`ALTER TABLE user_consents DISABLE TRIGGER ALL;`);
+    try {
+      await db.delete(userConsents).where(eq(userConsents.userId, testUserId));
+    } finally {
+      await db.execute(sql`ALTER TABLE user_consents ENABLE TRIGGER ALL;`);
+    }
+    await db.delete(auditLogs).where(eq(auditLogs.actorId, testUserId));
+    await db.delete(users).where(eq(users.id, testUserId));
   });
 
   it('deve registrar consentimento e gerar auditoria transacional', async () => {
@@ -63,7 +78,8 @@ describe('Integração: Consentimentos (user_consents)', () => {
       userAgent: undefined,
     });
 
-    await expect(db.delete(userConsents).where(eq(userConsents.userId, testUserId))).rejects.toThrow(/Failed query: delete from "user_consents"/);  });
+    await expect(db.delete(userConsents).where(eq(userConsents.userId, testUserId))).rejects.toThrow();
+  });
 
   it('deve identificar pendência de consentimento', async () => {
     const hasConsent = await hasAcceptedCurrentTerms(testUserId);

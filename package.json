@@ -17,7 +17,8 @@
     "test:integration": "vitest run tests/integration",
     "test:e2e": "playwright test",
     "db:migrate": "tsx scripts/migrate.ts",
-    "db:verify": "tsx scripts/verify-schema.ts"
+    "db:verify": "tsx scripts/verify-schema.ts",
+    "db:seed:dev": "tsx scripts/seed-dev.ts"
   },
   "dependencies": {
     "argon2": "^0.45.1",

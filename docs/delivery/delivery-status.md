@@ -8,55 +8,69 @@
 
 ## Estado Geral
 
-A fundação técnica, a camada de identidade, segurança, governança e o núcleo de carteiras, ativos e eventos patrimoniais foram concluídos e testados com sucesso:
+A fundação técnica, a camada de identidade, segurança, governança e a camada de entrega manual de carteiras, ativos e eventos patrimoniais foram concluídas e testadas com sucesso:
 
 - **Fase 01 — Fundação Técnica:** Concluída (Arquitetura modular, motor financeiro baseado em `Decimal`, persistência `NUMERIC`, auditoria imutável e testes de infraestrutura).
 - **Fase 02 — Identidade, Acesso e Segurança:** Concluída (Cadastro, login com Argon2id, sessões em banco com SHA-256, controle de taxa com HMAC-SHA256, redefinição atômica de senha, logout auditado, consentimentos versionados LGPD *append-only* e motor de verificação física de schema).
 - **Fase 03 — Carteiras, Ativos e Posições:**
   - **Pacote 03.00-E — Carteiras, Ativos, Eventos e Qualidade:** **ACEITO** (Modelagem de carteiras, ativos globais e customizados, eventos patrimoniais, contratos canônicos Drizzle tipados sem `any`, segregação entre coordenadores e funções `...InTransaction`, injeção explícita de `auditLogger`, isolamento multiusuário, proteção contra IDOR e fixture estática de contratos).
-  - **Pacote 03.01-D:** **BLOQUEADO** (Aguardando autorização explícita para início do planejamento e execução).
+  - **Pacote 03.01-D — Carteiras, Ativos e Operações Manuais:** **ACEITO** (Server Actions autenticadas, interface de usuário responsiva e acessível, rotas `/portfolios` e `/portfolios/[id]`, autocomplete debounced de ativos, cadastro de ativos customizados, lançamento manual de compras e vendas, cancelamento auditado com justificativa obrigatória e seed de desenvolvimento protegido).
+  - **Pacote 03.02 — Motor de Posição, Custo Médio e Saldo:** **BLOQUEADO** (Aguardando planejamento formal e autorização de execução).
 
 ---
 
-## Componentes Entregues no Pacote 03.00-E
+## Componentes Entregues no Pacote 03.01-D
 
-1. **Carteiras (`portfolios`):**
-   - Criação (`createPortfolio`), listagem (`listPortfolios`), consulta por ID (`getPortfolioById`), atualização (`updatePortfolio`) e soft delete (`deletePortfolio`);
-   - Coordenadores públicos com segregação de operações atômicas (`createPortfolioInTransaction`, `updatePortfolioInTransaction`, `deletePortfolioInTransaction`).
-2. **Ativos Globais e Customizados (`assets`):**
-   - Busca unificada (`searchAssets`), consulta por ID (`getAssetById`), criação de ativos customizados (`createCustomAsset` / `createCustomAssetInTransaction`) e listagem (`listCustomAssets`);
-   - Tratamento da constraint física `idx_assets_user_ticker_market` com conversão para `DuplicateAssetError`.
-3. **Eventos Patrimoniais (`portfolio_events`):**
-   - Lançamento de eventos (`createPortfolioEvent` / `createPortfolioEventInTransaction`) com tipos canônicos (BUY, SELL, DIVIDEND, JCP, SPLIT, CONSOLIDATION, BONUS, TRANSFER_IN, TRANSFER_OUT, OTHER);
-   - Listagem ordenada (`listPortfolioEventsByPortfolio`), consulta por ID (`getPortfolioEventById`) e cancelamento auditado com motivo (`cancelPortfolioEvent` / `cancelPortfolioEventInTransaction`).
-4. **Isolamento de Dados e Proteção contra IDOR:**
-   - Validação de propriedade no servidor com registro obrigatório de auditoria para tentativas de acesso indevido (`FORBIDDEN_IDOR_ATTEMPT`).
-5. **Tipagem e Contratos Canônicos Drizzle:**
-   - Definição estrita de `Database`, `DatabaseTransaction`, `DbExecutor`, `SchemaQueryExecutor` e `AuditExecutor` em `src/lib/db/index.ts`, eliminando `any` de executores e callbacks transacionais;
-   - Fixture de contratos em `tests/types/database-contracts.test-d.ts` validada em tempo de compilação.
-6. **Injeção de Auditoria e Atomicidade Transacional:**
-   - Injeção tipada de `auditLogger: typeof insertAuditLog` para viabilizar simulação determinística de falhas de I/O e comprovação física de rollback no PostgreSQL.
+1. **Server Actions de Portfólio (`portfolio.actions.ts`):**
+   - Ações tipadas e autenticadas via `requireAuth()`: `createPortfolioAction`, `updatePortfolioAction`, `deletePortfolioAction`, `searchAssetsAction`, `createCustomAssetAction`, `createPortfolioEventAction` e `cancelPortfolioEventAction`;
+   - Mapeamento uniforme de erros de domínio para `ActionResult<T>` serializável;
+   - Suporte a `safeRevalidatePath` para integridade em execução de testes fora do ciclo HTTP tradicional do Next.js.
+2. **Interface do Usuário e Modais (`src/modules/portfolio/ui/`):**
+   - **`PortfolioModal`:** Criação e edição de carteira com validação em tempo real;
+   - **`CustomAssetModal`:** Cadastro desacoplado de ativos customizados por usuário;
+   - **`AssetSearchSelect`:** Autocomplete com busca debounced no servidor, feedback de carregamento em tempo real (`#asset-search-loading` com ARIA), controle de concorrência (`requestIdRef`) e atalho para criação de ativo customizado;
+   - **`TransactionModal`:** Lançamento manual de ordens de compra (`BUY`) e venda (`SELL`) com seleção de tipo, datas (`tradeDate`/`settlementDate`), quantidade, preço unitário, taxas e notas;
+   - **`CancelEventModal`:** Cancelamento de operação com justificativa obrigatória (mínimo de 5 caracteres) e aviso de integridade histórica;
+   - **`PortfolioEventTable`:** Extrato cronológico das movimentações ativas com badges visuais de tipo e ação de cancelamento;
+   - **`PortfolioHeader`:** Cabeçalho da carteira com métricas e ações de edição/exclusão lógica;
+   - **`PortfolioList`:** Grid responsivo de carteiras com empty state e gatilho de criação;
+   - **`PortfolioDetailView`:** Coordenador cliente integrando tabela, cabeçalho e modais.
+3. **Páginas e Rotas do Next.js App Router:**
+   - `/portfolios`: Listagem de carteiras do usuário autenticado;
+   - `/portfolios/[id]`: Visão detalhada da carteira, extrato de eventos e ações de lançamento;
+   - `/dashboard`: Atualizado com contadores reais de carteiras ativas, atalhos rápidos e listagem recente;
+   - Layout de navegação (`/dashboard/layout.tsx`): Atualizado com links diretos "Dashboard" e "Carteiras".
+4. **Seed de Desenvolvimento Protegido (`scripts/seed-dev.ts`):**
+   - Script determinístico para popular ativos globais de teste (PETR4, VALE3, ITUB4, BBDC4, KNIP11, IVVB11, BTC);
+   - Proteção estrita com trava `ALLOW_DEV_SEED=true` e bloqueio incondicional em ambiente de produção (`NODE_ENV === 'production'`);
+   - Disponibilizado via comando `pnpm run db:seed:dev`.
+
+---
+
+## O que Ficou Explicitamente Fora do Escopo do Pacote 03.01-D
+
+- **Motor de Posição, Custo Médio e Saldo:** Validação de consistência temporal de vendas, consolidação patrimonial, rentabilidade e cálculo de custo médio (escopo reservado ao **Pacote 03.02**).
+- **Provedores Externos de Mercado:** Integração com APIs externas (BRAPI, HG Brasil, B3, CVM) ou cotações em tempo real.
+- **Alterações de Banco de Dados:** Nenhuma alteração estrutural, migration ou nova tabela (mantido o schema canônico de 9 tabelas).
 
 ---
 
 ## Validações Comprovadas no Ambiente
 
-Todas as validações abaixo foram executadas e aprovadas com sucesso no ambiente real:
+Todas as validações abaixo foram executadas e aprovadas com 100% de sucesso no ambiente real:
 
-- [x] **Typecheck:** Aprovado (`tsc --noEmit` — 0 erros estáticos de tipagem, incluindo a fixture de tipos).
+- [x] **Typecheck:** Aprovado (`tsc --noEmit` — 0 erros estáticos de tipagem).
 - [x] **Lint:** Aprovado (`biome lint ./src` — 0 violações de regras ou formatação).
-- [x] **Testes Unitários:** Aprovados (17 arquivos, 222 testes unitários aprovados).
-- [x] **Testes de Integração:** Aprovados (10 arquivos, 90 testes de integração aprovados em PostgreSQL real).
-- [x] **Build de Produção:** Aprovado (`pnpm run build` / `next build` gerado com sucesso).
-- [x] **Testes End-to-End (E2E):** 90 testes aprovados no total com Playwright Chromium:
-  - 45 testes aprovados em uma execução;
-  - 15 testes aprovados em uma segunda execução;
-  - 15 testes aprovados em uma terceira execução;
-  - 15 testes aprovados em uma quarta execução.
+- [x] **Testes Unitários:** Aprovados (18 arquivos, 235 testes unitários aprovados).
+- [x] **Testes de Integração:** Aprovados (11 arquivos, 105 testes de integração aprovados em PostgreSQL real).
+- [x] **Build de Produção:** Aprovado (`pnpm run build` / `next build` com 11 rotas estáticas e dinâmicas compiladas).
+- [x] **Testes End-to-End (E2E):** Aprovados (51 testes aprovados no total):
+  - **Chromium:** 17/17 testes aprovados;
+  - **Firefox:** 17/17 testes aprovados;
+  - **WebKit:** 17/17 testes aprovados.
 - [x] **Verificação Física do Schema:** Aprovada (`pnpm run db:verify -- --test` — 9 tabelas físicas validadas).
-- [x] **Rollback Transacional:** Comprovado fisicamente no banco de dados.
-- [x] **Injeção Explícita de `auditLogger`:** Comprovada com rastreamento de chamadas.
-- [x] **Fixture de Contratos TypeScript:** Incluída no typecheck principal.
+- [x] **Rollback Transacional e Auditoria:** Comprovados fisicamente no PostgreSQL.
+- [x] **Cobertura Original de Consentimento:** Totalmente preservada (anonimização de IP, motivo de auditoria, vigência e idempotência).
 
 ### Tabelas Físicas Validadas no Catálogo PostgreSQL (9 tabelas):
 1. `audit_logs`
@@ -71,42 +85,6 @@ Todas as validações abaixo foram executadas e aprovadas com sucesso no ambient
 
 ---
 
-## Evidências Específicas Comprovadas por Testes
-
-Os testes de integração comprovam deterministicamente os seguintes comportamentos:
-
-1. **Rollback físico na criação de carteira:** Falha de auditoria aborta a transação e impede a persistência do registro em `portfolios`.
-2. **Rollback físico na criação de ativo customizado:** Falha de auditoria aborta a transação e impede a persistência do registro em `assets`.
-3. **Rollback físico na criação de evento patrimonial:** Falha de auditoria aborta a transação e impede a persistência do registro em `portfolio_events`.
-4. **Rollback no fluxo de identidade:** Falha transacional reverte atomicamente criação de usuário, sessão, consentimentos e log de auditoria.
-5. **Uso explícito de `auditLogger` injetado:** Funções de serviço aceitam parâmetro tipado como `typeof insertAuditLog`.
-6. **Chamada efetiva da dependência injetada:** Comprovada com `toHaveBeenCalledTimes(1)`.
-7. **Repasse do `DatabaseTransaction`:** A mesma instância `tx` recebida pelas funções `...InTransaction` é repassada como 4º argumento ao `auditLogger` (`failingAuditLogger.mock.calls[0][3] === capturedTx`).
-8. **Não instanciação de transações aninhadas:** As funções `...InTransaction` operam estritamente dentro da transação `tx` recebida sem disparar transações próprias.
-9. **Validação estática de contratos:** `tests/types/database-contracts.test-d.ts` valida compatibilidade estrutural de tipos e comprova a rejeição de tipos inválidos via diretivas `@ts-expect-error`.
-
----
-
-## Avisos Não Bloqueantes Observados
-
-Durante os ciclos de validação, os seguintes avisos informativos foram observados no ambiente:
-
-- **Convenção `middleware`:** O build do Next.js emite aviso informativo de depreciação da convenção `middleware`, recomendando futura migração para `proxy`.
-- **Módulo `punycode`:** O Node.js emite aviso informativo de depreciação do módulo interno `punycode` durante a execução do Biome linter.
-- **Variável `NODE_ENV`:** Uso de valor de ambiente não convencional durante os testes E2E.
-
-Esses avisos não causaram falhas em nenhuma etapa e não representam bloqueios.
-
----
-
-## Estado da Working Tree
-
-Nenhum commit ou push foi realizado nesta etapa. A working tree permanece com alterações locais. AGENTS.md possui uma alteração local intencional do usuário e não deve ser modificado nem revertido. tests/types/database-contracts.test-d.ts está criado, mas ainda não rastreado pelo Git.
-
-> **Nota de governança:** A alteração em `AGENTS.md` não é tratada como parte da implementação do Pacote 03.00-E.
-
----
-
 ## Próxima Etapa
 
-- **Pacote 03.01-D:** BLOQUEADO (Aguardando planejamento formal e autorização de execução).
+- **Pacote 03.02 — Motor de Posição, Custo Médio e Saldo:** BLOQUEADO (Aguardando planejamento técnico formal e autorização para execução).

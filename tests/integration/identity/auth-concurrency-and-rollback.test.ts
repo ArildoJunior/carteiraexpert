@@ -2,7 +2,17 @@ import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import * as schema from '../../../src/lib/db/schema';
-import { users, sessions, passwordResetTokens, authRateLimits, userConsents, auditLogs } from '../../../src/lib/db/schema';
+import {
+  users,
+  sessions,
+  passwordResetTokens,
+  authRateLimits,
+  userConsents,
+  auditLogs,
+  portfolios,
+  assets,
+  portfolioEvents,
+} from '../../../src/lib/db/schema';
 import * as authService from '../../../src/modules/identity/server/auth.service';
 import * as auditModule from '../../../src/lib/db/audit';
 import * as sessionModule from '../../../src/modules/identity/server/session';
@@ -25,6 +35,9 @@ if (!connectionString) {
 
   beforeEach(async () => {
     // Limpeza completa entre testes
+    await db.delete(portfolioEvents);
+    await db.delete(portfolios);
+    await db.delete(assets);
     await db.delete(authRateLimits);
     await db.delete(passwordResetTokens);
     // Desativa trigger temporariamente para permitir limpeza em testes

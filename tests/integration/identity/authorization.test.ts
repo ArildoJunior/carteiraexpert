@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterEach, afterAll } from 'vitest';
 import { db } from '../../../src/lib/db';
 import { users } from '../../../src/lib/db/schema/identity';
 import { auditLogs } from '../../../src/lib/db/schema/audit';
@@ -8,9 +8,12 @@ import { eq } from 'drizzle-orm';
 import type { SafeUser } from '../../../src/modules/identity/domain/user.types';
 
 describe('Integração: Autorização e Prevenção IDOR', () => {
+  const currentUserId = crypto.randomUUID();
+  const testEmail = 'idor_test_user_a@carteiraexpert.invalid';
+
   const currentUser: SafeUser = {
-    id: crypto.randomUUID(),
-    email: 'user_a@carteiraexpert.invalid',
+    id: currentUserId,
+    email: testEmail,
     name: 'User A',
     status: 'active',
     createdAt: new Date(),
@@ -20,6 +23,9 @@ describe('Integração: Autorização e Prevenção IDOR', () => {
   const otherUserId = crypto.randomUUID();
 
   beforeAll(async () => {
+    // Garante estado limpo antes do setup
+    await db.delete(users).where(eq(users.email, testEmail));
+
     await db.insert(users).values({
       id: currentUser.id,
       email: currentUser.email,
@@ -30,6 +36,11 @@ describe('Integração: Autorização e Prevenção IDOR', () => {
 
   afterEach(async () => {
     await db.delete(auditLogs).where(eq(auditLogs.actorId, currentUser.id));
+  });
+
+  afterAll(async () => {
+    await db.delete(auditLogs).where(eq(auditLogs.actorId, currentUser.id));
+    await db.delete(users).where(eq(users.id, currentUser.id));
   });
 
   it('deve aprovar acesso se resourceOwnerId for igual ao currentUser.id', async () => {
