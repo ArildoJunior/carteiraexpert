@@ -1,5 +1,12 @@
+import type { SQLWrapper } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 import { db } from './client';
+
+export interface SchemaQueryExecutor {
+  execute<TRow extends Record<string, unknown> = Record<string, unknown>>(
+    query: SQLWrapper | string
+  ): PromiseLike<unknown>;
+}
 
 export class SchemaIncompatibilityError extends Error {
   public readonly errors: string[];
@@ -262,7 +269,7 @@ export const EXPECTED_SCHEMA_MATRIX: Record<string, ExpectedTable> = {
  * - Histórico de migrações versionadas
  */
 export async function inspectPhysicalSchema(
-  queryExecutor: any = db,
+  queryExecutor: SchemaQueryExecutor = db,
   options: { targetSchema?: string; checkMigrations?: boolean } = {}
 ): Promise<SchemaInspectionResult> {
   const targetSchema = options.targetSchema || 'public';
@@ -533,7 +540,7 @@ export function resetSchemaVerification(): void {
  * Não reexecuta consultas no caminho quente após a verificação inicial.
  * Em caso de falha de infraestrutura, lança erro sanitizado sem detalhes sensíveis.
  */
-export async function assertSchemaCompatible(queryExecutor: any = db): Promise<void> {
+export async function assertSchemaCompatible(queryExecutor: SchemaQueryExecutor = db): Promise<void> {
   // Bypass controlado para CLI de migração ou testes unitários sem banco
   if (process.env.SKIP_SCHEMA_CHECK === 'true') {
     return;

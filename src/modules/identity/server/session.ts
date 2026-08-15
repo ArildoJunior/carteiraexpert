@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { eq, and, isNull, gt } from 'drizzle-orm';
-import { db } from '../../../lib/db';
+import { db, type DbExecutor } from '../../../lib/db';
 import { sessions } from '../../../lib/db/schema/identity';
 import type { Session } from '../domain/user.types';
 
@@ -21,25 +21,24 @@ export function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
-// ─── Anonimização de IP ───────────────────────────────────────────────────────
-/** Anonimiza o endereço IP antes de persistir (LGPD — minimização de dados). */
 export function anonymizeIp(ip: string | null | undefined): string | null {
   if (!ip || typeof ip !== 'string') return null;
   // IPv4: zera o último octeto
   if (/^\d+\.\d+\.\d+\.\d+$/.test(ip)) {
     return ip.replace(/\.\d+$/, '.0');
   }
-  // IPv6: preserva apenas o prefixo /48 (primeiros 6 grupos)
+  // IPv6: preserva apenas o prefixo /48 (primeiros 4 grupos + :0:0:0:0)
   const parts = ip.split(':');
   if (parts.length > 4) {
-    return parts.slice(0, 4).join(':') + ':0:0:0:0';
+    return `${parts.slice(0, 4).join(':')}:0:0:0:0`;
   }
   return null;
 }
 
+// ─── Sanitização de User Agent ────────────────────────────────────────────────
 /** Trunca o User-Agent para no máximo 255 chars. */
 export function sanitizeUserAgent(ua: string | null | undefined): string | null {
-  if (!ua) return null;
+  if (!ua || typeof ua !== 'string') return null;
   return ua.slice(0, 255);
 }
 
@@ -58,7 +57,7 @@ export interface CreatedSession {
 
 export async function createSession(
   opts: CreateSessionOptions,
-  executor: any = db
+  executor: DbExecutor = db
 ): Promise<CreatedSession> {
   const token = generateSessionToken();
   const tokenHash = hashToken(token);

@@ -1,14 +1,18 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
-import { db } from '../../../src/lib/db';
+import { db, type DatabaseTransaction } from '../../../src/lib/db';
 import { users } from '../../../src/lib/db/schema/identity';
 import { portfolios, assets, portfolioEvents } from '../../../src/lib/db/schema/portfolio';
 import { auditLogs } from '../../../src/lib/db/schema/audit';
 import {
   createPortfolioEvent,
+  createPortfolioEventInTransaction,
   listPortfolioEventsByPortfolio,
   getPortfolioEventById,
   cancelPortfolioEvent,
 } from '../../../src/modules/portfolio/server/portfolio-event.service';
+import {
+  createPortfolioEventSchema,
+} from '../../../src/modules/portfolio/domain/portfolio-event.schema';
 import { createPortfolio } from '../../../src/modules/portfolio/server/portfolio.service';
 import { createCustomAsset } from '../../../src/modules/portfolio/server/asset.service';
 import {
@@ -339,6 +343,94 @@ describe('Integração: PortfolioEventService (PostgreSQL Real)', () => {
 
       expect(rows).toHaveLength(0);
       spy.mockRestore();
+    });
+
+    it('deve garantir rollback físico via injeção explícita de auditLogger em createPortfolioEvent', async () => {
+      const failingAuditLogger = vi.fn<typeof auditModule.insertAuditLog>(async () => {
+        throw new Error('Falha injetada no auditLogger (createPortfolioEvent)');
+      });
+      const testTradeDate = new Date('2025-08-11T12:00:00Z');
+
+      await expect(
+        createPortfolioEvent(
+          {
+            portfolioId: portfolio1Id,
+            assetId: globalAssetId,
+            type: 'BUY',
+            tradeDate: testTradeDate,
+            quantity: '888.0000000000',
+            unitPrice: '50.00000000',
+          },
+          user1,
+          db,
+          failingAuditLogger
+        )
+      ).rejects.toThrow('Falha injetada no auditLogger (createPortfolioEvent)');
+
+      // Confirma que a dependência injetada foi chamada
+      expect(failingAuditLogger).toHaveBeenCalledTimes(1);
+
+      // Verifica fisicamente que o evento não foi persistido
+      const rows = await db
+        .select()
+        .from(portfolioEvents)
+        .where(
+          and(
+            eq(portfolioEvents.portfolioId, portfolio1Id),
+            eq(portfolioEvents.quantity, '888.0000000000')
+          )
+        );
+
+      expect(rows).toHaveLength(0);
+    });
+
+    it('deve garantir execução e rollback em chamada direta a createPortfolioEventInTransaction com DatabaseTransaction e auditLogger injetado', async () => {
+      const failingAuditLogger = vi.fn<typeof auditModule.insertAuditLog>(async () => {
+        throw new Error('Falha injetada no auditLogger (createPortfolioEventInTransaction)');
+      });
+      const testTradeDate = new Date('2025-08-12T12:00:00Z');
+
+      const validatedData = createPortfolioEventSchema.parse({
+        portfolioId: portfolio1Id,
+        assetId: globalAssetId,
+        type: 'BUY',
+        tradeDate: testTradeDate,
+        quantity: '777.0000000000',
+        unitPrice: '75.00000000',
+      });
+
+      let capturedTx: DatabaseTransaction | null = null;
+
+      // Executa a operação dentro de uma transação externa
+      await expect(
+        db.transaction(async (tx) => {
+          capturedTx = tx;
+          await createPortfolioEventInTransaction(
+            validatedData,
+            user1,
+            tx,
+            failingAuditLogger
+          );
+        })
+      ).rejects.toThrow('Falha injetada no auditLogger (createPortfolioEventInTransaction)');
+
+      // Confirma que o auditLogger injetado foi invocado com o mesmo DatabaseTransaction
+      expect(failingAuditLogger).toHaveBeenCalledTimes(1);
+      expect(failingAuditLogger.mock.calls[0][0]).toMatchObject({ tableName: 'portfolio_events', action: 'INSERT' });
+      expect(failingAuditLogger.mock.calls[0][3]).toBe(capturedTx);
+
+      // Verifica fisicamente que o evento não foi persistido
+      const rows = await db
+        .select()
+        .from(portfolioEvents)
+        .where(
+          and(
+            eq(portfolioEvents.portfolioId, portfolio1Id),
+            eq(portfolioEvents.quantity, '777.0000000000')
+          )
+        );
+
+      expect(rows).toHaveLength(0);
     });
   });
 

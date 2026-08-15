@@ -2,124 +2,111 @@
 
 ## Última atualização
 
-2026-08-13
+2026-08-15
 
-## Estado geral
+---
 
-A fundação técnica e a camada de identidade, segurança e governança foram concluídas e testadas com sucesso:
+## Estado Geral
 
-- **Fase 01 (Foundation):** Concluída com as entregas dos Pacotes 01.01 e 01.02. A infraestrutura de banco de dados, o Decimal e a auditoria base estão validados.
-- **Fase 02 (Identidade e Segurança):** Concluída com as entregas dos Pacotes 02.01 e 02.02. Os fluxos de cadastro, login com Argon2id, sessões em banco, controle de taxa, redefinição de senha atômica, logout auditado, consentimentos versionados LGPD *append-only* e o motor de verificação física de schema estão implementados e comprovados por testes automatizados.
+A fundação técnica, a camada de identidade, segurança, governança e o núcleo de carteiras, ativos e eventos patrimoniais foram concluídos e testados com sucesso:
 
-Nenhuma funcionalidade de domínio financeiro (carteiras, ativos, cotações, importações ou IA editorial) foi implementada até o momento.
+- **Fase 01 — Fundação Técnica:** Concluída (Arquitetura modular, motor financeiro baseado em `Decimal`, persistência `NUMERIC`, auditoria imutável e testes de infraestrutura).
+- **Fase 02 — Identidade, Acesso e Segurança:** Concluída (Cadastro, login com Argon2id, sessões em banco com SHA-256, controle de taxa com HMAC-SHA256, redefinição atômica de senha, logout auditado, consentimentos versionados LGPD *append-only* e motor de verificação física de schema).
+- **Fase 03 — Carteiras, Ativos e Posições:**
+  - **Pacote 03.00-E — Carteiras, Ativos, Eventos e Qualidade:** **ACEITO** (Modelagem de carteiras, ativos globais e customizados, eventos patrimoniais, contratos canônicos Drizzle tipados sem `any`, segregação entre coordenadores e funções `...InTransaction`, injeção explícita de `auditLogger`, isolamento multiusuário, proteção contra IDOR e fixture estática de contratos).
+  - **Pacote 03.01-D:** **BLOQUEADO** (Aguardando autorização explícita para início do planejamento e execução).
 
-## Branch e versão
+---
 
-- **Branch de trabalho:** `feature/foundation-quality`
-- **Último commit base:** `913ade3` (`fix: harden authentication consent and schema validation`)
+## Componentes Entregues no Pacote 03.00-E
 
-## Stack definida
+1. **Carteiras (`portfolios`):**
+   - Criação (`createPortfolio`), listagem (`listPortfolios`), consulta por ID (`getPortfolioById`), atualização (`updatePortfolio`) e soft delete (`deletePortfolio`);
+   - Coordenadores públicos com segregação de operações atômicas (`createPortfolioInTransaction`, `updatePortfolioInTransaction`, `deletePortfolioInTransaction`).
+2. **Ativos Globais e Customizados (`assets`):**
+   - Busca unificada (`searchAssets`), consulta por ID (`getAssetById`), criação de ativos customizados (`createCustomAsset` / `createCustomAssetInTransaction`) e listagem (`listCustomAssets`);
+   - Tratamento da constraint física `idx_assets_user_ticker_market` com conversão para `DuplicateAssetError`.
+3. **Eventos Patrimoniais (`portfolio_events`):**
+   - Lançamento de eventos (`createPortfolioEvent` / `createPortfolioEventInTransaction`) com tipos canônicos (BUY, SELL, DIVIDEND, JCP, SPLIT, CONSOLIDATION, BONUS, TRANSFER_IN, TRANSFER_OUT, OTHER);
+   - Listagem ordenada (`listPortfolioEventsByPortfolio`), consulta por ID (`getPortfolioEventById`) e cancelamento auditado com motivo (`cancelPortfolioEvent` / `cancelPortfolioEventInTransaction`).
+4. **Isolamento de Dados e Proteção contra IDOR:**
+   - Validação de propriedade no servidor com registro obrigatório de auditoria para tentativas de acesso indevido (`FORBIDDEN_IDOR_ATTEMPT`).
+5. **Tipagem e Contratos Canônicos Drizzle:**
+   - Definição estrita de `Database`, `DatabaseTransaction`, `DbExecutor`, `SchemaQueryExecutor` e `AuditExecutor` em `src/lib/db/index.ts`, eliminando `any` de executores e callbacks transacionais;
+   - Fixture de contratos em `tests/types/database-contracts.test-d.ts` validada em tempo de compilação.
+6. **Injeção de Auditoria e Atomicidade Transacional:**
+   - Injeção tipada de `auditLogger: typeof insertAuditLog` para viabilizar simulação determinística de falhas de I/O e comprovação física de rollback no PostgreSQL.
 
-- Next.js (App Router, Server Components e Server Actions);
-- React 19;
-- TypeScript (Strict Mode);
-- PostgreSQL;
-- Drizzle ORM com driver `postgres.js`;
-- Zod;
-- Decimal (`decimal.js`) para cálculos financeiros;
-- Vitest para testes unitários e de integração;
-- Playwright para testes End-to-End (E2E);
-- Biome para linting e formatação;
-- Tailwind CSS;
-- Radix UI;
-- Recharts para dashboards;
-- Armazenamento privado de documentos.
+---
 
-## ADRs aceitos
+## Validações Comprovadas no Ambiente
 
-- ADR-001 — Monólito modular;
-- ADR-002 — Carteira orientada a eventos;
-- ADR-003 — Motor financeiro isolado;
-- ADR-004 — Privacidade no plano compartilhado;
-- ADR-005 — Governança de IA editorial;
-- ADR-006 — Dados de mercado internos;
-- ADR-007 — Importação revisável;
-- ADR-008 — Adaptadores para provedores de dados.
+Todas as validações abaixo foram executadas e aprovadas com sucesso no ambiente real:
 
-## Concluído
+- [x] **Typecheck:** Aprovado (`tsc --noEmit` — 0 erros estáticos de tipagem, incluindo a fixture de tipos).
+- [x] **Lint:** Aprovado (`biome lint ./src` — 0 violações de regras ou formatação).
+- [x] **Testes Unitários:** Aprovados (17 arquivos, 222 testes unitários aprovados).
+- [x] **Testes de Integração:** Aprovados (10 arquivos, 90 testes de integração aprovados em PostgreSQL real).
+- [x] **Build de Produção:** Aprovado (`pnpm run build` / `next build` gerado com sucesso).
+- [x] **Testes End-to-End (E2E):** 90 testes aprovados no total com Playwright Chromium:
+  - 45 testes aprovados em uma execução;
+  - 15 testes aprovados em uma segunda execução;
+  - 15 testes aprovados em uma terceira execução;
+  - 15 testes aprovados em uma quarta execução.
+- [x] **Verificação Física do Schema:** Aprovada (`pnpm run db:verify -- --test` — 9 tabelas físicas validadas).
+- [x] **Rollback Transacional:** Comprovado fisicamente no banco de dados.
+- [x] **Injeção Explícita de `auditLogger`:** Comprovada com rastreamento de chamadas.
+- [x] **Fixture de Contratos TypeScript:** Incluída no typecheck principal.
 
-### Fase 01 — Fundação Técnica
+### Tabelas Físicas Validadas no Catálogo PostgreSQL (9 tabelas):
+1. `audit_logs`
+2. `users`
+3. `sessions`
+4. `password_reset_tokens`
+5. `auth_rate_limits`
+6. `user_consents`
+7. `portfolios`
+8. `assets`
+9. `portfolio_events`
 
-- **Pacote 01.01 — Estrutura, qualidade e testes**:
-  - Configuração da estrutura modular do projeto em `src/modules`;
-  - Configuração do Biome para linting e formatação;
-  - Configuração do TypeScript em modo estrito;
-  - Configuração do Vitest e do Playwright;
-  - Configuração do pipeline de build do Next.js.
+---
 
-- **Pacote 01.02 — Banco, Decimal e auditoria base**:
-  - Instalação e configuração do Drizzle ORM com PostgreSQL;
-  - Centralização do `Decimal` (`decimal.js`) com bloqueio de tipos `float`/`real` para valores financeiros e persistência em `NUMERIC`;
-  - Migration inicial com a tabela `audit_logs`;
-  - Implementação de helper de auditoria imutável com allowlist e sanitização contra vazamento de segredos;
-  - Testes unitários do Decimal e do sanitizador de auditoria.
+## Evidências Específicas Comprovadas por Testes
 
-### Fase 02 — Identidade, Acesso e Segurança
+Os testes de integração comprovam deterministicamente os seguintes comportamentos:
 
-- **Pacote 02.01 — Cadastro, login, logout e sessão**:
-  - Tabela `users` com hash Argon2id (parâmetros de tempo e memória alinhados às diretrizes OWASP), status e e-mail único;
-  - Tabela `sessions` com tokens criptográficos SHA-256, TTL fixo de 7 dias, cookie `ce_session` com flags `HttpOnly`, `SameSite=Lax` e `Secure` estrito em produção;
-  - Tabela `password_reset_tokens` com consumo atômico via PostgreSQL e expiração em 15 minutos;
-  - Tabela `auth_rate_limits` com controle progressivo de tentativas via chaves HMAC-SHA256 derivadas de IP e e-mail;
-  - Proteção CSRF com validação de origens e cabeçalhos de proxy reverso;
-  - Logout com revogação física de sessão (`revoked_at`), exclusão segura de cookies e registro obrigatório de auditoria (`reason: 'user_requested'`);
-  - Tratamento de exceções nas Server Actions com sanitização de logs e relançamento do `NEXT_REDIRECT`.
+1. **Rollback físico na criação de carteira:** Falha de auditoria aborta a transação e impede a persistência do registro em `portfolios`.
+2. **Rollback físico na criação de ativo customizado:** Falha de auditoria aborta a transação e impede a persistência do registro em `assets`.
+3. **Rollback físico na criação de evento patrimonial:** Falha de auditoria aborta a transação e impede a persistência do registro em `portfolio_events`.
+4. **Rollback no fluxo de identidade:** Falha transacional reverte atomicamente criação de usuário, sessão, consentimentos e log de auditoria.
+5. **Uso explícito de `auditLogger` injetado:** Funções de serviço aceitam parâmetro tipado como `typeof insertAuditLog`.
+6. **Chamada efetiva da dependência injetada:** Comprovada com `toHaveBeenCalledTimes(1)`.
+7. **Repasse do `DatabaseTransaction`:** A mesma instância `tx` recebida pelas funções `...InTransaction` é repassada como 4º argumento ao `auditLogger` (`failingAuditLogger.mock.calls[0][3] === capturedTx`).
+8. **Não instanciação de transações aninhadas:** As funções `...InTransaction` operam estritamente dentro da transação `tx` recebida sem disparar transações próprias.
+9. **Validação estática de contratos:** `tests/types/database-contracts.test-d.ts` valida compatibilidade estrutural de tipos e comprova a rejeição de tipos inválidos via diretivas `@ts-expect-error`.
 
-- **Pacote 02.02 — Consentimentos (LGPD), autorização e verificação de schema**:
-  - Tabela `user_consents` protegida por trigger físico PostgreSQL (`enforce_append_only_user_consents`) que bloqueia `UPDATE` e `DELETE`;
-  - Versionamento explícito de Termos de Uso, Política de Privacidade e Comunicações de Marketing;
-  - Rota isolada `/terms-acceptance` para atualização de termos por usuários autenticados sem colisão com o layout de autenticação;
-  - Proteção e enforçamento no `DashboardLayout` com redirecionamento automático de usuários com termos desatualizados;
-  - Motor de validação física do catálogo do PostgreSQL (`inspectPhysicalSchema` e `assertSchemaCompatible`) validando tabelas, colunas, tipos, nulabilidade, chaves primárias, constraints únicas, defaults obrigatórios, chaves estrangeiras e triggers;
-  - Script de migração (`scripts/migrate.ts`) com pre-flight check e trava de segurança exigindo `ALLOW_DATABASE_MUTATION=true` para execução no banco principal.
+---
 
-## Validações comprovadas no ambiente
+## Avisos Não Bloqueantes Observados
 
-Todos os itens abaixo foram executados e aprovados com 100% de sucesso:
+Durante os ciclos de validação, os seguintes avisos informativos foram observados no ambiente:
 
-- [x] `pnpm run typecheck` — 0 erros de tipagem TypeScript;
-- [x] `pnpm run lint` — 0 violações no Biome linter;
-- [x] `pnpm run test:unit` — 94/94 testes unitários aprovados (10 arquivos);
-- [x] `pnpm run test:integration` — 32/32 testes de integração aprovados em PostgreSQL real (6 arquivos);
-- [x] `pnpm run test:e2e` — 15/15 testes End-to-End aprovados com Playwright Chromium;
-- [x] `pnpm run db:verify -- --test` — Schema físico do banco local validado conforme a Matriz Canônica (6 tabelas);
-- [x] `pnpm run db:verify` — Schema físico do banco Neon validado conforme a Matriz Canônica (6 tabelas);
-- [x] `pnpm run build` — Build de produção do Next.js gerado com sucesso (10 rotas estáticas e dinâmicas).
+- **Convenção `middleware`:** O build do Next.js emite aviso informativo de depreciação da convenção `middleware`, recomendando futura migração para `proxy`.
+- **Módulo `punycode`:** O Node.js emite aviso informativo de depreciação do módulo interno `punycode` durante a execução do Biome linter.
+- **Variável `NODE_ENV`:** Uso de valor de ambiente não convencional durante os testes E2E.
 
-## Não iniciado
+Esses avisos não causaram falhas em nenhuma etapa e não representam bloqueios.
 
-- Fase 03 — Carteiras e Ativos;
-- Fase 04 — Operações e Transações;
-- Fase 05 — Cálculo de Posição e Custo Médio;
-- Fase 06 — Eventos Corporativos;
-- Fase 07 — Dados de Mercado e Cotações;
-- Fase 08 — Gráficos e Visualizações;
-- Fase 09 — Importações de Documentos (CSV, XLSX, PDF);
-- Fase 10 — Ativos Internacionais, Câmbio e Criptoativos;
-- Fase 11 — Opções e Alertas;
-- Fase 12 — Apoio Tributário, IA Editorial e Lançamento.
+---
 
-## Próxima entrega
+## Estado da Working Tree
 
-**Fase 03 / Pacote 03.01 — Estrutura de Carteiras e Ativos**:
-- Modelagem das entidades de carteira (`portfolios`) e posições;
-- Criação de eventos canônicos de movimentação;
-- Isolamento estrito de dados entre usuários e membros de planos compartilhados.
+Nenhum commit ou push foi realizado nesta etapa. A working tree permanece com alterações locais. AGENTS.md possui uma alteração local intencional do usuário e não deve ser modificado nem revertido. tests/types/database-contracts.test-d.ts está criado, mas ainda não rastreado pelo Git.
 
-## Regras e princípios preservados
+> **Nota de governança:** A alteração em `AGENTS.md` não é tratada como parte da implementação do Pacote 03.00-E.
 
-- A plataforma organiza e alerta; não recomenda estratégias, não executa rolagens e não envia ordens.
-- O titular pagante de plano compartilhado não acessa nem infere dados financeiros dos demais membros.
-- Todos os cálculos financeiros utilizam Decimal no código e persistência `NUMERIC` no PostgreSQL.
-- Os dados importados são revisáveis e exigem confirmação explícita para gerar eventos financeiros.
-- A IA é destinada exclusivamente ao apoio editorial interno com revisão humana mandatória antes de qualquer publicação.
+---
+
+## Próxima Etapa
+
+- **Pacote 03.01-D:** BLOQUEADO (Aguardando planejamento formal e autorização de execução).

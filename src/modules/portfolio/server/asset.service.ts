@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { eq, and, or, isNull, ilike, asc } from 'drizzle-orm';
-import { db } from '../../../lib/db';
+import { db, type Database, type DatabaseTransaction, type DbExecutor } from '../../../lib/db';
 import { assets } from '../../../lib/db/schema/portfolio';
 import { insertAuditLog } from '../../../lib/db/audit';
 import { assertOwnership } from '../../identity/server/authorization-service';
@@ -9,6 +9,7 @@ import {
   createCustomAssetSchema,
   searchAssetsSchema,
   type CreateCustomAssetInput,
+  type CreateCustomAssetOutput,
   type SearchAssetsInput,
 } from '../domain/asset.schema';
 import type { Asset } from '../domain/asset.types';
@@ -30,7 +31,7 @@ function escapeLike(str: string): string {
 export async function searchAssets(
   rawParams: SearchAssetsInput,
   user: SafeUser,
-  executor: any = db
+  executor: DbExecutor = db
 ): Promise<Asset[]> {
   const params = searchAssetsSchema.parse(rawParams);
   const trimmedQuery = params.query.trim();
@@ -75,7 +76,7 @@ export async function searchAssets(
 export async function getAssetById(
   id: string,
   user: SafeUser,
-  executor: any = db
+  executor: DbExecutor = db
 ): Promise<Asset> {
   if (!id || !UUID_REGEX.test(id)) {
     throw new AssetNotFoundError();
@@ -99,6 +100,98 @@ export async function getAssetById(
 }
 
 /**
+ * Operação transacional de criação de ativo customizado.
+ * Recebe obrigatoriamente um DatabaseTransaction ativo.
+ */
+export async function createCustomAssetInTransaction(
+  input: CreateCustomAssetOutput,
+  user: SafeUser,
+  tx: DatabaseTransaction,
+  auditLogger: typeof insertAuditLog = insertAuditLog
+): Promise<Asset> {
+  const id = crypto.randomUUID();
+  const now = new Date();
+
+  let row: Asset;
+  try {
+    const [inserted] = await tx
+      .insert(assets)
+      .values({
+        id,
+        ticker: input.ticker,
+        name: input.name,
+        assetType: 'custom',
+        market: 'CUSTOM',
+        currency: input.currency,
+        isCustom: true,
+        userId: user.id,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+
+    row = inserted;
+  } catch (err: any) {
+    const code = err?.code || err?.cause?.code;
+    const constraintName =
+      err?.constraint_name ||
+      err?.cause?.constraint_name ||
+      err?.constraint ||
+      err?.cause?.constraint;
+
+    const isUserTickerMarketConstraint =
+      code === '23505' &&
+      constraintName === 'idx_assets_user_ticker_market';
+
+    if (isUserTickerMarketConstraint) {
+      throw new DuplicateAssetError(
+        `Já existe um ativo customizado com o ticker "${input.ticker}" para este usuário.`
+      );
+    }
+
+    throw err;
+  }
+
+  if (!row) {
+    throw new Error('Falha ao criar ativo customizado.');
+  }
+
+  await auditLogger(
+    {
+      tableName: 'assets',
+      recordId: id,
+      action: 'INSERT',
+      actorId: user.id,
+      actorType: 'user',
+      source: 'manual',
+    },
+    {
+      newValue: {
+        ticker: input.ticker,
+        name: input.name,
+        assetType: 'custom',
+        market: 'CUSTOM',
+        currency: input.currency,
+        isCustom: true,
+      },
+    },
+    {
+      allowlist: [
+        'ticker',
+        'name',
+        'assetType',
+        'market',
+        'currency',
+        'isCustom',
+      ],
+    },
+    tx
+  );
+
+  return row;
+}
+
+/**
  * Cria um ativo customizado pertencente exclusivamente ao usuário autenticado.
  * Registra evento de auditoria com os dados do ativo criado.
  * Converte violações de unicidade de ticker do usuário em DuplicateAssetError.
@@ -106,105 +199,17 @@ export async function getAssetById(
 export async function createCustomAsset(
   rawInput: Omit<CreateCustomAssetInput, 'userId'>,
   user: SafeUser,
-  executor: any = db
+  database: Database = db,
+  auditLogger: typeof insertAuditLog = insertAuditLog
 ): Promise<Asset> {
   const input = createCustomAssetSchema.parse({
     ...rawInput,
     userId: user.id,
   });
 
-  const id = crypto.randomUUID();
-  const now = new Date();
-
-  let createdAsset: Asset | null = null;
-
-  const runOperation = async (tx: any) => {
-    let row: Asset;
-    try {
-      const [inserted] = await tx
-        .insert(assets)
-        .values({
-          id,
-          ticker: input.ticker,
-          name: input.name,
-          assetType: 'custom',
-          market: 'CUSTOM',
-          currency: input.currency,
-          isCustom: true,
-          userId: user.id,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .returning();
-
-      row = inserted;
-    } catch (err: any) {
-      const code = err?.code || err?.cause?.code;
-      const constraintName =
-        err?.constraint_name ||
-        err?.cause?.constraint_name ||
-        err?.constraint ||
-        err?.cause?.constraint;
-
-      const isUserTickerMarketConstraint =
-        code === '23505' &&
-        constraintName === 'idx_assets_user_ticker_market';
-
-      if (isUserTickerMarketConstraint) {
-        throw new DuplicateAssetError(
-          `Já existe um ativo customizado com o ticker "${input.ticker}" para este usuário.`
-        );
-      }
-
-      throw err;
-    }
-
-    createdAsset = row;
-
-    await insertAuditLog(
-      {
-        tableName: 'assets',
-        recordId: id,
-        action: 'INSERT',
-        actorId: user.id,
-        actorType: 'user',
-        source: 'manual',
-      },
-      {
-        newValue: {
-          ticker: input.ticker,
-          name: input.name,
-          assetType: 'custom',
-          market: 'CUSTOM',
-          currency: input.currency,
-          isCustom: true,
-        },
-      },
-      {
-        allowlist: [
-          'ticker',
-          'name',
-          'assetType',
-          'market',
-          'currency',
-          'isCustom',
-        ],
-      },
-      tx
-    );
-  };
-
-  if (typeof executor.transaction === 'function') {
-    await executor.transaction(runOperation);
-  } else {
-    await runOperation(executor);
-  }
-
-  if (!createdAsset) {
-    throw new Error('Falha ao criar ativo customizado.');
-  }
-
-  return createdAsset;
+  return await database.transaction(async (tx) => {
+    return await createCustomAssetInTransaction(input, user, tx, auditLogger);
+  });
 }
 
 /**
@@ -212,7 +217,7 @@ export async function createCustomAsset(
  */
 export async function listCustomAssets(
   user: SafeUser,
-  executor: any = db
+  executor: DbExecutor = db
 ): Promise<Asset[]> {
   return await executor
     .select()

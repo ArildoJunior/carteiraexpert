@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { eq, and, isNull, desc } from 'drizzle-orm';
-import { db } from '../../../lib/db';
+import { db, type Database, type DatabaseTransaction, type DbExecutor } from '../../../lib/db';
 import { portfolios } from '../../../lib/db/schema/portfolio';
 import { insertAuditLog } from '../../../lib/db/audit';
 import { assertOwnership } from '../../identity/server/authorization-service';
@@ -9,13 +9,70 @@ import {
   createPortfolioSchema,
   updatePortfolioSchema,
   type CreatePortfolioInput,
+  type CreatePortfolioOutput,
   type UpdatePortfolioInput,
+  type UpdatePortfolioOutput,
 } from '../domain/portfolio.schema';
 import type { Portfolio } from '../domain/portfolio.types';
 import { PortfolioNotFoundError } from '../domain/errors';
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Operação transacional de criação de carteira.
+ * Recebe obrigatoriamente um DatabaseTransaction ativo.
+ */
+export async function createPortfolioInTransaction(
+  input: CreatePortfolioOutput,
+  user: SafeUser,
+  tx: DatabaseTransaction,
+  auditLogger: typeof insertAuditLog = insertAuditLog
+): Promise<Portfolio> {
+  const id = crypto.randomUUID();
+  const now = new Date();
+
+  const [createdPortfolio] = await tx
+    .insert(portfolios)
+    .values({
+      id,
+      userId: user.id,
+      name: input.name,
+      description: input.description ?? null,
+      baseCurrency: input.baseCurrency,
+      status: 'active',
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning();
+
+  if (!createdPortfolio) {
+    throw new Error('Falha ao criar carteira.');
+  }
+
+  await auditLogger(
+    {
+      tableName: 'portfolios',
+      recordId: id,
+      action: 'INSERT',
+      actorId: user.id,
+      actorType: 'user',
+      source: 'manual',
+    },
+    {
+      newValue: {
+        name: input.name,
+        description: input.description ?? null,
+        baseCurrency: input.baseCurrency,
+        status: 'active',
+      },
+    },
+    { allowlist: ['name', 'description', 'baseCurrency', 'status'] },
+    tx
+  );
+
+  return createdPortfolio;
+}
 
 /**
  * Cria uma nova carteira para o usuário autenticado.
@@ -25,64 +82,13 @@ const UUID_REGEX =
 export async function createPortfolio(
   rawInput: CreatePortfolioInput,
   user: SafeUser,
-  executor: any = db
+  database: Database = db,
+  auditLogger: typeof insertAuditLog = insertAuditLog
 ): Promise<Portfolio> {
   const input = createPortfolioSchema.parse(rawInput);
-  const id = crypto.randomUUID();
-  const now = new Date();
-
-  let createdPortfolio: Portfolio | null = null;
-
-  const runOperation = async (tx: any) => {
-    const [row] = await tx
-      .insert(portfolios)
-      .values({
-        id,
-        userId: user.id,
-        name: input.name,
-        description: input.description ?? null,
-        baseCurrency: input.baseCurrency,
-        status: 'active',
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning();
-
-    createdPortfolio = row;
-
-    await insertAuditLog(
-      {
-        tableName: 'portfolios',
-        recordId: id,
-        action: 'INSERT',
-        actorId: user.id,
-        actorType: 'user',
-        source: 'manual',
-      },
-      {
-        newValue: {
-          name: input.name,
-          description: input.description ?? null,
-          baseCurrency: input.baseCurrency,
-          status: 'active',
-        },
-      },
-      { allowlist: ['name', 'description', 'baseCurrency', 'status'] },
-      tx
-    );
-  };
-
-  if (typeof executor.transaction === 'function') {
-    await executor.transaction(runOperation);
-  } else {
-    await runOperation(executor);
-  }
-
-  if (!createdPortfolio) {
-    throw new Error('Falha ao criar carteira.');
-  }
-
-  return createdPortfolio;
+  return await database.transaction(async (tx) => {
+    return await createPortfolioInTransaction(input, user, tx, auditLogger);
+  });
 }
 
 /**
@@ -91,7 +97,7 @@ export async function createPortfolio(
  */
 export async function listPortfolios(
   user: SafeUser,
-  executor: any = db
+  executor: DbExecutor = db
 ): Promise<Portfolio[]> {
   return await executor
     .select()
@@ -109,7 +115,7 @@ export async function listPortfolios(
 export async function getPortfolioById(
   id: string,
   user: SafeUser,
-  executor: any = db
+  executor: DbExecutor = db
 ): Promise<Portfolio> {
   if (!id || !UUID_REGEX.test(id)) {
     throw new PortfolioNotFoundError();
@@ -131,22 +137,21 @@ export async function getPortfolioById(
 }
 
 /**
- * Atualiza os dados de uma carteira ativa.
- * Valida a titularidade e registra auditoria com os valores anteriores e novos.
+ * Operação transacional de atualização de carteira.
+ * Recebe obrigatoriamente um DatabaseTransaction ativo.
  */
-export async function updatePortfolio(
+export async function updatePortfolioInTransaction(
   id: string,
-  rawInput: UpdatePortfolioInput,
+  input: UpdatePortfolioOutput,
   user: SafeUser,
-  executor: any = db
+  tx: DatabaseTransaction,
+  auditLogger: typeof insertAuditLog = insertAuditLog
 ): Promise<Portfolio> {
   if (!id || !UUID_REGEX.test(id)) {
     throw new PortfolioNotFoundError();
   }
 
-  const input = updatePortfolioSchema.parse(rawInput);
-
-  const [existing] = await executor
+  const [existing] = await tx
     .select()
     .from(portfolios)
     .where(and(eq(portfolios.id, id), isNull(portfolios.deletedAt)))
@@ -156,7 +161,7 @@ export async function updatePortfolio(
     throw new PortfolioNotFoundError();
   }
 
-  await assertOwnership(existing.userId, user, 'portfolio', executor);
+  await assertOwnership(existing.userId, user, 'portfolio', tx);
 
   const updateData: {
     name?: string;
@@ -177,76 +182,87 @@ export async function updatePortfolio(
     updateData.status = input.status;
   }
 
-  let updatedPortfolio: Portfolio | null = null;
-
-  const runOperation = async (tx: any) => {
-    const [row] = await tx
-      .update(portfolios)
-      .set(updateData)
-      .where(
-        and(
-          eq(portfolios.id, id),
-          eq(portfolios.userId, user.id),
-          isNull(portfolios.deletedAt)
-        )
+  const [updatedPortfolio] = await tx
+    .update(portfolios)
+    .set(updateData)
+    .where(
+      and(
+        eq(portfolios.id, id),
+        eq(portfolios.userId, user.id),
+        isNull(portfolios.deletedAt)
       )
-      .returning();
-
-    updatedPortfolio = row;
-
-    await insertAuditLog(
-      {
-        tableName: 'portfolios',
-        recordId: id,
-        action: 'UPDATE',
-        actorId: user.id,
-        actorType: 'user',
-        source: 'manual',
-      },
-      {
-        oldValue: {
-          name: existing.name,
-          description: existing.description,
-          status: existing.status,
-        },
-        newValue: {
-          name: row.name,
-          description: row.description,
-          status: row.status,
-        },
-      },
-      { allowlist: ['name', 'description', 'status'] },
-      tx
-    );
-  };
-
-  if (typeof executor.transaction === 'function') {
-    await executor.transaction(runOperation);
-  } else {
-    await runOperation(executor);
-  }
+    )
+    .returning();
 
   if (!updatedPortfolio) {
     throw new PortfolioNotFoundError();
   }
 
+  await auditLogger(
+    {
+      tableName: 'portfolios',
+      recordId: id,
+      action: 'UPDATE',
+      actorId: user.id,
+      actorType: 'user',
+      source: 'manual',
+    },
+    {
+      oldValue: {
+        name: existing.name,
+        description: existing.description,
+        status: existing.status,
+      },
+      newValue: {
+        name: updatedPortfolio.name,
+        description: updatedPortfolio.description,
+        status: updatedPortfolio.status,
+      },
+    },
+    { allowlist: ['name', 'description', 'status'] },
+    tx
+  );
+
   return updatedPortfolio;
 }
 
 /**
- * Realiza a exclusão lógica (soft delete) da carteira atribuindo deletedAt = NOW().
- * Preserva o histórico financeiro e registra auditoria da deleção lógica.
+ * Atualiza os dados de uma carteira ativa.
+ * Valida a titularidade e registra auditoria com os valores anteriores e novos.
  */
-export async function deletePortfolio(
+export async function updatePortfolio(
+  id: string,
+  rawInput: UpdatePortfolioInput,
+  user: SafeUser,
+  database: Database = db,
+  auditLogger: typeof insertAuditLog = insertAuditLog
+): Promise<Portfolio> {
+  if (!id || !UUID_REGEX.test(id)) {
+    throw new PortfolioNotFoundError();
+  }
+
+  const input = updatePortfolioSchema.parse(rawInput);
+
+  return await database.transaction(async (tx) => {
+    return await updatePortfolioInTransaction(id, input, user, tx, auditLogger);
+  });
+}
+
+/**
+ * Operação transacional de exclusão lógica (soft delete) da carteira.
+ * Recebe obrigatoriamente um DatabaseTransaction ativo.
+ */
+export async function deletePortfolioInTransaction(
   id: string,
   user: SafeUser,
-  executor: any = db
+  tx: DatabaseTransaction,
+  auditLogger: typeof insertAuditLog = insertAuditLog
 ): Promise<void> {
   if (!id || !UUID_REGEX.test(id)) {
     throw new PortfolioNotFoundError();
   }
 
-  const [existing] = await executor
+  const [existing] = await tx
     .select()
     .from(portfolios)
     .where(and(eq(portfolios.id, id), isNull(portfolios.deletedAt)))
@@ -256,48 +272,59 @@ export async function deletePortfolio(
     throw new PortfolioNotFoundError();
   }
 
-  await assertOwnership(existing.userId, user, 'portfolio', executor);
+  await assertOwnership(existing.userId, user, 'portfolio', tx);
 
   const now = new Date();
 
-  const runOperation = async (tx: any) => {
-    await tx
-      .update(portfolios)
-      .set({
-        deletedAt: now,
-        updatedAt: now,
-      })
-      .where(
-        and(
-          eq(portfolios.id, id),
-          eq(portfolios.userId, user.id),
-          isNull(portfolios.deletedAt)
-        )
-      );
-
-    await insertAuditLog(
-      {
-        tableName: 'portfolios',
-        recordId: id,
-        action: 'DELETE',
-        actorId: user.id,
-        actorType: 'user',
-        source: 'manual',
-      },
-      {
-        oldValue: {
-          name: existing.name,
-          status: existing.status,
-        },
-      },
-      { allowlist: ['name', 'status'] },
-      tx
+  await tx
+    .update(portfolios)
+    .set({
+      deletedAt: now,
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(portfolios.id, id),
+        eq(portfolios.userId, user.id),
+        isNull(portfolios.deletedAt)
+      )
     );
-  };
 
-  if (typeof executor.transaction === 'function') {
-    await executor.transaction(runOperation);
-  } else {
-    await runOperation(executor);
+  await auditLogger(
+    {
+      tableName: 'portfolios',
+      recordId: id,
+      action: 'DELETE',
+      actorId: user.id,
+      actorType: 'user',
+      source: 'manual',
+    },
+    {
+      oldValue: {
+        name: existing.name,
+        status: existing.status,
+      },
+    },
+    { allowlist: ['name', 'status'] },
+    tx
+  );
+}
+
+/**
+ * Realiza a exclusão lógica (soft delete) da carteira atribuindo deletedAt = NOW().
+ * Preserva o histórico financeiro e registra auditoria da deleção lógica.
+ */
+export async function deletePortfolio(
+  id: string,
+  user: SafeUser,
+  database: Database = db,
+  auditLogger: typeof insertAuditLog = insertAuditLog
+): Promise<void> {
+  if (!id || !UUID_REGEX.test(id)) {
+    throw new PortfolioNotFoundError();
   }
+
+  await database.transaction(async (tx) => {
+    await deletePortfolioInTransaction(id, user, tx, auditLogger);
+  });
 }

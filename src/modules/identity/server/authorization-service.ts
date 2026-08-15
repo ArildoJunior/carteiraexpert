@@ -3,7 +3,7 @@ import { requireAuth } from './current-user';
 import { hasAcceptedCurrentTerms } from './consent-service';
 import { ConsentRequiredError, AuthorizationError } from '../domain/errors';
 import type { SafeUser } from '../domain/user.types';
-import { insertAuditLog } from '../../../lib/db/audit';
+import { insertAuditLog, type AuditExecutor } from '../../../lib/db/audit';
 import { db } from '../../../lib/db';
 
 export interface AuthContext {
@@ -42,7 +42,7 @@ export async function assertOwnership(
   resourceOwnerId: string,
   currentUser: SafeUser,
   resourceType: string,
-  executor: any = db
+  executor: AuditExecutor = db
 ): Promise<void> {
   if (resourceOwnerId !== currentUser.id) {
     // 1. Gera ID técnico para o evento de segurança para preencher o recordId (notNull no banco)

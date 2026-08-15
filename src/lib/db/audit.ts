@@ -1,7 +1,13 @@
 import crypto from 'node:crypto';
+import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { db } from './client';
+import type * as schema from './schema/index';
 import { auditLogs } from './schema/audit';
 import { Decimal } from '../decimal';
+
+export type AuditExecutor =
+  | PostgresJsDatabase<typeof schema>
+  | Parameters<Parameters<PostgresJsDatabase<typeof schema>['transaction']>[0]>[0];
 
 // Lista de campos confidenciais e credenciais que devem ser totalmente removidos
 const PROHIBITED_AUDIT_FIELDS = new Set([
@@ -174,7 +180,7 @@ export async function insertAuditLog(
     newValue?: any;
   },
   options: SanitizerOptions = {},
-  executor: any = db
+  executor: AuditExecutor = db
 ): Promise<void> {
   if (!log.tableName) {
     throw new Error('O campo tableName é obrigatório para registrar auditoria.');

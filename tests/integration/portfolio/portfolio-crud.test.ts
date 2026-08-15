@@ -1,15 +1,18 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { db } from '../../../src/lib/db';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { db, type DatabaseTransaction } from '../../../src/lib/db';
 import { users } from '../../../src/lib/db/schema/identity';
 import { portfolios } from '../../../src/lib/db/schema/portfolio';
 import { auditLogs } from '../../../src/lib/db/schema/audit';
+import * as auditModule from '../../../src/lib/db/audit';
 import {
   createPortfolio,
+  createPortfolioInTransaction,
   listPortfolios,
   getPortfolioById,
   updatePortfolio,
   deletePortfolio,
 } from '../../../src/modules/portfolio/server/portfolio.service';
+import { createPortfolioSchema } from '../../../src/modules/portfolio/domain/portfolio.schema';
 import { PortfolioNotFoundError } from '../../../src/modules/portfolio/domain/errors';
 import { AuthorizationError } from '../../../src/modules/identity/domain/errors';
 import type { SafeUser } from '../../../src/modules/identity/domain/user.types';
@@ -162,6 +165,80 @@ describe('Integração: PortfolioService CRUD, Isolamento e Auditoria', () => {
       expect(ids).toContain(portfolioCId);
       expect(ids).not.toContain(portfolioAId);
       expect(ids).not.toContain(portfolioBId);
+    });
+
+    it('deve garantir rollback físico via injeção explícita de auditLogger em createPortfolio', async () => {
+      const failedPortfolioName = `Port_Failed_${Date.now()}`;
+      const failingAuditLogger = vi.fn<typeof auditModule.insertAuditLog>(async () => {
+        throw new Error('Falha injetada no auditLogger (createPortfolio)');
+      });
+
+      await expect(
+        createPortfolio(
+          {
+            name: failedPortfolioName,
+            baseCurrency: 'BRL',
+          },
+          user1,
+          db,
+          failingAuditLogger
+        )
+      ).rejects.toThrow('Falha injetada no auditLogger (createPortfolio)');
+
+      // Confirma que a dependência injetada foi chamada
+      expect(failingAuditLogger).toHaveBeenCalledTimes(1);
+
+      // Confirma fisicamente no PostgreSQL que a carteira NÃO foi persistida
+      const rows = await db
+        .select()
+        .from(portfolios)
+        .where(
+          and(eq(portfolios.name, failedPortfolioName), eq(portfolios.userId, user1.id))
+        );
+
+      expect(rows).toHaveLength(0);
+    });
+
+    it('deve garantir execução e rollback em chamada direta a createPortfolioInTransaction com DatabaseTransaction e auditLogger injetado', async () => {
+      const failedDirectPortName = `Port_DirectTx_${Date.now()}`;
+      const failingAuditLogger = vi.fn<typeof auditModule.insertAuditLog>(async () => {
+        throw new Error('Falha injetada no auditLogger (createPortfolioInTransaction)');
+      });
+
+      const validatedData = createPortfolioSchema.parse({
+        name: failedDirectPortName,
+        baseCurrency: 'BRL',
+      });
+
+      let capturedTx: DatabaseTransaction | null = null;
+
+      // Executa a operação dentro de uma transação externa
+      await expect(
+        db.transaction(async (tx) => {
+          capturedTx = tx;
+          await createPortfolioInTransaction(
+            validatedData,
+            user1,
+            tx,
+            failingAuditLogger
+          );
+        })
+      ).rejects.toThrow('Falha injetada no auditLogger (createPortfolioInTransaction)');
+
+      // Confirma que o auditLogger injetado foi invocado com o mesmo DatabaseTransaction fornecido
+      expect(failingAuditLogger).toHaveBeenCalledTimes(1);
+      expect(failingAuditLogger.mock.calls[0][0]).toMatchObject({ tableName: 'portfolios', action: 'INSERT' });
+      expect(failingAuditLogger.mock.calls[0][3]).toBe(capturedTx);
+
+      // Confirma fisicamente no PostgreSQL que nada foi gravado
+      const rows = await db
+        .select()
+        .from(portfolios)
+        .where(
+          and(eq(portfolios.name, failedDirectPortName), eq(portfolios.userId, user1.id))
+        );
+
+      expect(rows).toHaveLength(0);
     });
   });
 

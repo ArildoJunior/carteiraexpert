@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
-import { db } from '../../../src/lib/db';
+import { db, type DatabaseTransaction } from '../../../src/lib/db';
 import { users } from '../../../src/lib/db/schema/identity';
 import { assets } from '../../../src/lib/db/schema/portfolio';
 import { auditLogs } from '../../../src/lib/db/schema/audit';
@@ -8,8 +8,12 @@ import {
   searchAssets,
   getAssetById,
   createCustomAsset,
+  createCustomAssetInTransaction,
   listCustomAssets,
 } from '../../../src/modules/portfolio/server/asset.service';
+import {
+  createCustomAssetSchema,
+} from '../../../src/modules/portfolio/domain/asset.schema';
 import {
   AssetNotFoundError,
   DuplicateAssetError,
@@ -185,6 +189,83 @@ describe('Integração: AssetService Consulta, Custom Assets, Unicidade e IDOR',
       } finally {
         insertAuditSpy.mockRestore();
       }
+    });
+
+    it('deve garantir rollback físico via injeção explícita de auditLogger em createCustomAsset', async () => {
+      const failedInjectedTicker = `INJ_${Date.now().toString().slice(-8)}`;
+      const failingAuditLogger = vi.fn<typeof auditModule.insertAuditLog>(async () => {
+        throw new Error('Falha injetada no auditLogger (createCustomAsset)');
+      });
+
+      await expect(
+        createCustomAsset(
+          {
+            ticker: failedInjectedTicker,
+            name: 'Ativo Injetado Que Deve Sofrer Rollback',
+            currency: 'BRL',
+          },
+          user1,
+          db,
+          failingAuditLogger
+        )
+      ).rejects.toThrow('Falha injetada no auditLogger (createCustomAsset)');
+
+      // Confirma que a dependência injetada foi chamada
+      expect(failingAuditLogger).toHaveBeenCalledTimes(1);
+
+      // Confirma fisicamente no PostgreSQL que o registro sofreu rollback
+      const rows = await db
+        .select()
+        .from(assets)
+        .where(
+          and(eq(assets.ticker, failedInjectedTicker), eq(assets.userId, user1.id))
+        );
+
+      expect(rows).toHaveLength(0);
+    });
+
+    it('deve garantir execução e rollback em chamada direta a createCustomAssetInTransaction com DatabaseTransaction e auditLogger injetado', async () => {
+      const failedDirectTxTicker = `DTX_${Date.now().toString().slice(-8)}`;
+      const failingAuditLogger = vi.fn<typeof auditModule.insertAuditLog>(async () => {
+        throw new Error('Falha injetada no auditLogger (InTransaction)');
+      });
+
+      const validatedData = createCustomAssetSchema.parse({
+        ticker: failedDirectTxTicker,
+        name: 'Ativo Direto InTransaction',
+        currency: 'BRL',
+        userId: user1.id,
+      });
+
+      let capturedTx: DatabaseTransaction | null = null;
+
+      // Executa a operação dentro de uma transação externa
+      await expect(
+        db.transaction(async (tx) => {
+          capturedTx = tx;
+          await createCustomAssetInTransaction(
+            validatedData,
+            user1,
+            tx,
+            failingAuditLogger
+          );
+        })
+      ).rejects.toThrow('Falha injetada no auditLogger (InTransaction)');
+
+      // Confirma que o auditLogger injetado foi invocado com o mesmo DatabaseTransaction fornecido
+      expect(failingAuditLogger).toHaveBeenCalledTimes(1);
+      expect(failingAuditLogger.mock.calls[0][0]).toMatchObject({ tableName: 'assets', action: 'INSERT' });
+      expect(failingAuditLogger.mock.calls[0][3]).toBe(capturedTx);
+
+      // Confirma fisicamente no PostgreSQL que nada foi comitado
+      const rows = await db
+        .select()
+        .from(assets)
+        .where(
+          and(eq(assets.ticker, failedDirectTxTicker), eq(assets.userId, user1.id))
+        );
+
+      expect(rows).toHaveLength(0);
     });
   });
 
