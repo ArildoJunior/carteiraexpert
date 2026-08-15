@@ -2,21 +2,36 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { getCurrentUser } from '@/modules/identity/server/current-user';
-import { listPortfolios } from '@/modules/portfolio/server/portfolio.service';
+import { getSerializedUserDashboardData } from '@/modules/portfolio/server/dashboard.service';
+import { DashboardMetricsCards } from '@/modules/portfolio/ui/DashboardMetricsCards';
+import { RecentActivityFeed } from '@/modules/portfolio/ui/RecentActivityFeed';
+import { Decimal } from '@/lib/decimal';
 
 export const metadata: Metadata = {
-  title: 'Dashboard — CarteiraExpert',
-  description: 'Visão geral da sua carteira de investimentos.',
+  title: 'Dashboard Consolidado — CarteiraExpert',
+  description: 'Visão geral patrimonial consolidada das suas carteiras de investimentos.',
 };
+
+function formatMoney(value: string | Decimal, currency = 'BRL'): string {
+  try {
+    const dec = value instanceof Decimal ? value : new Decimal(value || '0');
+    const [intPart, fracPart = '00'] = dec.toFixed(2).split('.');
+    const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    const symbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : 'R$';
+    return `${symbol} ${formattedInt},${fracPart}`;
+  } catch {
+    return 'R$ 0,00';
+  }
+}
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  const portfolios = await listPortfolios(user);
+  const data = await getSerializedUserDashboardData(user);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" id="dashboard-page-container">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -24,7 +39,7 @@ export default async function DashboardPage() {
             Olá, {user.name.split(' ')[0]} 👋
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Bem-vindo ao CarteiraExpert. Sua plataforma de consolidação patrimonial.
+            Visão consolidada das suas posições patrimoniais e histórico de operações.
           </p>
         </div>
 
@@ -37,54 +52,41 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
-      {/* Cards de Resumo */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-1">
-          <p className="text-xs font-medium text-slate-400">Carteiras Ativas</p>
-          <p id="dashboard-portfolio-count" className="text-3xl font-bold text-white">
-            {portfolios.length}
-          </p>
-          <p className="text-xs text-slate-500">
-            {portfolios.length === 1
-              ? '1 carteira cadastrada'
-              : `${portfolios.length} carteiras cadastradas`}
-          </p>
-        </div>
+      {/* ─── Cards de Resumo Financeiro Consolidado ────────────────────────── */}
+      <DashboardMetricsCards
+        currencyGroups={data.currencyGroups}
+        totalActivePortfolios={data.totalActivePortfolios}
+      />
 
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-1">
-          <p className="text-xs font-medium text-slate-400">Patrimônio Consolidado</p>
-          <p className="text-3xl font-bold text-slate-600">—</p>
-          <p className="text-xs text-slate-500">
-            Disponível no Pacote 03.02 (Motor de Posição)
-          </p>
-        </div>
-
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-1">
-          <p className="text-xs font-medium text-slate-400">Rentabilidade</p>
-          <p className="text-3xl font-bold text-slate-600">—</p>
-          <p className="text-xs text-slate-500">
-            Disponível em fases futuras
-          </p>
-        </div>
-      </div>
-
-      {/* Seção Minhas Carteiras Recentes */}
-      <div className="space-y-4">
+      {/* ─── Seção Minhas Carteiras ────────────────────────────────────────── */}
+      <div className="space-y-4" id="dashboard-portfolios-section">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-white tracking-tight">
-            Minhas Carteiras
-          </h2>
+          <div>
+            <h2 className="text-lg font-bold text-white tracking-tight">
+              Minhas Carteiras
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Carteiras ativas cadastradas na plataforma.
+            </p>
+          </div>
           <Link
+            id="dashboard-view-all-portfolios-link"
             href="/portfolios"
             className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition-colors"
           >
-            Ver todas ({portfolios.length}) →
+            Ver todas ({data.totalActivePortfolios}) →
           </Link>
         </div>
 
-        {portfolios.length === 0 ? (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center space-y-3">
-            <p className="text-sm text-slate-400">
+        {data.totalActivePortfolios === 0 ? (
+          <div
+            id="empty-portfolios-state"
+            className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center space-y-3 shadow-lg"
+          >
+            <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-slate-500 text-xl font-bold mx-auto">
+              💼
+            </div>
+            <p className="text-sm font-medium text-slate-300">
               Você ainda não possui carteiras cadastradas.
             </p>
             <Link
@@ -95,44 +97,91 @@ export default async function DashboardPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {portfolios.slice(0, 3).map((portfolio) => (
-              <Link
-                key={portfolio.id}
-                href={`/portfolios/${portfolio.id}`}
-                className="bg-slate-900 border border-slate-800 hover:border-emerald-500/50 rounded-2xl p-4 transition-all duration-200 hover:-translate-y-0.5 space-y-2 block"
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-white text-base truncate">
-                    {portfolio.name}
-                  </h3>
-                  <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-                    {portfolio.baseCurrency}
-                  </span>
-                </div>
-                {portfolio.description && (
-                  <p className="text-xs text-slate-400 line-clamp-1">
-                    {portfolio.description}
-                  </p>
-                )}
-                <div className="pt-2 text-right text-xs text-emerald-400 font-semibold">
-                  Acessar carteira →
-                </div>
-              </Link>
-            ))}
+          <div
+            id="dashboard-portfolios-grid"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+          >
+            {data.portfolioSummaries.map((p) => {
+              const activeAssetsCount = p.summary.positions.length;
+              const decPnL = new Decimal(p.summary.totalRealizedPnL || '0');
+              const isPositivePnL = decPnL.greaterThan(0);
+              const isNegativePnL = decPnL.lessThan(0);
+
+              return (
+                <Link
+                  key={p.portfolioId}
+                  id={`dashboard-portfolio-card-${p.portfolioId}`}
+                  href={`/portfolios/${p.portfolioId}`}
+                  className="bg-slate-900 border border-slate-800 hover:border-emerald-500/50 rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5 space-y-3 block shadow-md group"
+                >
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-white text-base truncate group-hover:text-emerald-400 transition-colors">
+                      {p.portfolioName}
+                    </h3>
+                    <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                      {p.baseCurrency}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-800/60 text-xs">
+                    <div>
+                      <p className="text-[11px] text-slate-500 uppercase font-semibold">
+                        Em Custódia
+                      </p>
+                      <p className="font-mono font-bold text-white text-sm mt-0.5">
+                        {formatMoney(p.summary.totalInvestedCost, p.baseCurrency)}
+                      </p>
+                    </div>
+
+                    <div className="text-right">
+                      <p className="text-[11px] text-slate-500 uppercase font-semibold">
+                        PnL Realizado
+                      </p>
+                      <p
+                        className={`font-mono font-bold text-sm mt-0.5 ${
+                          isPositivePnL
+                            ? 'text-emerald-400'
+                            : isNegativePnL
+                            ? 'text-red-400'
+                            : 'text-slate-300'
+                        }`}
+                      >
+                        {isPositivePnL ? '+' : ''}
+                        {formatMoney(p.summary.totalRealizedPnL, p.baseCurrency)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-800/40 text-xs text-slate-400">
+                    <span>
+                      {activeAssetsCount}{' '}
+                      {activeAssetsCount === 1 ? 'ativo' : 'ativos'}
+                    </span>
+                    <span className="text-emerald-400 font-semibold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                      Acessar →
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* Aviso informativo de fase */}
-      <div className="bg-emerald-950/30 border border-emerald-900/40 rounded-2xl p-4 flex items-start gap-3">
-        <span className="text-emerald-400 text-base">ℹ️</span>
-        <div className="space-y-0.5 text-xs">
-          <p className="text-emerald-300 font-semibold">
-            Pacote 03.01-D — Operações Manuais e Carteiras Ativas
+      {/* ─── Feed de Atividades Recentes ───────────────────────────────────── */}
+      <div className="space-y-4">
+        <RecentActivityFeed events={data.recentEvents} />
+      </div>
+
+      {/* Aviso institucional sobre limites */}
+      <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 flex items-start gap-3">
+        <span className="text-slate-400 text-base">ℹ️</span>
+        <div className="space-y-0.5 text-xs text-slate-400">
+          <p className="text-slate-300 font-semibold">
+            Consolidação Patrimonial — CarteiraExpert
           </p>
-          <p className="text-emerald-500/80">
-            Você pode criar carteiras e registrar operações manuais de compra e venda com taxas e datas. O cálculo determinístico de posição e custo médio será disponibilizado no Pacote 03.02.
+          <p>
+            Os valores consolidados refletem o custo histórico de aquisição e o resultado realizado de vendas encerradas. A plataforma tem finalidade informativa e não constitui recomendação de investimento.
           </p>
         </div>
       </div>

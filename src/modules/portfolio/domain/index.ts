@@ -6,5 +6,7 @@ export * from './portfolio-event.types';
 export * from './portfolio-event.schema';
 export * from './position.types';
 export * from './position-engine';
+export * from './dashboard.types';
+export * from './dashboard.schema';
 export * from './errors';
 export * from './decimal-validator';

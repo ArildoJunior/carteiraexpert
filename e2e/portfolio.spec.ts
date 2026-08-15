@@ -165,6 +165,19 @@ test.describe('E2E: Carteiras, Posições e Operações Manuais (Pacote 03.02)',
     await expect(
       page.locator(`#position-qty-${customTicker.toUpperCase()}`)
     ).toContainText('100');
+
+    // 11. Valida Consolidação no Dashboard Geral (/dashboard) - Pacote 03.03
+    await page.goto('/dashboard');
+    await expect(page.locator('#dashboard-consolidated-metrics')).toBeVisible();
+    await expect(page.locator('#dashboard-total-custody')).toContainText('2.500,00');
+    await expect(page.locator('#dashboard-active-assets')).toContainText('1');
+    await expect(
+      page.locator('#dashboard-portfolios-section').getByText('Carteira Dividendos E2E')
+    ).toBeVisible();
+    await expect(page.locator('#recent-activities-table')).toBeVisible();
+    await expect(
+      page.locator('#recent-activities-table').getByText(customTicker.toUpperCase())
+    ).toBeVisible();
   });
 
   // ─── 2. Isolamento Multiusuário (Proteção contra IDOR) ──────────────────────
@@ -185,6 +198,14 @@ test.describe('E2E: Carteiras, Posições e Operações Manuais (Pacote 03.02)',
     await page.click('#register-submit');
 
     await page.waitForURL('**/dashboard');
+
+    // Dashboard do Usuário B deve estar completamente limpo e zerado
+    await expect(page.locator('#dashboard-total-custody')).toContainText('0,00');
+    await expect(page.locator('#empty-portfolios-state')).toBeVisible();
+    await expect(page.locator('#empty-recent-activities')).toBeVisible();
+    await expect(
+      page.locator('#dashboard-portfolios-section').getByText('Carteira Dividendos E2E')
+    ).not.toBeVisible();
 
     // Tenta acessar diretamente a URL da carteira do Usuário A
     if (userAPortfolioUrl) {

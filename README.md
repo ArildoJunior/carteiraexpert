@@ -13,7 +13,8 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 - **Fase 03 — Carteiras, Ativos e Posições:**
   - **Pacote 03.00-E — Carteiras, Ativos, Eventos e Qualidade:** **ACEITO** (Modelagem de carteiras, ativos globais/customizados, eventos patrimoniais, contratos canônicos Drizzle tipados sem `any`, segregação de coordenadores públicos e funções `...InTransaction`, injeção explícita de `auditLogger`, isolamento multiusuário, proteção contra IDOR e fixture de tipos).
   - **Pacote 03.01-D — Carteiras, Ativos e Operações Manuais:** **ACEITO** (Camada de entrega manual: Server Actions autenticadas, rotas `/portfolios` e `/portfolios/[id]`, autocomplete debounced de ativos, cadastro de ativo customizado, lançamento manual de compras/vendas, cancelamento auditado com justificativa obrigatória e seed de desenvolvimento protegido).
-  - **Pacote 03.02 — Motor de Posição, Custo Médio e Validação Temporal de Vendas:** **PRONTO PARA HOMOLOGAÇÃO** (Cálculo determinístico de posição e quantidade em custódia, custo médio ponderado por ativo incluindo taxas, custo total investido, resultado realizado por venda com dedução de taxas, rejeição atômica de vendas a descoberto, validação de consistência da linha do tempo para eventos retroativos e cancelamentos, proteção de concorrência com bloqueio pessimista `FOR UPDATE`, interface com blocos verticais e suíte completa de testes aprovada).
+  - **Pacote 03.02 — Motor de Posição, Custo Médio e Validação Temporal de Vendas:** **ACEITO** (Cálculo determinístico de posição e quantidade em custódia, custo médio ponderado por ativo incluindo taxas, custo total investido, resultado realizado por venda com dedução de taxas, rejeição atômica de vendas a descoberto, validação de consistência da linha do tempo para eventos retroativos e cancelamentos, proteção de concorrência com bloqueio pessimista `FOR UPDATE`, interface com blocos verticais e suíte completa de testes aprovada).
+  - **Pacote 03.03 — Histórico e Dashboard Básico:** **PRONTO PARA HOMOLOGAÇÃO** (Consolidação patrimonial global SSR em `/dashboard`, segregação estrita por moeda base sem conversão fictícia, agregação de custo total investido em posições ativas, PnL realizado acumulado de vendas, taxas totais, contagem de ativos em custódia e carteiras ativas, feed unificado e cronológico de atividades recentes com nomes de carteiras e ativos, proteção estrita anti-IDOR e exclusão de soft deletes).
 
 ---
 
@@ -49,7 +50,14 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 - **Consistência da Linha do Tempo:** Rejeição de eventos retroativos fora de ordem ou cancelamento de compras antigas que invalidem vendas posteriores na linha do tempo.
 - **Proteção Contra Concorrência:** Bloqueio pessimista no PostgreSQL (`FOR UPDATE`) para serialização de transações na carteira.
 
-### 5. Integridade de Schema, Contratos e Banco de Dados
+### 5. Histórico e Dashboard Básico Consolidado (Pacote 03.03)
+- **Dashboard Consolidado SSR (`/dashboard`):** Visão geral patrimonial em Server Component com cálculo em tempo real e revalidação sob demanda.
+- **Segregação por Moeda Base:** Agrupamento estrito de métricas por moeda (`BRL`, `USD`, `EUR`), sem conversão cambial fictícia.
+- **Métricas Consolidadas:** Custo total de aquisição em custódia, PnL realizado acumulado de vendas, taxas acumuladas, contagem de ativos distintos e carteiras ativas.
+- **Feed Unificado de Atividades Recentes:** Histórico cronológico multicarteiras de compras e vendas com identificação de carteira, ativo, datas, quantidades e taxas.
+- **Exclusão de Soft Deletes:** Desconsideração estrita de eventos e carteiras canceladas/excluídas em todas as consultas e agregações.
+
+### 6. Integridade de Schema, Contratos e Banco de Dados
 - **Schema Guardian:** Validação física em tempo de execução (`assertSchemaCompatible`) e via CLI (`db:verify`) inspecionando o catálogo PostgreSQL (9 tabelas validadas).
 - **Contratos Drizzle Tipados:** Exportação canônica de `Database`, `DatabaseTransaction`, `DbExecutor`, `SchemaQueryExecutor` e `AuditExecutor`, com eliminação de `any` em assinaturas e callbacks.
 - **Fixture Estática de Tipos:** Arquivo `tests/types/database-contracts.test-d.ts` validando compatibilidade estrutural e rejeição em tempo de compilação via `@ts-expect-error`.

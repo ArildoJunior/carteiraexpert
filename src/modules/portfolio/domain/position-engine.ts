@@ -7,6 +7,14 @@ import type {
   SerializedPortfolioPositionsSummary,
   SerializedRealizedTradePnL,
 } from './position.types';
+import type {
+  CurrencyGroupSummary,
+  UserRecentEventItem,
+  UserDashboardSummary,
+  SerializedCurrencyGroupSummary,
+  SerializedUserRecentEventItem,
+  SerializedUserDashboardData,
+} from './dashboard.types';
 import type { Asset } from './asset.types';
 import {
   InsufficientPositionError,
@@ -304,6 +312,158 @@ export function serializePositionsSummary(
     totalInvestedCost: summary.totalInvestedCost.toFixed(8),
     totalFees: summary.totalFees.toFixed(8),
     totalRealizedPnL: summary.totalRealizedPnL.toFixed(8),
+    calculatedAt: summary.calculatedAt.toISOString(),
+  };
+}
+
+/**
+ * Consolida os resumos de múltiplas carteiras agrupando por moeda base.
+ * Totaliza investimento em custódia, PnL realizado, taxas e contagem de ativos ativos.
+ */
+export function calculateUserDashboardSummary(
+  portfolioData: {
+    portfolioId: string;
+    portfolioName: string;
+    baseCurrency: string;
+    summary: PortfolioPositionsSummary;
+  }[],
+  recentEvents: UserRecentEventItem[] = []
+): UserDashboardSummary {
+  const currencyMap = new Map<
+    string,
+    {
+      totalInvestedCost: Decimal;
+      totalFees: Decimal;
+      totalRealizedPnL: Decimal;
+      activePositionsCount: number;
+      portfoliosCount: number;
+    }
+  >();
+
+  const totalActivePortfolios = portfolioData.length;
+  let totalActivePositions = 0;
+
+  for (const item of portfolioData) {
+    const cur = item.baseCurrency || 'BRL';
+    if (!currencyMap.has(cur)) {
+      currencyMap.set(cur, {
+        totalInvestedCost: new Decimal(0),
+        totalFees: new Decimal(0),
+        totalRealizedPnL: new Decimal(0),
+        activePositionsCount: 0,
+        portfoliosCount: 0,
+      });
+    }
+
+    const group = currencyMap.get(cur)!;
+    group.totalInvestedCost = group.totalInvestedCost.plus(item.summary.totalInvestedCost);
+    group.totalFees = group.totalFees.plus(item.summary.totalFees);
+    group.totalRealizedPnL = group.totalRealizedPnL.plus(item.summary.totalRealizedPnL);
+    group.activePositionsCount += item.summary.positions.length;
+    group.portfoliosCount += 1;
+
+    totalActivePositions += item.summary.positions.length;
+  }
+
+  // Ordena grupos com BRL prioritário, depois alfabético
+  const currencyGroups: CurrencyGroupSummary[] = Array.from(currencyMap.entries())
+    .map(([currency, data]) => ({
+      currency,
+      totalInvestedCost: data.totalInvestedCost,
+      totalFees: data.totalFees,
+      totalRealizedPnL: data.totalRealizedPnL,
+      activePositionsCount: data.activePositionsCount,
+      portfoliosCount: data.portfoliosCount,
+    }))
+    .sort((a, b) => {
+      if (a.currency === 'BRL') return -1;
+      if (b.currency === 'BRL') return 1;
+      return a.currency.localeCompare(b.currency);
+    });
+
+  // Se não houver carteiras, gera grupo padrão BRL zerado
+  if (currencyGroups.length === 0) {
+    currencyGroups.push({
+      currency: 'BRL',
+      totalInvestedCost: new Decimal(0),
+      totalFees: new Decimal(0),
+      totalRealizedPnL: new Decimal(0),
+      activePositionsCount: 0,
+      portfoliosCount: 0,
+    });
+  }
+
+  return {
+    currencyGroups,
+    totalActivePortfolios,
+    totalActivePositions,
+    portfolioSummaries: portfolioData,
+    recentEvents,
+    calculatedAt: new Date(),
+  };
+}
+
+export function serializeUserRecentEvent(
+  event: UserRecentEventItem
+): SerializedUserRecentEventItem {
+  return {
+    id: event.id,
+    portfolioId: event.portfolioId,
+    portfolioName: event.portfolioName,
+    assetId: event.assetId,
+    assetTicker: event.assetTicker,
+    assetName: event.assetName,
+    assetMarket: event.assetMarket,
+    type: event.type,
+    tradeDate:
+      event.tradeDate instanceof Date
+        ? event.tradeDate.toISOString()
+        : String(event.tradeDate),
+    settlementDate: event.settlementDate
+      ? event.settlementDate instanceof Date
+        ? event.settlementDate.toISOString()
+        : String(event.settlementDate)
+      : null,
+    quantity: String(event.quantity),
+    unitPrice: String(event.unitPrice),
+    fees: String(event.fees),
+    currency: event.currency,
+    source: event.source,
+    notes: event.notes,
+    createdAt:
+      event.createdAt instanceof Date
+        ? event.createdAt.toISOString()
+        : String(event.createdAt),
+  };
+}
+
+export function serializeCurrencyGroupSummary(
+  group: CurrencyGroupSummary
+): SerializedCurrencyGroupSummary {
+  return {
+    currency: group.currency,
+    totalInvestedCost: group.totalInvestedCost.toFixed(8),
+    totalFees: group.totalFees.toFixed(8),
+    totalRealizedPnL: group.totalRealizedPnL.toFixed(8),
+    activePositionsCount: group.activePositionsCount,
+    portfoliosCount: group.portfoliosCount,
+  };
+}
+
+export function serializeUserDashboardData(
+  summary: UserDashboardSummary
+): SerializedUserDashboardData {
+  return {
+    currencyGroups: summary.currencyGroups.map(serializeCurrencyGroupSummary),
+    totalActivePortfolios: summary.totalActivePortfolios,
+    totalActivePositions: summary.totalActivePositions,
+    portfolioSummaries: summary.portfolioSummaries.map((p) => ({
+      portfolioId: p.portfolioId,
+      portfolioName: p.portfolioName,
+      baseCurrency: p.baseCurrency,
+      summary: serializePositionsSummary(p.summary),
+    })),
+    recentEvents: summary.recentEvents.map(serializeUserRecentEvent),
     calculatedAt: summary.calculatedAt.toISOString(),
   };
 }

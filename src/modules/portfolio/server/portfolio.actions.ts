@@ -23,6 +23,7 @@ import {
   getSerializedPortfolioPositions,
   getSerializedAssetPositionInPortfolio,
 } from './position.service';
+import { getSerializedUserDashboardData } from './dashboard.service';
 import {
   createPortfolioSchema,
   updatePortfolioSchema,
@@ -52,6 +53,7 @@ import type {
   SerializedPortfolioPositionsSummary,
   SerializedAssetPositionDetail,
 } from '../domain/position.types';
+import type { SerializedUserDashboardData } from '../domain/dashboard.types';
 
 // ─── Tipagem Universal de Resposta de Server Actions ─────────────────────────
 export interface ActionResult<T = unknown> {
@@ -359,6 +361,7 @@ export async function createPortfolioEventAction(
     const parsed = createPortfolioEventSchema.parse(raw);
     const event = await createPortfolioEvent(parsed, user);
 
+    safeRevalidatePath('/dashboard');
     safeRevalidatePath(`/portfolios/${portfolioId}`);
 
     return {
@@ -387,6 +390,7 @@ export async function cancelPortfolioEventAction(
     const parsed = cancelPortfolioEventSchema.parse({ cancellationReason });
     await cancelPortfolioEvent(id, parsed, user);
 
+    safeRevalidatePath('/dashboard');
     if (portfolioId) {
       safeRevalidatePath(`/portfolios/${portfolioId}`);
     }
@@ -434,6 +438,25 @@ export async function getAssetPositionAction(
     return {
       success: true,
       data: detail,
+    };
+  } catch (err) {
+    return handleActionError(err);
+  }
+}
+
+// ─── 5. DASHBOARD GERAL CONSOLIDADO ──────────────────────────────────────────
+
+/**
+ * Retorna os dados consolidados do dashboard geral (moedas, métricas, carteiras e feed recente).
+ */
+export async function getUserDashboardAction(): Promise<ActionResult<SerializedUserDashboardData>> {
+  try {
+    const user = await requireAuth();
+    const data = await getSerializedUserDashboardData(user);
+
+    return {
+      success: true,
+      data,
     };
   } catch (err) {
     return handleActionError(err);

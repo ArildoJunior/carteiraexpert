@@ -1,7 +1,8 @@
 import crypto from 'node:crypto';
 import { eq, and, isNull, desc, gte, lte } from 'drizzle-orm';
+import { Decimal } from '@/lib/decimal';
 import { db, type Database, type DatabaseTransaction, type DbExecutor } from '../../../lib/db';
-import { portfolioEvents, portfolios } from '../../../lib/db/schema/portfolio';
+import { portfolioEvents, portfolios, assets } from '../../../lib/db/schema/portfolio';
 import { insertAuditLog } from '../../../lib/db/audit';
 import { assertOwnership } from '../../identity/server/authorization-service';
 import type { SafeUser } from '../../identity/domain/user.types';
@@ -15,7 +16,12 @@ import {
   type CancelPortfolioEventOutput,
   type ListPortfolioEventsInput,
 } from '../domain/portfolio-event.schema';
+import {
+  listUserRecentEventsSchema,
+  type ListUserRecentEventsInput,
+} from '../domain/dashboard.schema';
 import type { PortfolioEvent } from '../domain/portfolio-event.types';
+import type { UserRecentEventItem } from '../domain/dashboard.types';
 import {
   PortfolioEventNotFoundError,
   PortfolioNotFoundError,
@@ -389,4 +395,78 @@ export async function cancelPortfolioEvent(
   await database.transaction(async (tx) => {
     await cancelPortfolioEventInTransaction(id, input, user, tx, auditLogger);
   });
+}
+
+/**
+ * Lista as operações recentes do usuário unificadas entre todas as suas carteiras ativas.
+ * Enriquecidas com o nome da carteira e metadados do ativo.
+ * Preserva o isolamento estrito por usuário e exclui soft deletes.
+ */
+export async function listUserRecentEvents(
+  user: SafeUser,
+  rawOptions: ListUserRecentEventsInput = {},
+  executor: DbExecutor = db
+): Promise<UserRecentEventItem[]> {
+  const options = listUserRecentEventsSchema.parse(rawOptions);
+
+  const conditions = [
+    eq(portfolios.userId, user.id),
+    isNull(portfolios.deletedAt),
+    isNull(portfolioEvents.deletedAt),
+  ];
+
+  if (options.portfolioId) {
+    conditions.push(eq(portfolioEvents.portfolioId, options.portfolioId));
+  }
+
+  if (options.type) {
+    conditions.push(eq(portfolioEvents.type, options.type));
+  }
+
+  if (options.startDate) {
+    conditions.push(gte(portfolioEvents.tradeDate, options.startDate));
+  }
+
+  if (options.endDate) {
+    conditions.push(lte(portfolioEvents.tradeDate, options.endDate));
+  }
+
+  const rows = await executor
+    .select({
+      event: portfolioEvents,
+      portfolioName: portfolios.name,
+      assetTicker: assets.ticker,
+      assetName: assets.name,
+      assetMarket: assets.market,
+    })
+    .from(portfolioEvents)
+    .innerJoin(portfolios, eq(portfolios.id, portfolioEvents.portfolioId))
+    .innerJoin(assets, eq(assets.id, portfolioEvents.assetId))
+    .where(and(...conditions))
+    .orderBy(desc(portfolioEvents.tradeDate), desc(portfolioEvents.createdAt))
+    .limit(options.limit)
+    .offset(options.offset);
+
+  return rows.map(({ event, portfolioName, assetTicker, assetName, assetMarket }) => ({
+    id: event.id,
+    portfolioId: event.portfolioId,
+    portfolioName,
+    assetId: event.assetId,
+    assetTicker,
+    assetName,
+    assetMarket,
+    type: event.type as PortfolioEvent['type'],
+    tradeDate: event.tradeDate,
+    settlementDate: event.settlementDate,
+    quantity: event.quantity,
+    unitPrice: event.unitPrice,
+    fees: event.fees,
+    currency: event.currency,
+    notes: event.notes,
+    source: event.source as PortfolioEvent['source'],
+    createdBy: event.createdBy,
+    createdAt: event.createdAt,
+    deletedAt: event.deletedAt,
+    cancellationReason: event.cancellationReason,
+  }));
 }
