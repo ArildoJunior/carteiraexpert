@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { Decimal } from '@/lib/decimal';
 import {
   createPortfolioEventAction,
+  getAssetPositionAction,
   type ActionResult,
 } from '../server/portfolio.actions';
 import type { PortfolioEvent } from '../domain/portfolio-event.types';
@@ -25,6 +27,7 @@ export function TransactionModal({
 }: TransactionModalProps) {
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [transactionType, setTransactionType] = useState<'BUY' | 'SELL'>('BUY');
+  const [availableQty, setAvailableQty] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [state, setState] = useState<ActionResult<PortfolioEvent>>({ success: false });
 
@@ -34,6 +37,39 @@ export function TransactionModal({
 
   // Formata a data atual para YYYY-MM-DD (padrão do input date)
   const todayStr = new Date().toISOString().split('T')[0];
+
+  // Busca posição disponível quando seleciona ativo em modo VENDA com proteção contra estado obsoleto
+  useEffect(() => {
+    // 1. Limpa imediatamente a posição disponível para não exibir dados do ativo anterior
+    setAvailableQty(null);
+
+    let active = true;
+
+    async function fetchAvailable() {
+      if (selectedAsset && transactionType === 'SELL') {
+        try {
+          const res = await getAssetPositionAction(portfolioId, selectedAsset.id);
+          if (active) {
+            if (res.success && res.data?.position?.quantity) {
+              setAvailableQty(res.data.position.quantity);
+            } else {
+              setAvailableQty(null);
+            }
+          }
+        } catch {
+          if (active) {
+            setAvailableQty(null);
+          }
+        }
+      }
+    }
+
+    fetchAvailable();
+
+    return () => {
+      active = false;
+    };
+  }, [selectedAsset, transactionType, portfolioId]);
 
   if (!isOpen) return null;
 
@@ -68,6 +104,16 @@ export function TransactionModal({
       setPending(false);
     }
   }
+
+  // Verifica se a quantidade disponível é estritamente positiva usando Decimal puro
+  const isAvailablePositive = (() => {
+    if (!availableQty) return false;
+    try {
+      return new Decimal(availableQty).greaterThan(0);
+    } catch {
+      return false;
+    }
+  })();
 
   return (
     <>
@@ -153,6 +199,22 @@ export function TransactionModal({
               }}
               error={state.fieldErrors?.assetId?.[0]}
             />
+
+            {/* Indicação de Posição Disponível para Venda */}
+            {transactionType === 'SELL' && availableQty !== null && (
+              <div
+                id="available-position-badge"
+                className="bg-blue-950/40 border border-blue-800/60 rounded-lg px-3 py-2 flex items-center justify-between text-xs"
+              >
+                <span className="text-slate-400">Posição disponível em custódia:</span>
+                <span
+                  id="available-position-value"
+                  className="font-mono font-bold text-blue-400"
+                >
+                  {isAvailablePositive ? availableQty : '0.0000000000'}
+                </span>
+              </div>
+            )}
 
             {/* Datas: Negociação e Liquidação */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -255,19 +317,24 @@ export function TransactionModal({
                 >
                   Preço Unitário <span className="text-red-400">*</span>
                 </label>
-                <input
-                  id="transaction-unit-price"
-                  name="unitPrice"
-                  type="text"
-                  required
-                  placeholder="Ex: 34.50"
-                  aria-describedby={
-                    state.fieldErrors?.unitPrice
-                      ? 'transaction-unit-price-error'
-                      : undefined
-                  }
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3.5 py-2 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
-                />
+                <div className="relative">
+                  <span className="absolute left-3 top-2 text-slate-500 text-sm">
+                    {selectedAsset?.currency || 'R$'}
+                  </span>
+                  <input
+                    id="transaction-unit-price"
+                    name="unitPrice"
+                    type="text"
+                    required
+                    placeholder="0.00"
+                    aria-describedby={
+                      state.fieldErrors?.unitPrice
+                        ? 'transaction-unit-price-error'
+                        : undefined
+                    }
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-10 pr-3.5 py-2 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                  />
+                </div>
                 {state.fieldErrors?.unitPrice && (
                   <p
                     id="transaction-unit-price-error"
@@ -279,82 +346,66 @@ export function TransactionModal({
               </div>
             </div>
 
-            {/* Taxas e Moeda */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label
-                  htmlFor="transaction-fees"
-                  className="block text-sm font-medium text-slate-300 mb-1.5"
-                >
-                  Taxas / Emolumentos
-                </label>
+            {/* Taxas Operacionais */}
+            <div>
+              <label
+                htmlFor="transaction-fees"
+                className="block text-sm font-medium text-slate-300 mb-1.5"
+              >
+                Taxas / Corretagem / Emolumentos
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-2 text-slate-500 text-sm">
+                  {selectedAsset?.currency || 'R$'}
+                </span>
                 <input
                   id="transaction-fees"
                   name="fees"
                   type="text"
-                  defaultValue="0"
+                  defaultValue="0.00"
                   placeholder="0.00"
                   aria-describedby={
-                    state.fieldErrors?.fees
-                      ? 'transaction-fees-error'
-                      : undefined
+                    state.fieldErrors?.fees ? 'transaction-fees-error' : undefined
                   }
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3.5 py-2 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-10 pr-3.5 py-2 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
                 />
-                {state.fieldErrors?.fees && (
-                  <p
-                    id="transaction-fees-error"
-                    className="text-red-400 text-xs mt-1"
-                  >
-                    {state.fieldErrors.fees[0]}
-                  </p>
-                )}
               </div>
-
-              <div>
-                <label
-                  htmlFor="transaction-currency"
-                  className="block text-sm font-medium text-slate-300 mb-1.5"
+              {state.fieldErrors?.fees && (
+                <p
+                  id="transaction-fees-error"
+                  className="text-red-400 text-xs mt-1"
                 >
-                  Moeda
-                </label>
-                <select
-                  id="transaction-currency"
-                  name="currency"
-                  defaultValue={selectedAsset?.currency || 'BRL'}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
-                >
-                  <option value="BRL">BRL (R$)</option>
-                  <option value="USD">USD ($)</option>
-                  <option value="EUR">EUR (€)</option>
-                </select>
-              </div>
+                  {state.fieldErrors.fees[0]}
+                </p>
+              )}
             </div>
 
-            {/* Observações */}
+            {/* Notas / Observações */}
             <div>
               <label
                 htmlFor="transaction-notes"
                 className="block text-sm font-medium text-slate-300 mb-1.5"
               >
-                Observações (opcional)
+                Observações / Estratégia (opcional)
               </label>
-              <input
+              <textarea
                 id="transaction-notes"
                 name="notes"
-                type="text"
-                placeholder="Ex: Ordem via Corretora XP, lote fracionário..."
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3.5 py-2 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                rows={2}
+                maxLength={500}
+                placeholder="Anotações sobre a operação..."
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3.5 py-2 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all resize-none"
               />
             </div>
 
-            {/* Actions */}
+            {/* Ações */}
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
               <button
+                id="transaction-cancel-btn"
                 type="button"
                 onClick={onClose}
                 disabled={pending}
-                className="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
+                className="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white transition-colors"
               >
                 Cancelar
               </button>
@@ -362,22 +413,22 @@ export function TransactionModal({
                 id="transaction-submit"
                 type="submit"
                 disabled={pending}
-                className="px-5 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:cursor-not-allowed rounded-lg shadow-sm transition-all"
+                className="px-5 py-2 rounded-xl text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 transition-colors shadow-lg shadow-emerald-950"
               >
-                {pending ? 'Registrando...' : 'Registrar Operação'}
+                {pending ? 'Salvando...' : 'Salvar Operação'}
               </button>
             </div>
           </form>
         </div>
       </div>
 
-      {/* Modal de cadastro de ativo customizado RENDERIZADO FORA do form */}
+      {/* Modal Desacoplado de Criação de Ativo Customizado (Renderizado como Irmão) */}
       <CustomAssetModal
         isOpen={isCustomModalOpen}
         onClose={() => setIsCustomModalOpen(false)}
         initialTicker={customTickerInitial}
-        onAssetCreated={(asset) => {
-          setSelectedAsset(asset);
+        onAssetCreated={(newAsset) => {
+          setSelectedAsset(newAsset);
           setIsCustomModalOpen(false);
         }}
       />

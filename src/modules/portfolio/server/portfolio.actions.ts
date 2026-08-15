@@ -20,6 +20,10 @@ import {
   listPortfolioEventsByPortfolio,
 } from './portfolio-event.service';
 import {
+  getSerializedPortfolioPositions,
+  getSerializedAssetPositionInPortfolio,
+} from './position.service';
+import {
   createPortfolioSchema,
   updatePortfolioSchema,
 } from '../domain/portfolio.schema';
@@ -36,12 +40,18 @@ import {
   AssetNotFoundError,
   DuplicateAssetError,
   PortfolioEventNotFoundError,
+  InsufficientPositionError,
+  RetroactiveInconsistencyError,
 } from '../domain/errors';
 import { AuthorizationError } from '../../identity/domain/errors';
 import { ZodError } from 'zod';
 import type { Portfolio } from '../domain/portfolio.types';
 import type { Asset } from '../domain/asset.types';
 import type { PortfolioEvent } from '../domain/portfolio-event.types';
+import type {
+  SerializedPortfolioPositionsSummary,
+  SerializedAssetPositionDetail,
+} from '../domain/position.types';
 
 // ─── Tipagem Universal de Resposta de Server Actions ─────────────────────────
 export interface ActionResult<T = unknown> {
@@ -95,6 +105,23 @@ function handleActionError<T = never>(err: unknown): ActionResult<T> {
       success: false,
       error: err.message,
       fieldErrors: { ticker: [err.message] },
+    };
+  }
+
+  if (err instanceof InsufficientPositionError) {
+    return {
+      success: false,
+      error: err.message || 'Posição insuficiente para realizar esta venda.',
+      fieldErrors: {
+        quantity: [err.message || 'Quantidade superior à posição disponível.'],
+      },
+    };
+  }
+
+  if (err instanceof RetroactiveInconsistencyError) {
+    return {
+      success: false,
+      error: err.message || 'A operação não pode ser concluída pois geraria inconsistência na linha temporal.',
     };
   }
 
@@ -302,7 +329,7 @@ export async function createCustomAssetAction(
 // ─── 3. EVENTOS / OPERAÇÕES PATRIMONIAIS ──────────────────────────────────────
 
 /**
- * Registra uma nova operação manual de compra ou venda na carteira.
+ * Registra uma nova operação manual de compra ou venda na carteira com validação temporal de posição.
  */
 export async function createPortfolioEventAction(
   _prevState: ActionResult<PortfolioEvent> | null,
@@ -344,7 +371,7 @@ export async function createPortfolioEventAction(
 }
 
 /**
- * Cancela logicamente uma operação com justificativa obrigatória.
+ * Cancela logicamente uma operação com justificativa obrigatória e validação de consistência da linha temporal.
  */
 export async function cancelPortfolioEventAction(
   _prevState: ActionResult | null,
@@ -366,6 +393,47 @@ export async function cancelPortfolioEventAction(
 
     return {
       success: true,
+    };
+  } catch (err) {
+    return handleActionError(err);
+  }
+}
+
+// ─── 4. POSIÇÕES CONSOLIDADAS E RESULTADO REALIZADO ───────────────────────────
+
+/**
+ * Retorna as posições consolidadas em custódia e o resultado realizado de uma carteira.
+ */
+export async function getPortfolioPositionsAction(
+  portfolioId: string
+): Promise<ActionResult<SerializedPortfolioPositionsSummary>> {
+  try {
+    const user = await requireAuth();
+    const summary = await getSerializedPortfolioPositions(portfolioId, user);
+
+    return {
+      success: true,
+      data: summary,
+    };
+  } catch (err) {
+    return handleActionError(err);
+  }
+}
+
+/**
+ * Retorna a posição e o histórico de trades de um ativo específico em uma carteira.
+ */
+export async function getAssetPositionAction(
+  portfolioId: string,
+  assetId: string
+): Promise<ActionResult<SerializedAssetPositionDetail>> {
+  try {
+    const user = await requireAuth();
+    const detail = await getSerializedAssetPositionInPortfolio(portfolioId, assetId, user);
+
+    return {
+      success: true,
+      data: detail,
     };
   } catch (err) {
     return handleActionError(err);

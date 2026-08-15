@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/modules/identity/server/current-user';
 import { getPortfolioById } from '@/modules/portfolio/server/portfolio.service';
 import { listPortfolioEventsByPortfolio } from '@/modules/portfolio/server/portfolio-event.service';
 import { getAssetById } from '@/modules/portfolio/server/asset.service';
+import { getSerializedPortfolioPositions } from '@/modules/portfolio/server/position.service';
 import { PortfolioDetailView } from '@/modules/portfolio/ui/PortfolioDetailView';
 import type { Asset } from '@/modules/portfolio/domain/asset.types';
 
@@ -55,7 +56,10 @@ export default async function PortfolioDetailPage({
     notFound();
   }
 
-  const events = await listPortfolioEventsByPortfolio(id, user);
+  const [events, positionsSummary] = await Promise.all([
+    listPortfolioEventsByPortfolio(id, user),
+    getSerializedPortfolioPositions(id, user),
+  ]);
 
   // Mapeia os ativos únicos presentes nos eventos para exibição de ticker e nome
   const uniqueAssetIds = Array.from(new Set(events.map((e) => e.assetId)));
@@ -78,6 +82,7 @@ export default async function PortfolioDetailPage({
         portfolio={portfolio}
         events={events}
         assetsMap={assetsMap}
+        positionsSummary={positionsSummary}
       />
     </div>
   );

@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('E2E: Carteiras e Operações Manuais (Pacote 03.01-D)', () => {
+test.describe('E2E: Carteiras, Posições e Operações Manuais (Pacote 03.02)', () => {
   const userAEmail = `e2e-portfolio-userA-${Date.now()}@test.com`;
   const userBEmail = `e2e-portfolio-userB-${Date.now()}@test.com`;
   let userAPortfolioUrl = '';
 
   // ─── 1. Cadastro e Fluxo Completo do Usuário A ──────────────────────────────
-  test('deve criar conta, criar carteira, cadastrar ativo e registrar compra e venda', async ({
+  test('deve criar conta, criar carteira, cadastrar ativo, comprar, validar venda excessiva e apurar posições com PnL', async ({
     page,
   }) => {
     // 1. Cadastro do Usuário A
@@ -48,6 +48,7 @@ test.describe('E2E: Carteiras e Operações Manuais (Pacote 03.01-D)', () => {
     await expect(page.locator('#portfolio-title')).toContainText(
       'Carteira Dividendos E2E'
     );
+    await expect(page.locator('#empty-positions-state')).toBeVisible();
     await expect(page.locator('#empty-events-state')).toBeVisible();
 
     // 5. Registra Operação de Compra com Ativo Customizado
@@ -62,57 +63,94 @@ test.describe('E2E: Carteiras e Operações Manuais (Pacote 03.01-D)', () => {
     await page.click('#btn-create-custom-asset');
     await expect(page.locator('#custom-asset-modal-title')).toBeVisible();
 
-    await page.fill('#custom-asset-ticker', customTicker);
+    // Valida que o modal preencheu automaticamente o ticker buscado
+    await expect(page.locator('#custom-asset-ticker')).toHaveValue(customTicker.toUpperCase());
     await page.fill('#custom-asset-name', 'Alfa Participações S.A.');
     await page.click('#custom-asset-submit');
 
-    // Ativo selecionado aparece no modal de transação
+    // Confirma que o modal de ativo customizado fechou automaticamente e o ativo permaneceu selecionado
+    await expect(page.locator('#custom-asset-modal-title')).toBeHidden();
     await expect(page.locator('#selected-asset-ticker')).toContainText(
       customTicker.toUpperCase()
     );
+    await expect(page.locator('#transaction-modal-title')).toBeVisible();
 
-    // Preenche dados da compra
+    // Preenche dados da compra (100 @ 25.00)
     await page.fill('#transaction-quantity', '100');
-    await page.fill('#transaction-unit-price', '25.50');
-    await page.fill('#transaction-fees', '4.20');
+    await page.fill('#transaction-unit-price', '25.00');
+    await page.fill('#transaction-fees', '0.00');
     await page.fill('#transaction-notes', 'Primeira compra E2E');
     await page.click('#transaction-submit');
 
-    // Verifica que a linha da compra apareceu na tabela
+    // 6. Valida que a Posição em Custódia foi calculada e exibida
+    await expect(page.locator('#portfolio-positions-table')).toBeVisible();
+    await expect(
+      page.locator(`#position-row-${customTicker.toUpperCase()}`)
+    ).toBeVisible();
+    await expect(
+      page.locator(`#position-qty-${customTicker.toUpperCase()}`)
+    ).toContainText('100');
+    await expect(page.locator('#metric-total-invested')).toContainText('2.500,00');
+
+    // 7. Valida que o Extrato de Operações exibe a compra
     await expect(page.locator('#portfolio-events-table')).toBeVisible();
     await expect(
       page.locator('#portfolio-events-table').getByText(customTicker.toUpperCase())
     ).toBeVisible();
     await expect(page.locator('text=Compra')).toBeVisible();
-    await expect(page.locator('text=100.0000000000')).toBeVisible();
-    await expect(page.locator('tbody').getByText('Ativo').first()).toBeVisible();
 
-    // 6. Registra Operação de Venda
+    // 8. Tenta Registrar Venda EXCESSIVA (150 > 100) -> Deve Rejeitar
     await page.click('#btn-new-transaction');
     await page.click('#transaction-type-sell');
 
-    // Busca o ativo customizado recém-criado
+    // Sem ativo selecionado, o badge de posição não é exibido
+    await expect(page.locator('#available-position-badge')).toBeHidden();
+
     await page.fill('#asset-search-input', customTicker);
     const assetOption = page.locator(`#asset-option-${customTicker.toUpperCase()}`);
     await expect(assetOption).toBeVisible({ timeout: 10000 });
     await assetOption.click();
 
-    // Confirma que o ativo foi selecionado
-    await expect(page.locator('#selected-asset-ticker')).toContainText(
-      customTicker.toUpperCase()
-    );
+    // Verifica que o badge de posição disponível exibe 100
+    await expect(page.locator('#available-position-badge')).toBeVisible();
+    await expect(page.locator('#available-position-value')).toContainText('100');
 
-    await page.fill('#transaction-quantity', '50');
+    // Testa troca de ativo: ao clicar em Trocar, o badge deve sumir imediatamente
+    await page.click('#btn-clear-asset');
+    await expect(page.locator('#available-position-badge')).toBeHidden();
+
+    // Re-seleciona o ativo para continuar o fluxo de venda
+    await page.fill('#asset-search-input', customTicker);
+    await expect(page.locator(`#asset-option-${customTicker.toUpperCase()}`)).toBeVisible();
+    await page.locator(`#asset-option-${customTicker.toUpperCase()}`).click();
+    await expect(page.locator('#available-position-badge')).toBeVisible();
+    await expect(page.locator('#available-position-value')).toContainText('100');
+
+    // Preenche 150 ações (acima do saldo)
+    await page.fill('#transaction-quantity', '150');
     await page.fill('#transaction-unit-price', '30.00');
-    await page.fill('#transaction-fees', '2.00');
+    await page.fill('#transaction-fees', '0.00');
     await page.click('#transaction-submit');
 
-    // Verifica que a linha de venda apareceu na tabela
-    await expect(page.locator('text=Venda')).toBeVisible();
-    await expect(page.locator('text=50.0000000000')).toBeVisible();
-    await expect(page.locator('text=2 registros')).toBeVisible();
+    // Deve exibir alerta de erro de validação
+    await expect(page.locator('#transaction-error-alert')).toBeVisible();
+    await expect(page.locator('#transaction-error-alert')).toContainText(
+      'insuficiente'
+    );
 
-    // 7. Cancela a operação mais recente (Venda) com justificativa obrigatória
+    // 9. Corrige para Venda PARCIAL Válida (40 @ 30.00)
+    await page.fill('#transaction-quantity', '40');
+    await page.click('#transaction-submit');
+
+    // Valida atualização da posição para 60 ações e apuração de PnL Realizado
+    await expect(
+      page.locator(`#position-qty-${customTicker.toUpperCase()}`)
+    ).toContainText('60');
+    await expect(
+      page.locator(`#position-realized-pnl-${customTicker.toUpperCase()}`)
+    ).toContainText('+R$ 200,00'); // (40 * 30) - (40 * 25) = +200
+
+    // 10. Cancela a operação de Venda com justificativa obrigatória
     const cancelButtons = page.locator('button:has-text("Cancelar")');
     await cancelButtons.first().click();
 
@@ -123,16 +161,16 @@ test.describe('E2E: Carteiras e Operações Manuais (Pacote 03.01-D)', () => {
     );
     await page.click('#confirm-cancel-event-submit');
 
-    // Verifica que a operação cancelada foi removida da visão ativa (soft delete) e resta a Compra
-    await expect(page.locator('text=1 registro')).toBeVisible();
-    await expect(page.locator('text=Compra')).toBeVisible();
+    // Valida que a posição foi restabelecida para 100 ações
+    await expect(
+      page.locator(`#position-qty-${customTicker.toUpperCase()}`)
+    ).toContainText('100');
   });
 
   // ─── 2. Isolamento Multiusuário (Proteção contra IDOR) ──────────────────────
-  test('usuário B não deve conseguir acessar ou visualizar carteira do usuário A', async ({
+  test('usuário B não deve conseguir acessar ou visualizar carteira ou posições do usuário A', async ({
     browser,
   }) => {
-    // Cria um novo contexto de navegação isolado para o Usuário B
     const context = await browser.newContext();
     const page = await context.newPage();
 

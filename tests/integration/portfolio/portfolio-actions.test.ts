@@ -304,22 +304,37 @@ describe('Integração: Portfolio Server Actions e Isolamento Multiusuário', ()
       createdEventIds.push(eventId);
     });
 
-    it('deve registrar operação manual de venda mesmo com quantidade acima da posição (sem motor de posição no 03.01-D)', async () => {
-      const formData = new FormData();
-      formData.set('portfolioId', testPortfolioId);
-      formData.set('assetId', globalAssetId);
-      formData.set('type', 'SELL');
-      formData.set('tradeDate', '2026-08-14');
-      formData.set('quantity', '500');
-      formData.set('unitPrice', '40.00');
-      formData.set('fees', '2.50');
-      formData.set('currency', 'BRL');
+    it('deve rejeitar venda com quantidade superior à posição disponível e permitir venda válida', async () => {
+      // 1. Tenta vender 500 (posição disponível é 100)
+      const excessFormData = new FormData();
+      excessFormData.set('portfolioId', testPortfolioId);
+      excessFormData.set('assetId', globalAssetId);
+      excessFormData.set('type', 'SELL');
+      excessFormData.set('tradeDate', '2026-08-14');
+      excessFormData.set('quantity', '500');
+      excessFormData.set('unitPrice', '40.00');
+      excessFormData.set('fees', '2.50');
+      excessFormData.set('currency', 'BRL');
 
-      const res = await createPortfolioEventAction(null, formData);
+      const excessRes = await createPortfolioEventAction(null, excessFormData);
+      expect(excessRes.success).toBe(false);
+      expect(excessRes.error).toContain('insuficiente');
 
-      expect(res.success).toBe(true);
-      expect(res.data?.type).toBe('SELL');
-      createdEventIds.push(res.data!.id);
+      // 2. Vende 50 (válida dentro da posição de 100)
+      const validFormData = new FormData();
+      validFormData.set('portfolioId', testPortfolioId);
+      validFormData.set('assetId', globalAssetId);
+      validFormData.set('type', 'SELL');
+      validFormData.set('tradeDate', '2026-08-14');
+      validFormData.set('quantity', '50');
+      validFormData.set('unitPrice', '40.00');
+      validFormData.set('fees', '2.50');
+      validFormData.set('currency', 'BRL');
+
+      const validRes = await createPortfolioEventAction(null, validFormData);
+      expect(validRes.success).toBe(true);
+      expect(validRes.data?.type).toBe('SELL');
+      createdEventIds.push(validRes.data!.id);
     });
 
     it('deve bloquear tentativa do User 2 de inserir evento na carteira do User 1', async () => {
@@ -342,18 +357,30 @@ describe('Integração: Portfolio Server Actions e Isolamento Multiusuário', ()
     it('deve cancelar evento com justificativa obrigatória e manter persistência (soft delete)', async () => {
       activeUser = user1;
 
-      const formData = new FormData();
-      formData.set('id', eventId);
-      formData.set('portfolioId', testPortfolioId);
-      formData.set('cancellationReason', 'Erro de digitação no preço da corretora');
+      // 1. Tentar cancelar a compra (que lastreou a venda de 50) deve falhar por inconsistência temporal
+      const invalidCancelFormData = new FormData();
+      invalidCancelFormData.set('id', eventId);
+      invalidCancelFormData.set('portfolioId', testPortfolioId);
+      invalidCancelFormData.set('cancellationReason', 'Tentando cancelar compra com venda posterior');
 
-      const res = await cancelPortfolioEventAction(null, formData);
+      const invalidRes = await cancelPortfolioEventAction(null, invalidCancelFormData);
+      expect(invalidRes.success).toBe(false);
+      expect(invalidRes.error).toContain('inconsistência');
+
+      // 2. Cancelar a venda (que não deixa posições negativas) deve ter sucesso
+      const sellEventId = createdEventIds[createdEventIds.length - 1];
+      const validCancelFormData = new FormData();
+      validCancelFormData.set('id', sellEventId);
+      validCancelFormData.set('portfolioId', testPortfolioId);
+      validCancelFormData.set('cancellationReason', 'Erro de digitação no preço da corretora');
+
+      const res = await cancelPortfolioEventAction(null, validCancelFormData);
       expect(res.success).toBe(true);
 
       const [cancelledEvent] = await db
         .select()
         .from(portfolioEvents)
-        .where(eq(portfolioEvents.id, eventId));
+        .where(eq(portfolioEvents.id, sellEventId));
 
       expect(cancelledEvent.deletedAt).not.toBeNull();
       expect(cancelledEvent.cancellationReason).toBe(

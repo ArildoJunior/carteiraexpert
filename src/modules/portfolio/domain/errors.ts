@@ -46,3 +46,45 @@ export class DuplicateAssetError extends Error {
     this.name = 'DuplicateAssetError';
   }
 }
+
+export class InsufficientPositionError extends Error {
+  public readonly availableQuantity: string;
+  public readonly requestedQuantity: string;
+  public readonly assetId: string;
+  public readonly tradeDate?: Date;
+
+  constructor(
+    message: string,
+    details?: {
+      availableQuantity: string;
+      requestedQuantity: string;
+      assetId: string;
+      tradeDate?: Date;
+    }
+  ) {
+    super(message);
+    this.name = 'InsufficientPositionError';
+    this.availableQuantity = details?.availableQuantity ?? '0';
+    this.requestedQuantity = details?.requestedQuantity ?? '0';
+    this.assetId = details?.assetId ?? '';
+    this.tradeDate = details?.tradeDate;
+  }
+}
+
+export class RetroactiveInconsistencyError extends Error {
+  public readonly assetId?: string;
+  public readonly conflictingDate?: Date;
+
+  constructor(
+    message = 'A operação não pode ser concluída pois geraria inconsistência na linha temporal de operações.',
+    details?: {
+      assetId?: string;
+      conflictingDate?: Date;
+    }
+  ) {
+    super(message);
+    this.name = 'RetroactiveInconsistencyError';
+    this.assetId = details?.assetId;
+    this.conflictingDate = details?.conflictingDate;
+  }
+}

@@ -27,17 +27,12 @@ export function CustomAssetModal({
   const [state, setState] = useState<ActionResult<Asset>>({ success: false });
 
   useEffect(() => {
-    if (initialTicker) {
-      setTicker(initialTicker.toUpperCase());
-    }
-  }, [initialTicker]);
-
-  useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
+      setTicker(initialTicker ? initialTicker.trim().toUpperCase() : '');
       setName('');
       setState({ success: false });
     }
-  }, [isOpen]);
+  }, [isOpen, initialTicker]);
 
   if (!isOpen) return null;
 
@@ -180,28 +175,42 @@ export function CustomAssetModal({
               htmlFor="custom-asset-currency"
               className="block text-sm font-medium text-slate-300 mb-1.5"
             >
-              Moeda de Negociação
+              Moeda Principal <span className="text-red-400">*</span>
             </label>
             <select
               id="custom-asset-currency"
               name="currency"
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+              aria-describedby={
+                state.fieldErrors?.currency
+                  ? 'custom-asset-currency-error'
+                  : undefined
+              }
+              className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3.5 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
             >
-              <option value="BRL">BRL (R$ - Real Brasileiro)</option>
-              <option value="USD">USD ($ - Dólar Americano)</option>
-              <option value="EUR">EUR (€ - Euro)</option>
+              <option value="BRL">BRL (R$)</option>
+              <option value="USD">USD ($)</option>
+              <option value="EUR">EUR (€)</option>
             </select>
+            {state.fieldErrors?.currency && (
+              <p
+                id="custom-asset-currency-error"
+                className="text-red-400 text-xs mt-1"
+              >
+                {state.fieldErrors.currency[0]}
+              </p>
+            )}
           </div>
 
-          {/* Actions */}
+          {/* Ações */}
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
             <button
+              id="custom-asset-cancel-btn"
               type="button"
               onClick={onClose}
               disabled={pending}
-              className="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
+              className="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white transition-colors"
             >
               Cancelar
             </button>
@@ -209,7 +218,7 @@ export function CustomAssetModal({
               id="custom-asset-submit"
               type="submit"
               disabled={pending}
-              className="px-5 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:cursor-not-allowed rounded-lg shadow-sm transition-all"
+              className="px-5 py-2 rounded-xl text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 transition-colors shadow-lg shadow-emerald-950"
             >
               {pending ? 'Cadastrando...' : 'Cadastrar Ativo'}
             </button>

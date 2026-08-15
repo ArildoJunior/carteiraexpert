@@ -13,7 +13,7 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 - **Fase 03 — Carteiras, Ativos e Posições:**
   - **Pacote 03.00-E — Carteiras, Ativos, Eventos e Qualidade:** **ACEITO** (Modelagem de carteiras, ativos globais/customizados, eventos patrimoniais, contratos canônicos Drizzle tipados sem `any`, segregação de coordenadores públicos e funções `...InTransaction`, injeção explícita de `auditLogger`, isolamento multiusuário, proteção contra IDOR e fixture de tipos).
   - **Pacote 03.01-D — Carteiras, Ativos e Operações Manuais:** **ACEITO** (Camada de entrega manual: Server Actions autenticadas, rotas `/portfolios` e `/portfolios/[id]`, autocomplete debounced de ativos, cadastro de ativo customizado, lançamento manual de compras/vendas, cancelamento auditado com justificativa obrigatória e seed de desenvolvimento protegido).
-  - **Pacote 03.02 — Motor de Posição, Custo Médio e Saldo:** **BLOQUEADO** (Aguardando planejamento formal e autorização de execução).
+  - **Pacote 03.02 — Motor de Posição, Custo Médio e Validação Temporal de Vendas:** **PRONTO PARA HOMOLOGAÇÃO** (Cálculo determinístico de posição e quantidade em custódia, custo médio ponderado por ativo incluindo taxas, custo total investido, resultado realizado por venda com dedução de taxas, rejeição atômica de vendas a descoberto, validação de consistência da linha do tempo para eventos retroativos e cancelamentos, proteção de concorrência com bloqueio pessimista `FOR UPDATE`, interface com blocos verticais e suíte completa de testes aprovada).
 
 ---
 
@@ -34,14 +34,22 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 
 ### 3. Carteiras, Ativos e Eventos Patrimoniais (Pacotes 03.00-E e 03.01-D)
 - **Gestão de Carteiras via UI (`/portfolios`):** Criação, edição, listagem em grade e exclusão lógica auditada de carteiras por usuário.
-- **Visão Detalhada da Carteira (`/portfolios/[id]`):** Cabeçalho com métricas da carteira, extrato cronológico de operações ativas e ações de lançamento.
+- **Visão Detalhada da Carteira (`/portfolios/[id]`):** Cabeçalho com métricas da carteira, quadro de posições consolidadas em custódia, extrato cronológico de operações ativas e ações de lançamento.
 - **Ativos Globais e Customizados:** Autocomplete debounced com busca server-side no lançamento de operações e modal para cadastro rápido de ativos customizados por usuário com ticker único.
-- **Registro Manual de Operações:** Modal para lançamento de ordens de Compra (`BUY`) e Venda (`SELL`) com seleção de data de negociação, liquidação, quantidade, preço unitário, taxas e notas.
-- **Cancelamento Auditado com Justificativa:** Cancelamento seguro com exclusão lógica (`deletedAt: NOW()`), motivo obrigatório (mínimo de 5 caracteres) e registro em `audit_logs`.
-- **Isolamento Multiusuário e Proteção IDOR:** Bloqueio e auditoria de qualquer tentativa de acesso a carteiras, ativos ou extratos de outros usuários.
+- **Registro Manual de Operações:** Modal para lançamento de ordens de Compra (`BUY`) e Venda (`SELL`) com indicação em tempo real de quantidade disponível em custódia, datas de negociação/liquidação, quantidade, preço unitário, taxas e notas.
+- **Cancelamento Auditado com Justificativa:** Cancelamento seguro com exclusão lógica (`deletedAt: NOW()`), motivo obrigatório (mínimo de 5 caracteres), validação de linha temporal e registro em `audit_logs`.
+- **Isolamento Multiusuário e Proteção IDOR:** Bloqueio e auditoria de qualquer tentativa de acesso a carteiras, ativos, posições ou extratos de outros usuários.
 - **Segregação Transacional e Injeção de Auditoria:** Arquitetura com separação estrita entre coordenadores e transações atômicas `...InTransaction`, com rollback físico comprovado no PostgreSQL.
 
-### 4. Integridade de Schema, Contratos e Banco de Dados
+### 4. Motor de Posições, Custo Médio e Validação Temporal (Pacote 03.02)
+- **Cálculo Determinístico de Posição:** Quantidade acumulada em custódia calculada a partir do histórico de compras e vendas ativas.
+- **Custo Médio Ponderado Unitário:** Incorporação automática de taxas e emolumentos no custo de aquisição ($CM = \frac{Custo_{total}}{Quantidade}$).
+- **Apuração de Resultado Realizado ($PnL$):** Cálculo de lucro ou prejuízo realizado em cada operação de venda ($Receita_{liquida} - Custo_{base}$), abatendo taxas operacionais e preservando o custo médio unitário remanescente.
+- **Validação Temporal de Vendas:** Rejeição atômica e rollback de vendas a descoberto ($Q_{venda} > Q_{disponível}$ na data de negociação).
+- **Consistência da Linha do Tempo:** Rejeição de eventos retroativos fora de ordem ou cancelamento de compras antigas que invalidem vendas posteriores na linha do tempo.
+- **Proteção Contra Concorrência:** Bloqueio pessimista no PostgreSQL (`FOR UPDATE`) para serialização de transações na carteira.
+
+### 5. Integridade de Schema, Contratos e Banco de Dados
 - **Schema Guardian:** Validação física em tempo de execução (`assertSchemaCompatible`) e via CLI (`db:verify`) inspecionando o catálogo PostgreSQL (9 tabelas validadas).
 - **Contratos Drizzle Tipados:** Exportação canônica de `Database`, `DatabaseTransaction`, `DbExecutor`, `SchemaQueryExecutor` e `AuditExecutor`, com eliminação de `any` em assinaturas e callbacks.
 - **Fixture Estática de Tipos:** Arquivo `tests/types/database-contracts.test-d.ts` validando compatibilidade estrutural e rejeição em tempo de compilação via `@ts-expect-error`.
@@ -97,44 +105,17 @@ carteiraexpert/
 │       │   ├── domain/          # Entidades, esquemas Zod e contratos de usuário/consentimento
 │       │   ├── server/          # Serviços de autenticação, rate limit, sessões e consentimento
 │       │   └── ui/              # Componentes de autenticação
-│       └── portfolio/           # Módulo de carteiras, ativos e eventos patrimoniais
-│           ├── domain/          # Schemas Zod de portfolios, assets e portfolio_events
-│           ├── server/          # Serviços e Server Actions (portfolio.actions.ts)
-│           └── ui/              # Modais (PortfolioModal, CustomAssetModal, TransactionModal, etc.)
+│       └── portfolio/           # Módulo de carteiras, ativos, posições e eventos patrimoniais
+│           ├── domain/          # Motor puro de posições (position-engine.ts) e schemas
+│           ├── server/          # Serviços (position.service.ts) e Server Actions (portfolio.actions.ts)
+│           └── ui/              # Componentes (PositionTable, PortfolioDetailView, TransactionModal, etc.)
 ├── tests/
-│   ├── unit/                    # Testes unitários puros (schemas, lógica, validações)
-│   ├── integration/             # Testes de integração com PostgreSQL real (atomicidade, IDOR, rollback)
+│   ├── unit/                    # Testes unitários puros (motor de posição, schemas, validações)
+│   ├── integration/             # Testes de integração com PostgreSQL real (posições, atomicidade, IDOR, rollback)
 │   └── types/                   # Fixtures de tipagem estática (database-contracts.test-d.ts)
 ├── e2e/                         # Testes end-to-end com Playwright (Chromium, Firefox, WebKit)
 └── docs/                        # Documentação técnica, arquitetura, ADRs e status de entrega
 ```
-
----
-
-## Validações e Testes Comprovados
-
-Todos os comandos de validação foram executados e aprovados com 100% de sucesso:
-
-| Validação | Comando / Escopo | Resultado |
-| :--- | :--- | :---: |
-| **Typecheck** | `pnpm run typecheck` (`tsc --noEmit`) | **Aprovado** (0 erros, inclui fixtures de tipos) |
-| **Lint** | `pnpm run lint` (`biome lint ./src`) | **Aprovado** (0 violações) |
-| **Testes Unitários** | `pnpm run test:unit` (`vitest run --exclude "tests/integration/**"`) | **Aprovado** (18 arquivos, 235 testes) |
-| **Testes de Integração** | `pnpm run test:integration` (`vitest run tests/integration`) | **Aprovado** (11 arquivos, 105 testes com PostgreSQL) |
-| **Build de Produção** | `pnpm run build` (`next build`) | **Aprovado** (11 rotas estáticas e dinâmicas compiladas) |
-| **Testes End-to-End** | `pnpm run test:e2e` (Playwright) | **Aprovado** (51 testes: 17 Chromium, 17 Firefox, 17 WebKit) |
-| **Inspeção Física do Schema** | `pnpm run db:verify -- --test` | **Aprovado** (9 tabelas físicas validadas) |
-
-### Tabelas Físicas Validadas no PostgreSQL (9 tabelas):
-1. `audit_logs`
-2. `users`
-3. `sessions`
-4. `password_reset_tokens`
-5. `auth_rate_limits`
-6. `user_consents`
-7. `portfolios`
-8. `assets`
-9. `portfolio_events`
 
 ---
 
@@ -187,8 +168,9 @@ pnpm db:seed:dev      # Popular ativos de teste (exige ALLOW_DEV_SEED=true)
 
 ---
 
-## Limitações e Próximos Passos
+## Limitações e Escopo Fora do Pacote 03.02
 
-1. **Motor de Posição, Saldo e Custo Médio (Pacote 03.02):** A consolidação patrimonial, saldo atualizado, rentabilidade, cálculo de custo médio e validação temporal de ordens de venda pertencem ao **Pacote 03.02** (atualmente bloqueado).
-2. **Eventos Corporativos e Provedores Externos:** Módulos de proventos complexos, splits, grupamentos e integração com APIs de mercado estão planejados para pacotes posteriores.
-3. **IA Editorial Interna:** Módulo editorial com apoio de IA e revisão humana mandatória previsto para fases futuras.
+1. **Saldo de Caixa da Carteira:** Depósitos, retiradas, liquidação financeira em conta corrente e saldo monetário da carteira permanecem fora do escopo.
+2. **Marcação a Mercado e Rentabilidade Não Realizada:** Integração com cotações externas em tempo real, variação patrimonial não realizada e gráficos de rentabilidade permanecem fora do escopo.
+3. **Eventos Corporativos e Provedores Externos:** Módulos de proventos, splits, grupamentos e integração com APIs de mercado (BRAPI, HG Brasil, B3, CVM) permanecem fora do escopo.
+4. **IA Editorial Interna:** Módulo editorial com apoio de IA e revisão humana mandatória previsto para fases futuras.

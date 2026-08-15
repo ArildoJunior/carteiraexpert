@@ -20,6 +20,7 @@ import {
   PortfolioEventNotFoundError,
   PortfolioNotFoundError,
 } from '../domain/errors';
+import { validateTimelineConsistency, type TimelineEvent } from '../domain/position-engine';
 import { getPortfolioById } from './portfolio.service';
 import { getAssetById } from './asset.service';
 
@@ -42,10 +43,44 @@ export async function createPortfolioEventInTransaction(
   // 2. Valida que o ativo existe e é acessível ao usuário (global ou customizado próprio)
   await getAssetById(input.assetId, user, tx);
 
+  // 3. Adquire lock pessimista na carteira para serializar operações concorrentes
+  await tx
+    .select({ id: portfolios.id })
+    .from(portfolios)
+    .where(eq(portfolios.id, input.portfolioId))
+    .for('update');
+
   const id = crypto.randomUUID();
   const now = new Date();
 
-  // 3. Insere o evento financeiro
+  // 4. Busca todos os eventos ativos do ativo nesta carteira para validação de posição e consistência temporal
+  const activeEvents = await tx
+    .select()
+    .from(portfolioEvents)
+    .where(
+      and(
+        eq(portfolioEvents.portfolioId, input.portfolioId),
+        eq(portfolioEvents.assetId, input.assetId),
+        isNull(portfolioEvents.deletedAt)
+      )
+    );
+
+  const prospectiveEvent: TimelineEvent = {
+    id,
+    portfolioId: input.portfolioId,
+    assetId: input.assetId,
+    type: input.type,
+    tradeDate: input.tradeDate,
+    quantity: input.quantity,
+    unitPrice: input.unitPrice,
+    fees: input.fees,
+    createdAt: now,
+  };
+
+  // 5. Valida a consistência temporal (rejeita vendas a descoberto e inconsistências retroativas)
+  validateTimelineConsistency(activeEvents, prospectiveEvent);
+
+  // 6. Insere o evento financeiro
   const [createdEvent] = await tx
     .insert(portfolioEvents)
     .values({
@@ -70,7 +105,7 @@ export async function createPortfolioEventInTransaction(
     throw new Error('Falha ao registrar evento financeiro.');
   }
 
-  // 4. Registra auditoria transacional
+  // 7. Registra auditoria transacional
   await auditLogger(
     {
       tableName: 'portfolio_events',
@@ -119,8 +154,9 @@ export async function createPortfolioEventInTransaction(
  * Valida rigorosamente:
  * 1. Existência e titularidade da carteira (deve pertencer ao usuário);
  * 2. Existência e visibilidade do ativo (global ou customizado do usuário);
- * 3. Persistência em bloco transacional com valores Decimal preservados;
- * 4. Gravação de auditoria com allowlist.
+ * 3. Validação temporal de posição (rejeição de vendas sem saldo);
+ * 4. Persistência em bloco transacional com valores Decimal preservados;
+ * 5. Gravação de auditoria com allowlist.
  */
 export async function createPortfolioEvent(
   rawInput: CreatePortfolioEventInput,
@@ -260,9 +296,31 @@ export async function cancelPortfolioEventInTransaction(
 
   await assertOwnership(portfolio.userId, user, 'portfolio_event', tx);
 
+  // 3. Adquire lock pessimista na carteira
+  await tx
+    .select({ id: portfolios.id })
+    .from(portfolios)
+    .where(eq(portfolios.id, existing.portfolioId))
+    .for('update');
+
+  // 4. Busca todos os eventos ativos do ativo para verificar se o cancelamento causaria inconsistência temporal posterior
+  const activeEvents = await tx
+    .select()
+    .from(portfolioEvents)
+    .where(
+      and(
+        eq(portfolioEvents.portfolioId, existing.portfolioId),
+        eq(portfolioEvents.assetId, existing.assetId),
+        isNull(portfolioEvents.deletedAt)
+      )
+    );
+
+  // 5. Valida se a omissão deste evento mantém a consistência da linha temporal
+  validateTimelineConsistency(activeEvents, undefined, id);
+
   const now = new Date();
 
-  // 3. Atualiza evento com soft delete e justificativa
+  // 6. Atualiza evento com soft delete e justificativa
   await tx
     .update(portfolioEvents)
     .set({
@@ -271,7 +329,7 @@ export async function cancelPortfolioEventInTransaction(
     })
     .where(and(eq(portfolioEvents.id, id), isNull(portfolioEvents.deletedAt)));
 
-  // 4. Grava auditoria transacional
+  // 7. Grava auditoria transacional
   await auditLogger(
     {
       tableName: 'portfolio_events',
@@ -313,7 +371,7 @@ export async function cancelPortfolioEventInTransaction(
 /**
  * Cancela logicamente (soft delete) um evento financeiro da carteira.
  * Exige justificativa obrigatória (entre 5 e 500 caracteres).
- * Valida titularidade e registra auditoria com a justificativa em bloco transacional.
+ * Valida titularidade, consistência temporal e registra auditoria com a justificativa em bloco transacional.
  */
 export async function cancelPortfolioEvent(
   id: string,

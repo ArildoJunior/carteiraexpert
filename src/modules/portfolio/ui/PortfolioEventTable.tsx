@@ -1,5 +1,6 @@
 'use client';
 
+import { Decimal } from '@/lib/decimal';
 import type { PortfolioEvent } from '../domain/portfolio-event.types';
 import type { Asset } from '../domain/asset.types';
 
@@ -150,7 +151,7 @@ export function PortfolioEventTable({
 
                   {/* Taxas */}
                   <td className="px-4 py-3.5 text-right font-mono text-xs text-slate-400">
-                    {event.fees && Number(event.fees) > 0
+                    {event.fees && new Decimal(event.fees).greaterThan(0)
                       ? `${event.currency} ${event.fees}`
                       : '—'}
                   </td>

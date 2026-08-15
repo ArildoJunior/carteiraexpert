@@ -8,61 +8,65 @@
 
 ## Estado Geral
 
-A fundação técnica, a camada de identidade, segurança, governança e a camada de entrega manual de carteiras, ativos e eventos patrimoniais foram concluídas e testadas com sucesso:
+A fundação técnica, a camada de identidade, segurança, governança, a camada de entrega manual de carteiras e a implementação do motor de posições, custo médio e resultado realizado encontram-se no seguinte status:
 
 - **Fase 01 — Fundação Técnica:** Concluída (Arquitetura modular, motor financeiro baseado em `Decimal`, persistência `NUMERIC`, auditoria imutável e testes de infraestrutura).
 - **Fase 02 — Identidade, Acesso e Segurança:** Concluída (Cadastro, login com Argon2id, sessões em banco com SHA-256, controle de taxa com HMAC-SHA256, redefinição atômica de senha, logout auditado, consentimentos versionados LGPD *append-only* e motor de verificação física de schema).
 - **Fase 03 — Carteiras, Ativos e Posições:**
   - **Pacote 03.00-E — Carteiras, Ativos, Eventos e Qualidade:** **ACEITO** (Modelagem de carteiras, ativos globais e customizados, eventos patrimoniais, contratos canônicos Drizzle tipados sem `any`, segregação entre coordenadores e funções `...InTransaction`, injeção explícita de `auditLogger`, isolamento multiusuário, proteção contra IDOR e fixture estática de contratos).
   - **Pacote 03.01-D — Carteiras, Ativos e Operações Manuais:** **ACEITO** (Server Actions autenticadas, interface de usuário responsiva e acessível, rotas `/portfolios` e `/portfolios/[id]`, autocomplete debounced de ativos, cadastro de ativos customizados, lançamento manual de compras e vendas, cancelamento auditado com justificativa obrigatória e seed de desenvolvimento protegido).
-  - **Pacote 03.02 — Motor de Posição, Custo Médio e Saldo:** **BLOQUEADO** (Aguardando planejamento formal e autorização de execução).
+  - **Pacote 03.02 — Motor de Posição, Custo Médio e Validação Temporal de Vendas:** **PRONTO PARA HOMOLOGAÇÃO** (Cálculo determinístico de posição e quantidade em custódia, custo médio ponderado por ativo incluindo taxas, custo total investido, resultado realizado por venda com dedução de taxas, rejeição atômica de vendas a descoberto, validação de consistência da linha do tempo para eventos retroativos e cancelamentos, proteção de concorrência com bloqueio pessimista `FOR UPDATE`, interface com blocos verticais e suíte completa de testes aprovada).
 
 ---
 
-## Componentes Entregues no Pacote 03.01-D
+## Componentes Implementados no Pacote 03.02
 
-1. **Server Actions de Portfólio (`portfolio.actions.ts`):**
-   - Ações tipadas e autenticadas via `requireAuth()`: `createPortfolioAction`, `updatePortfolioAction`, `deletePortfolioAction`, `searchAssetsAction`, `createCustomAssetAction`, `createPortfolioEventAction` e `cancelPortfolioEventAction`;
-   - Mapeamento uniforme de erros de domínio para `ActionResult<T>` serializável;
-   - Suporte a `safeRevalidatePath` para integridade em execução de testes fora do ciclo HTTP tradicional do Next.js.
-2. **Interface do Usuário e Modais (`src/modules/portfolio/ui/`):**
-   - **`PortfolioModal`:** Criação e edição de carteira com validação em tempo real;
-   - **`CustomAssetModal`:** Cadastro desacoplado de ativos customizados por usuário;
-   - **`AssetSearchSelect`:** Autocomplete com busca debounced no servidor, feedback de carregamento em tempo real (`#asset-search-loading` com ARIA), controle de concorrência (`requestIdRef`) e atalho para criação de ativo customizado;
-   - **`TransactionModal`:** Lançamento manual de ordens de compra (`BUY`) e venda (`SELL`) com seleção de tipo, datas (`tradeDate`/`settlementDate`), quantidade, preço unitário, taxas e notas;
-   - **`CancelEventModal`:** Cancelamento de operação com justificativa obrigatória (mínimo de 5 caracteres) e aviso de integridade histórica;
-   - **`PortfolioEventTable`:** Extrato cronológico das movimentações ativas com badges visuais de tipo e ação de cancelamento;
-   - **`PortfolioHeader`:** Cabeçalho da carteira com métricas e ações de edição/exclusão lógica;
-   - **`PortfolioList`:** Grid responsivo de carteiras com empty state e gatilho de criação;
-   - **`PortfolioDetailView`:** Coordenador cliente integrando tabela, cabeçalho e modais.
-3. **Páginas e Rotas do Next.js App Router:**
-   - `/portfolios`: Listagem de carteiras do usuário autenticado;
-   - `/portfolios/[id]`: Visão detalhada da carteira, extrato de eventos e ações de lançamento;
-   - `/dashboard`: Atualizado com contadores reais de carteiras ativas, atalhos rápidos e listagem recente;
-   - Layout de navegação (`/dashboard/layout.tsx`): Atualizado com links diretos "Dashboard" e "Carteiras".
-4. **Seed de Desenvolvimento Protegido (`scripts/seed-dev.ts`):**
-   - Script determinístico para popular ativos globais de teste (PETR4, VALE3, ITUB4, BBDC4, KNIP11, IVVB11, BTC);
-   - Proteção estrita com trava `ALLOW_DEV_SEED=true` e bloqueio incondicional em ambiente de produção (`NODE_ENV === 'production'`);
-   - Disponibilizado via comando `pnpm run db:seed:dev`.
+1. **Motor Puro de Domínio (`position-engine.ts`):**
+   - Ordenação determinística de eventos: `tradeDate ASC`, `createdAt ASC`, `id ASC`;
+   - Cálculo de posição por ativo (`calculateAssetPosition`): acumulação de compras com taxas, custo médio ponderado unitário, abate proporcional em vendas com manutenção de custo médio, zeragem de custo total em caso de liquidação total e apuração de PnL realizado por venda ($NetProceeds - CostBasis$);
+   - Validação de consistência temporal (`validateTimelineConsistency`): projeta a linha do tempo completa ao inserir evento prospectivo ou omitir evento cancelado, disparando `InsufficientPositionError` ou `RetroactiveInconsistencyError` caso a posição fique negativa em qualquer ponto cronológico;
+   - Agregação consolidada de carteira (`calculatePortfolioPositionsSummary`): consolidação de posições ativas ($Q > 0$), posições encerradas ($Q = 0$ com histórico), custo total investido, taxas acumuladas e PnL realizado global;
+   - Serialização determinística de valores para `string` nas camadas externas.
 
----
+2. **Serviço de Posições (`position.service.ts`):**
+   - `getPortfolioPositions` e `getAssetPositionInPortfolio` com isolamento multiusuário e validação de titularidade da carteira;
+   - `getSerializedPortfolioPositions` e `getSerializedAssetPositionInPortfolio` para consumo direto em Server Actions e Server Components (SSR).
 
-## O que Ficou Explicitamente Fora do Escopo do Pacote 03.01-D
+3. **Validação Temporal Integrada a Eventos (`portfolio-event.service.ts`):**
+   - Lock pessimista na carteira (`tx.select().from(portfolios)...for('update')`) em `createPortfolioEventInTransaction` e `cancelPortfolioEventInTransaction` para serializar operações concorrentes;
+   - Rejeição atômica e rollback de vendas com quantidade superior à posição disponível na data;
+   - Rejeição de cancelamento de compras que tenham servido de lastro para vendas posteriores;
+   - Suporte completo a compras e vendas retroativas que respeitem a consistência temporal.
 
-- **Motor de Posição, Custo Médio e Saldo:** Validação de consistência temporal de vendas, consolidação patrimonial, rentabilidade e cálculo de custo médio (escopo reservado ao **Pacote 03.02**).
-- **Provedores Externos de Mercado:** Integração com APIs externas (BRAPI, HG Brasil, B3, CVM) ou cotações em tempo real.
-- **Alterações de Banco de Dados:** Nenhuma alteração estrutural, migration ou nova tabela (mantido o schema canônico de 9 tabelas).
+4. **Server Actions de Posição (`portfolio.actions.ts`):**
+   - `getPortfolioPositionsAction`: Retorna resumo consolidado de posições e PnL da carteira;
+   - `getAssetPositionAction`: Retorna posição detalhada e histórico de trades de um ativo;
+   - Tratamento de `InsufficientPositionError` e `RetroactiveInconsistencyError` com mensagens de erro amigáveis para a interface.
+
+5. **Interface do Usuário e Visualização (`src/modules/portfolio/ui/`):**
+   - **`PositionTable`:** Cards de métricas financeiras (Total em Custódia, Resultado Realizado PnL, Taxas Acumuladas, Ativos em Carteira), tabela detalhada de posições ativas em custódia (Ticker, Nome, Quantidade, Custo Médio, Total Investido, Taxas Totais, PnL Realizado) e seção retrátil de posições encerradas, com formatação e checagens 100% em `Decimal`;
+   - **`PortfolioDetailView`:** Renderização estruturada em blocos verticais na mesma página (Cabeçalho da Carteira, Posições Consolidadas e Extrato de Operações);
+   - **`TransactionModal`:** Indicação em tempo real de posição disponível em custódia ao selecionar operação de VENDA (`SELL`), com validação puramente decimal;
+   - **Página `/portfolios/[id]`:** Carregamento de posições no SSR via Server Component com suporte a renderização rápida.
 
 ---
 
-## Validações Comprovadas no Ambiente
+## O que Permanece Explicitamente Fora do Escopo do Pacote 03.02
 
-Todas as validações abaixo foram executadas e aprovadas com 100% de sucesso no ambiente real:
+- **Saldo Financeiro de Caixa:** Depósitos, retiradas, liquidação financeira em conta corrente e saldo monetário da carteira.
+- **Marcação a Mercado e Rentabilidade Não Realizada:** Integração com cotações de mercado em tempo real, variação patrimonial não realizada e gráficos de rentabilidade histórica.
+- **Provedores Externos:** Integração com APIs externas de mercado (BRAPI, HG Brasil, B3, CVM).
+- **Eventos Corporativos:** Splits, grupamentos, bonificações, dividendos e JCP.
+- **Alterações de Schema de Banco de Dados:** Nenhuma migração ou alteração de schema (mantido o schema físico canônico de 9 tabelas).
+
+---
+
+## Validações no Ambiente
 
 - [x] **Typecheck:** Aprovado (`tsc --noEmit` — 0 erros estáticos de tipagem).
 - [x] **Lint:** Aprovado (`biome lint ./src` — 0 violações de regras ou formatação).
-- [x] **Testes Unitários:** Aprovados (18 arquivos, 235 testes unitários aprovados).
-- [x] **Testes de Integração:** Aprovados (11 arquivos, 105 testes de integração aprovados em PostgreSQL real).
+- [x] **Testes Unitários:** Aprovados (19 arquivos, 249 testes unitários aprovados).
+- [x] **Testes de Integração:** Aprovados (12 arquivos, 112 testes de integração aprovados em PostgreSQL real).
 - [x] **Build de Produção:** Aprovado (`pnpm run build` / `next build` com 11 rotas estáticas e dinâmicas compiladas).
 - [x] **Testes End-to-End (E2E):** Aprovados (51 testes aprovados no total):
   - **Chromium:** 17/17 testes aprovados;
@@ -70,7 +74,8 @@ Todas as validações abaixo foram executadas e aprovadas com 100% de sucesso no
   - **WebKit:** 17/17 testes aprovados.
 - [x] **Verificação Física do Schema:** Aprovada (`pnpm run db:verify -- --test` — 9 tabelas físicas validadas).
 - [x] **Rollback Transacional e Auditoria:** Comprovados fisicamente no PostgreSQL.
-- [x] **Cobertura Original de Consentimento:** Totalmente preservada (anonimização de IP, motivo de auditoria, vigência e idempotência).
+- [x] **Validação Temporal de Vendas:** Testada e comprovada em testes unitários, de integração e E2E.
+- [x] **Isolamento Multiusuário e IDOR:** 100% validado no servidor.
 
 ### Tabelas Físicas Validadas no Catálogo PostgreSQL (9 tabelas):
 1. `audit_logs`
@@ -82,9 +87,3 @@ Todas as validações abaixo foram executadas e aprovadas com 100% de sucesso no
 7. `portfolios`
 8. `assets`
 9. `portfolio_events`
-
----
-
-## Próxima Etapa
-
-- **Pacote 03.02 — Motor de Posição, Custo Médio e Saldo:** BLOQUEADO (Aguardando planejamento técnico formal e autorização para execução).

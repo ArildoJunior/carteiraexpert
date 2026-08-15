@@ -4,5 +4,7 @@ export * from './asset.types';
 export * from './asset.schema';
 export * from './portfolio-event.types';
 export * from './portfolio-event.schema';
-export * from './decimal-validator';
+export * from './position.types';
+export * from './position-engine';
 export * from './errors';
+export * from './decimal-validator';

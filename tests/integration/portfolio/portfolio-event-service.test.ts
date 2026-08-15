@@ -316,19 +316,23 @@ describe('Integração: PortfolioEventService (PostgreSQL Real)', () => {
 
       const testEventTradeDate = new Date('2025-08-10T15:00:00Z');
 
-      await expect(
-        createPortfolioEvent(
-          {
-            portfolioId: portfolio1Id,
-            assetId: globalAssetId,
-            type: 'SELL',
-            tradeDate: testEventTradeDate,
-            quantity: '999.0000000000',
-            unitPrice: '123.00000000',
-          },
-          user1
-        )
-      ).rejects.toThrow('Simulated Audit Failure for Transaction Rollback');
+      try {
+        await expect(
+          createPortfolioEvent(
+            {
+              portfolioId: portfolio1Id,
+              assetId: globalAssetId,
+              type: 'BUY',
+              tradeDate: testEventTradeDate,
+              quantity: '999.0000000000',
+              unitPrice: '123.00000000',
+            },
+            user1
+          )
+        ).rejects.toThrow('Simulated Audit Failure for Transaction Rollback');
+      } finally {
+        spy.mockRestore();
+      }
 
       // Verifica fisicamente que o evento não foi gravado no banco
       const rows = await db
@@ -342,7 +346,6 @@ describe('Integração: PortfolioEventService (PostgreSQL Real)', () => {
         );
 
       expect(rows).toHaveLength(0);
-      spy.mockRestore();
     });
 
     it('deve garantir rollback físico via injeção explícita de auditLogger em createPortfolioEvent', async () => {
