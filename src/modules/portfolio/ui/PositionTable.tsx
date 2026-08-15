@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Decimal } from '@/lib/decimal';
+import { AssetPositionDetailModal } from './AssetPositionDetailModal';
 import type {
   SerializedAssetPosition,
   SerializedPortfolioPositionsSummary,
@@ -41,6 +42,7 @@ function formatQuantity(quantity: string | Decimal): string {
 
 export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTableProps) {
   const [showClosed, setShowClosed] = useState(false);
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
 
   const decRealizedPnL = new Decimal(summary.totalRealizedPnL || '0');
   const isTotalPnLPositive = decRealizedPnL.greaterThan(0);
@@ -49,6 +51,15 @@ export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTablePr
 
   return (
     <div className="space-y-6" id="portfolio-positions-section">
+      {/* Modal de Detalhamento de Histórico por Ativo */}
+      {selectedAssetId && (
+        <AssetPositionDetailModal
+          portfolioId={summary.portfolioId}
+          assetId={selectedAssetId}
+          onClose={() => setSelectedAssetId(null)}
+        />
+      )}
+
       {/* ─── Cards de Resumo Financeiro ────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="position-metrics-cards">
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
@@ -99,22 +110,27 @@ export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTablePr
             {formatMoney(summary.totalFees, baseCurrency)}
           </p>
           <p className="text-[11px] text-slate-500 mt-0.5">
-            Custos operacionais e emolumentos
+            Corretagens e emolumentos totais
           </p>
         </div>
 
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-            Ativos em Carteira
+            Ativos em Custódia
           </p>
           <p
-            id="metric-active-assets-count"
+            id="metric-active-assets"
             className="text-xl font-bold text-indigo-400 mt-1 tracking-tight"
           >
-            {activeCount} {activeCount === 1 ? 'ativo' : 'ativos'}
+            {activeCount}{' '}
+            <span className="text-xs font-normal text-slate-400">
+              {activeCount === 1 ? 'posição ativa' : 'posições ativas'}
+            </span>
           </p>
           <p className="text-[11px] text-slate-500 mt-0.5">
-            Com quantidade &gt; 0
+            {summary.closedPositions.length > 0
+              ? `${summary.closedPositions.length} encerradas`
+              : 'Sem posições encerradas'}
           </p>
         </div>
       </div>
@@ -177,6 +193,7 @@ export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTablePr
                   <th className="px-4 py-3.5 text-right">Total Investido</th>
                   <th className="px-4 py-3.5 text-right">Taxas Totais</th>
                   <th className="px-6 py-3.5 text-right">PnL Realizado</th>
+                  <th className="px-4 py-3.5 text-center">Histórico</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/50 text-slate-300">
@@ -193,12 +210,14 @@ export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTablePr
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <span
+                          <button
+                            type="button"
+                            onClick={() => setSelectedAssetId(pos.assetId)}
+                            className="font-bold text-white text-base tracking-wide hover:text-emerald-400 hover:underline text-left transition-colors"
                             id={`position-ticker-${pos.ticker}`}
-                            className="font-bold text-white text-base tracking-wide"
                           >
                             {pos.ticker}
-                          </span>
+                          </button>
                           {pos.isCustom && (
                             <span className="text-[10px] uppercase font-bold text-amber-400 bg-amber-950/60 border border-amber-800/60 px-1.5 py-0.2 rounded">
                               Customizado
@@ -254,6 +273,17 @@ export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTablePr
                         {isRowPositive ? '+' : ''}
                         {formatMoney(pos.totalRealizedPnL, pos.currency)}
                       </td>
+
+                      <td className="px-4 py-4 text-center">
+                        <button
+                          id={`btn-detail-asset-${pos.ticker}`}
+                          type="button"
+                          onClick={() => setSelectedAssetId(pos.assetId)}
+                          className="px-2.5 py-1 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors border border-slate-700/60"
+                        >
+                          Ver Trades
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -291,6 +321,7 @@ export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTablePr
                   <th className="px-6 py-3">Ativo</th>
                   <th className="px-4 py-3 text-right">Taxas Totais</th>
                   <th className="px-6 py-3 text-right">Resultado Realizado Final</th>
+                  <th className="px-4 py-3 text-center">Histórico</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/40 text-slate-400">
@@ -303,21 +334,30 @@ export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTablePr
                     <tr
                       key={pos.assetId}
                       id={`closed-position-row-${pos.ticker}`}
-                      className="hover:bg-slate-800/20"
+                      className="hover:bg-slate-800/30 transition-colors"
                     >
                       <td className="px-6 py-3.5">
-                        <span className="font-bold text-slate-300">
-                          {pos.ticker}
-                        </span>
-                        <span className="text-xs text-slate-500 ml-2">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedAssetId(pos.assetId)}
+                            className="font-bold text-slate-200 text-sm hover:text-emerald-400 hover:underline text-left transition-colors"
+                          >
+                            {pos.ticker}
+                          </button>
+                          <span className="text-[11px] text-slate-500 font-mono">
+                            {pos.market}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 truncate max-w-[200px]">
                           {pos.name}
-                        </span>
+                        </p>
                       </td>
-                      <td className="px-4 py-3.5 text-right font-mono text-xs">
+                      <td className="px-4 py-3.5 text-right font-mono text-xs text-slate-400">
                         {formatMoney(pos.totalFees, pos.currency)}
                       </td>
                       <td
-                        className={`px-6 py-3.5 text-right font-mono font-semibold ${
+                        className={`px-6 py-3.5 text-right font-mono font-semibold text-sm ${
                           isClosedPositive
                             ? 'text-emerald-400'
                             : isClosedNegative
@@ -327,6 +367,16 @@ export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTablePr
                       >
                         {isClosedPositive ? '+' : ''}
                         {formatMoney(pos.totalRealizedPnL, pos.currency)}
+                      </td>
+                      <td className="px-4 py-3.5 text-center">
+                        <button
+                          id={`btn-detail-closed-asset-${pos.ticker}`}
+                          type="button"
+                          onClick={() => setSelectedAssetId(pos.assetId)}
+                          className="px-2.5 py-1 text-xs font-semibold text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors border border-slate-700/60"
+                        >
+                          Ver Trades
+                        </button>
                       </td>
                     </tr>
                   );

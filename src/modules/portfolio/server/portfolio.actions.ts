@@ -23,7 +23,10 @@ import {
   getSerializedPortfolioPositions,
   getSerializedAssetPositionInPortfolio,
 } from './position.service';
-import { getSerializedUserDashboardData } from './dashboard.service';
+import {
+  getSerializedUserDashboardData,
+  getSerializedUserHistoryData,
+} from './dashboard.service';
 import {
   createPortfolioSchema,
   updatePortfolioSchema,
@@ -36,6 +39,10 @@ import {
   createPortfolioEventSchema,
   cancelPortfolioEventSchema,
 } from '../domain/portfolio-event.schema';
+import {
+  listUserHistorySchema,
+  type ListUserHistoryInput,
+} from '../domain/dashboard.schema';
 import {
   PortfolioNotFoundError,
   AssetNotFoundError,
@@ -53,7 +60,10 @@ import type {
   SerializedPortfolioPositionsSummary,
   SerializedAssetPositionDetail,
 } from '../domain/position.types';
-import type { SerializedUserDashboardData } from '../domain/dashboard.types';
+import type {
+  SerializedUserDashboardData,
+  SerializedUserHistoryPaginatedResult,
+} from '../domain/dashboard.types';
 
 // ─── Tipagem Universal de Resposta de Server Actions ─────────────────────────
 export interface ActionResult<T = unknown> {
@@ -362,6 +372,7 @@ export async function createPortfolioEventAction(
     const event = await createPortfolioEvent(parsed, user);
 
     safeRevalidatePath('/dashboard');
+    safeRevalidatePath('/history');
     safeRevalidatePath(`/portfolios/${portfolioId}`);
 
     return {
@@ -391,6 +402,7 @@ export async function cancelPortfolioEventAction(
     await cancelPortfolioEvent(id, parsed, user);
 
     safeRevalidatePath('/dashboard');
+    safeRevalidatePath('/history');
     if (portfolioId) {
       safeRevalidatePath(`/portfolios/${portfolioId}`);
     }
@@ -453,6 +465,28 @@ export async function getUserDashboardAction(): Promise<ActionResult<SerializedU
   try {
     const user = await requireAuth();
     const data = await getSerializedUserDashboardData(user);
+
+    return {
+      success: true,
+      data,
+    };
+  } catch (err) {
+    return handleActionError(err);
+  }
+}
+
+// ─── 6. EXTRATO GLOBAL DE OPERAÇÕES ──────────────────────────────────────────
+
+/**
+ * Retorna o extrato paginado e filtrado de operações do usuário.
+ */
+export async function getUserHistoryAction(
+  rawFilters: ListUserHistoryInput = {}
+): Promise<ActionResult<SerializedUserHistoryPaginatedResult>> {
+  try {
+    const user = await requireAuth();
+    const parsed = listUserHistorySchema.parse(rawFilters);
+    const data = await getSerializedUserHistoryData(user, parsed);
 
     return {
       success: true,

@@ -72,6 +72,14 @@ export function RecentActivityFeed({ events }: RecentActivityFeedProps) {
             Histórico consolidado de compras e vendas ativas entre todas as suas carteiras.
           </p>
         </div>
+
+        <Link
+          id="btn-view-all-history-from-dashboard"
+          href="/history"
+          className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition-colors"
+        >
+          Ver extrato completo →
+        </Link>
       </div>
 
       <div className="overflow-x-auto">

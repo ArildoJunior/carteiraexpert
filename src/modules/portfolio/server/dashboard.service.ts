@@ -2,16 +2,25 @@ import { db, type DbExecutor } from '../../../lib/db';
 import type { SafeUser } from '../../identity/domain/user.types';
 import { listPortfolios } from './portfolio.service';
 import { getPortfolioPositions } from './position.service';
-import { listUserRecentEvents } from './portfolio-event.service';
+import {
+  listUserRecentEvents,
+  listUserHistoryEvents,
+} from './portfolio-event.service';
 import {
   calculateUserDashboardSummary,
   serializeUserDashboardData,
+  serializeUserHistoryPaginatedResult,
 } from '../domain/position-engine';
 import type {
   UserDashboardSummary,
   SerializedUserDashboardData,
+  UserHistoryPaginatedResult,
+  SerializedUserHistoryPaginatedResult,
 } from '../domain/dashboard.types';
-import type { ListUserRecentEventsInput } from '../domain/dashboard.schema';
+import type {
+  ListUserRecentEventsInput,
+  ListUserHistoryInput,
+} from '../domain/dashboard.schema';
 
 /**
  * Recupera todos os dados consolidados do dashboard geral para o usuário autenticado.
@@ -63,4 +72,27 @@ export async function getSerializedUserDashboardData(
 ): Promise<SerializedUserDashboardData> {
   const data = await getUserDashboardData(user, recentEventsOptions, executor);
   return serializeUserDashboardData(data);
+}
+
+/**
+ * Recupera o extrato paginado e filtrado de operações do usuário.
+ */
+export async function getUserHistoryData(
+  user: SafeUser,
+  options: ListUserHistoryInput = {},
+  executor: DbExecutor = db
+): Promise<UserHistoryPaginatedResult> {
+  return listUserHistoryEvents(user, options, executor);
+}
+
+/**
+ * Retorna o extrato de operações do usuário serializado para SSR e Server Actions.
+ */
+export async function getSerializedUserHistoryData(
+  user: SafeUser,
+  options: ListUserHistoryInput = {},
+  executor: DbExecutor = db
+): Promise<SerializedUserHistoryPaginatedResult> {
+  const data = await getUserHistoryData(user, options, executor);
+  return serializeUserHistoryPaginatedResult(data);
 }

@@ -12,3 +12,17 @@ export const listUserRecentEventsSchema = z.object({
 
 export type ListUserRecentEventsInput = z.input<typeof listUserRecentEventsSchema>;
 export type ListUserRecentEventsOutput = z.output<typeof listUserRecentEventsSchema>;
+
+export const listUserHistorySchema = z.object({
+  portfolioId: z.string().uuid().optional(),
+  assetId: z.string().uuid().optional(),
+  ticker: z.string().max(20).transform((v) => v?.trim().toUpperCase()).optional(),
+  type: z.enum(PORTFOLIO_EVENT_TYPES).optional(),
+  startDate: z.coerce.date().optional(),
+  endDate: z.coerce.date().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+});
+
+export type ListUserHistoryInput = z.input<typeof listUserHistorySchema>;
+export type ListUserHistoryOutput = z.output<typeof listUserHistorySchema>;

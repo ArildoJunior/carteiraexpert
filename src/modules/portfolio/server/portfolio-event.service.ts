@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { eq, and, isNull, desc, gte, lte } from 'drizzle-orm';
+import { eq, and, isNull, desc, gte, lte, count, ilike } from 'drizzle-orm';
 import { Decimal } from '@/lib/decimal';
 import { db, type Database, type DatabaseTransaction, type DbExecutor } from '../../../lib/db';
 import { portfolioEvents, portfolios, assets } from '../../../lib/db/schema/portfolio';
@@ -18,10 +18,15 @@ import {
 } from '../domain/portfolio-event.schema';
 import {
   listUserRecentEventsSchema,
+  listUserHistorySchema,
   type ListUserRecentEventsInput,
+  type ListUserHistoryInput,
 } from '../domain/dashboard.schema';
 import type { PortfolioEvent } from '../domain/portfolio-event.types';
-import type { UserRecentEventItem } from '../domain/dashboard.types';
+import type {
+  UserRecentEventItem,
+  UserHistoryPaginatedResult,
+} from '../domain/dashboard.types';
 import {
   PortfolioEventNotFoundError,
   PortfolioNotFoundError,
@@ -469,4 +474,116 @@ export async function listUserRecentEvents(
     deletedAt: event.deletedAt,
     cancellationReason: event.cancellationReason,
   }));
+}
+
+/**
+ * Lista as operações do usuário de forma paginada com suporte a filtros combinados:
+ * carteira, ativo, ticker, tipo de operação, data inicial e final.
+ * Retorna itens tipados e totalizadores para paginação.
+ */
+export async function listUserHistoryEvents(
+  user: SafeUser,
+  rawOptions: ListUserHistoryInput = {},
+  executor: DbExecutor = db
+): Promise<UserHistoryPaginatedResult> {
+  const options = listUserHistorySchema.parse(rawOptions);
+  const offset = (options.page - 1) * options.limit;
+
+  const conditions = [
+    eq(portfolios.userId, user.id),
+    isNull(portfolios.deletedAt),
+    isNull(portfolioEvents.deletedAt),
+  ];
+
+  if (options.portfolioId) {
+    conditions.push(eq(portfolioEvents.portfolioId, options.portfolioId));
+  }
+
+  if (options.assetId) {
+    conditions.push(eq(portfolioEvents.assetId, options.assetId));
+  }
+
+  if (options.type) {
+    conditions.push(eq(portfolioEvents.type, options.type));
+  }
+
+  if (options.ticker) {
+    conditions.push(ilike(assets.ticker, `%${options.ticker}%`));
+  }
+
+  if (options.startDate) {
+    conditions.push(gte(portfolioEvents.tradeDate, options.startDate));
+  }
+
+  if (options.endDate) {
+    conditions.push(lte(portfolioEvents.tradeDate, options.endDate));
+  }
+
+  const whereClause = and(...conditions);
+
+  // 1. Contagem total de registros para paginação
+  const countResult = await executor
+    .select({ total: count() })
+    .from(portfolioEvents)
+    .innerJoin(portfolios, eq(portfolios.id, portfolioEvents.portfolioId))
+    .innerJoin(assets, eq(assets.id, portfolioEvents.assetId))
+    .where(whereClause);
+
+  const totalCount = Number(countResult[0]?.total ?? 0);
+
+  // 2. Busca paginada dos registros ordenados por data e criação
+  const rows = await executor
+    .select({
+      event: portfolioEvents,
+      portfolioName: portfolios.name,
+      assetTicker: assets.ticker,
+      assetName: assets.name,
+      assetMarket: assets.market,
+    })
+    .from(portfolioEvents)
+    .innerJoin(portfolios, eq(portfolios.id, portfolioEvents.portfolioId))
+    .innerJoin(assets, eq(assets.id, portfolioEvents.assetId))
+    .where(whereClause)
+    .orderBy(
+      desc(portfolioEvents.tradeDate),
+      desc(portfolioEvents.createdAt),
+      desc(portfolioEvents.id)
+    )
+    .limit(options.limit)
+    .offset(offset);
+
+  const items: UserRecentEventItem[] = rows.map(
+    ({ event, portfolioName, assetTicker, assetName, assetMarket }) => ({
+      id: event.id,
+      portfolioId: event.portfolioId,
+      portfolioName,
+      assetId: event.assetId,
+      assetTicker,
+      assetName,
+      assetMarket,
+      type: event.type as PortfolioEvent['type'],
+      tradeDate: event.tradeDate,
+      settlementDate: event.settlementDate,
+      quantity: event.quantity,
+      unitPrice: event.unitPrice,
+      fees: event.fees,
+      currency: event.currency,
+      notes: event.notes,
+      source: event.source as PortfolioEvent['source'],
+      createdBy: event.createdBy,
+      createdAt: event.createdAt,
+      deletedAt: event.deletedAt,
+      cancellationReason: event.cancellationReason,
+    })
+  );
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / options.limit));
+
+  return {
+    items,
+    totalCount,
+    page: options.page,
+    limit: options.limit,
+    totalPages,
+  };
 }

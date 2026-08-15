@@ -160,6 +160,7 @@ test.describe('E2E: Carteiras, Posições e Operações Manuais (Pacote 03.02)',
       'Ordem de venda cancelada no home broker'
     );
     await page.click('#confirm-cancel-event-submit');
+    await expect(page.locator('#cancel-event-modal-title')).not.toBeVisible();
 
     // Valida que a posição foi restabelecida para 100 ações
     await expect(
@@ -167,7 +168,8 @@ test.describe('E2E: Carteiras, Posições e Operações Manuais (Pacote 03.02)',
     ).toContainText('100');
 
     // 11. Valida Consolidação no Dashboard Geral (/dashboard) - Pacote 03.03
-    await page.goto('/dashboard');
+    await page.click('#nav-link-dashboard');
+    await page.waitForURL('**/dashboard');
     await expect(page.locator('#dashboard-consolidated-metrics')).toBeVisible();
     await expect(page.locator('#dashboard-total-custody')).toContainText('2.500,00');
     await expect(page.locator('#dashboard-active-assets')).toContainText('1');
@@ -178,6 +180,33 @@ test.describe('E2E: Carteiras, Posições e Operações Manuais (Pacote 03.02)',
     await expect(
       page.locator('#recent-activities-table').getByText(customTicker.toUpperCase())
     ).toBeVisible();
+
+    // 12. Valida Extrato Global de Operações (/history) e Filtros - Pacote 03.04
+    await page.click('#nav-link-history');
+    await page.waitForURL('**/history');
+    await expect(page.locator('#history-table')).toBeVisible();
+    await expect(page.locator('#history-total-count-badge')).toBeVisible();
+
+    // Aplica filtro por Ticker
+    await page.fill('#history-filter-ticker', customTicker);
+    await page.click('#btn-apply-history-filters');
+    await expect(page.locator('#history-table')).toContainText(customTicker.toUpperCase());
+
+    // 13. Retorna à carteira e valida o Modal de Detalhamento de Histórico por Ativo
+    await page.goto(userAPortfolioUrl);
+    await expect(page.locator('#portfolio-positions-table')).toBeVisible();
+
+    const detailBtn = page.locator(`#btn-detail-asset-${customTicker.toUpperCase()}`);
+    await expect(detailBtn).toBeVisible();
+    await detailBtn.click();
+
+    await expect(page.locator('#asset-detail-modal-title')).toContainText(customTicker.toUpperCase());
+    await expect(page.locator('#asset-detail-qty')).toContainText('100');
+    await expect(page.locator('#asset-detail-avg-price')).toContainText('25,00');
+
+    // Fecha o modal
+    await page.click('#btn-close-asset-detail-modal');
+    await expect(page.locator('#asset-detail-modal-backdrop')).not.toBeVisible();
   });
 
   // ─── 2. Isolamento Multiusuário (Proteção contra IDOR) ──────────────────────
@@ -216,6 +245,10 @@ test.describe('E2E: Carteiras, Posições e Operações Manuais (Pacote 03.02)',
         page.locator('text=Carteira Dividendos E2E')
       ).not.toBeVisible();
     }
+
+    // Acessa /history do Usuário B (deve estar vazio)
+    await page.goto('/history');
+    await expect(page.locator('#empty-history-state')).toBeVisible();
 
     await context.close();
   });

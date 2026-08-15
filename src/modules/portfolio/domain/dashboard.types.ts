@@ -37,6 +37,14 @@ export interface UserDashboardSummary {
   calculatedAt: Date;
 }
 
+export interface UserHistoryPaginatedResult {
+  items: UserRecentEventItem[];
+  totalCount: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 // ─── Tipos Serializados para SSR, UI e Server Actions (Baseados em String) ───
 
 export interface SerializedCurrencyGroupSummary {
@@ -80,4 +88,12 @@ export interface SerializedUserDashboardData {
   }[];
   recentEvents: SerializedUserRecentEventItem[];
   calculatedAt: string;
+}
+
+export interface SerializedUserHistoryPaginatedResult {
+  items: SerializedUserRecentEventItem[];
+  totalCount: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }

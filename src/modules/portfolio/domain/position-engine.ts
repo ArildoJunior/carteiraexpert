@@ -11,9 +11,11 @@ import type {
   CurrencyGroupSummary,
   UserRecentEventItem,
   UserDashboardSummary,
+  UserHistoryPaginatedResult,
   SerializedCurrencyGroupSummary,
   SerializedUserRecentEventItem,
   SerializedUserDashboardData,
+  SerializedUserHistoryPaginatedResult,
 } from './dashboard.types';
 import type { Asset } from './asset.types';
 import {
@@ -465,5 +467,17 @@ export function serializeUserDashboardData(
     })),
     recentEvents: summary.recentEvents.map(serializeUserRecentEvent),
     calculatedAt: summary.calculatedAt.toISOString(),
+  };
+}
+
+export function serializeUserHistoryPaginatedResult(
+  result: UserHistoryPaginatedResult
+): SerializedUserHistoryPaginatedResult {
+  return {
+    items: result.items.map(serializeUserRecentEvent),
+    totalCount: result.totalCount,
+    page: result.page,
+    limit: result.limit,
+    totalPages: result.totalPages,
   };
 }

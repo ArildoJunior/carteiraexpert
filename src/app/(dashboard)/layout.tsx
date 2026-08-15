@@ -49,6 +49,13 @@ export default async function DashboardLayout({
                 >
                   Carteiras
                 </a>
+                <a
+                  id="nav-link-history"
+                  href="/history"
+                  className="text-sm font-medium text-slate-300 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-slate-800"
+                >
+                  Histórico
+                </a>
               </div>
             </div>
 
