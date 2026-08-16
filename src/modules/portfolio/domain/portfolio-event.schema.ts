@@ -11,9 +11,18 @@ export const PORTFOLIO_EVENT_TYPES = [
   'REVERSAL',
   'SPLIT',
   'GROUPING',
+  'BONUS_SHARE',
+  'DIVIDEND',
+  'JCP',
 ] as const;
 
-export const CORPORATE_ACTION_TYPES = ['SPLIT', 'GROUPING'] as const;
+export const CORPORATE_ACTION_TYPES = [
+  'SPLIT',
+  'GROUPING',
+  'BONUS_SHARE',
+  'DIVIDEND',
+  'JCP',
+] as const;
 
 export const EVENT_SOURCES = ['manual', 'import', 'corporate_action'] as const;
 
@@ -188,6 +197,82 @@ export const createCorporateActionEventSchema = z.object({
 
 export type CreateCorporateActionEventInput = z.input<typeof createCorporateActionEventSchema>;
 export type CreateCorporateActionEventOutput = z.output<typeof createCorporateActionEventSchema>;
+
+// ─── Schema de Criação de Bonificação de Ações (BONUS_SHARE) ────────────────
+export const createBonusEventSchema = z.object({
+  portfolioId: z.string().uuid('ID de carteira inválido.'),
+  assetId: z.string().uuid('ID de ativo inválido.'),
+  type: z.literal('BONUS_SHARE').default('BONUS_SHARE'),
+  tradeDate: eventDateSchema,
+  quantity: quantitySchema,
+  unitPrice: unitPriceSchema.default('0'),
+  notes: z
+    .string()
+    .max(1000, 'As observações não podem exceder 1000 caracteres.')
+    .transform((val) => val.trim())
+    .nullable()
+    .optional(),
+  source: z.enum(EVENT_SOURCES).default('corporate_action'),
+});
+
+export type CreateBonusEventInput = z.input<typeof createBonusEventSchema>;
+export type CreateBonusEventOutput = z.output<typeof createBonusEventSchema>;
+
+// ─── Schema de Criação de Proventos em Dinheiro (DIVIDEND / JCP) ─────────────
+export const incomeUnitPriceSchema = createDecimalValidator({
+  minExclusive: new Decimal('0'),
+  maxPrecision: 20,
+  maxScale: 8,
+  fieldName: 'Valor por ação',
+});
+
+export const createIncomeEventSchema = z
+  .object({
+    portfolioId: z.string().uuid('ID de carteira inválido.'),
+    assetId: z.string().uuid('ID de ativo inválido.'),
+    type: z.enum(['DIVIDEND', 'JCP'], {
+      message: 'Tipo de provento deve ser DIVIDEND ou JCP.',
+    }),
+    tradeDate: eventDateSchema,
+    settlementDate: eventDateSchema,
+    quantity: quantitySchema,
+    unitPrice: incomeUnitPriceSchema,
+    fees: feesSchema.default('0'),
+    notes: z
+      .string()
+      .max(1000, 'As observações não podem exceder 1000 caracteres.')
+      .transform((val) => val.trim())
+      .nullable()
+      .optional(),
+    source: z.enum(EVENT_SOURCES).default('corporate_action'),
+  })
+  .refine(
+    (data) => {
+      return data.settlementDate.getTime() >= data.tradeDate.getTime();
+    },
+    {
+      message:
+        'A data de pagamento (settlementDate) deve ser igual ou posterior à data de corte (tradeDate).',
+      path: ['settlementDate'],
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.type === 'JCP') {
+        const gross = new Decimal(data.quantity).times(new Decimal(data.unitPrice));
+        return new Decimal(data.fees).lessThan(gross);
+      }
+      return true;
+    },
+    {
+      message:
+        'O valor do IRRF retido não pode ser igual ou superior ao valor bruto total do provento.',
+      path: ['fees'],
+    }
+  );
+
+export type CreateIncomeEventInput = z.input<typeof createIncomeEventSchema>;
+export type CreateIncomeEventOutput = z.output<typeof createIncomeEventSchema>;
 
 // ─── Schema de Cancelamento de Evento de Carteira ───────────────────────────
 export const cancelPortfolioEventSchema = z.object({

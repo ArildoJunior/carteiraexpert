@@ -61,14 +61,14 @@ export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTablePr
       )}
 
       {/* ─── Cards de Resumo Financeiro ────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="position-metrics-cards">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5" id="position-metrics-cards">
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
             Total em Custódia
           </p>
           <p
             id="metric-total-invested"
-            className="text-xl font-bold text-white mt-1 tracking-tight"
+            className="text-lg sm:text-xl font-bold text-white mt-1 tracking-tight"
           >
             {formatMoney(summary.totalInvestedCost, baseCurrency)}
           </p>
@@ -79,11 +79,11 @@ export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTablePr
 
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-            Resultado Realizado (PnL)
+            Resultado Realizado
           </p>
           <p
             id="metric-total-realized-pnl"
-            className={`text-xl font-bold mt-1 tracking-tight ${
+            className={`text-lg sm:text-xl font-bold mt-1 tracking-tight ${
               isTotalPnLPositive
                 ? 'text-emerald-400'
                 : isTotalPnLNegative
@@ -95,7 +95,22 @@ export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTablePr
             {formatMoney(summary.totalRealizedPnL, baseCurrency)}
           </p>
           <p className="text-[11px] text-slate-500 mt-0.5">
-            Lucro/prejuízo de vendas encerradas
+            Lucro/prejuízo de vendas
+          </p>
+        </div>
+
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            Proventos Recebidos
+          </p>
+          <p
+            id="metric-total-income"
+            className="text-lg sm:text-xl font-bold text-amber-400 mt-1 tracking-tight"
+          >
+            {formatMoney(summary.totalIncomeReceived || '0', baseCurrency)}
+          </p>
+          <p className="text-[11px] text-slate-500 mt-0.5">
+            Dividendos e JCP
           </p>
         </div>
 
@@ -105,26 +120,26 @@ export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTablePr
           </p>
           <p
             id="metric-total-fees"
-            className="text-xl font-bold text-amber-400 mt-1 tracking-tight"
+            className="text-lg sm:text-xl font-bold text-slate-200 mt-1 tracking-tight"
           >
             {formatMoney(summary.totalFees, baseCurrency)}
           </p>
           <p className="text-[11px] text-slate-500 mt-0.5">
-            Corretagens e emolumentos totais
+            Corretagens e emolumentos
           </p>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm col-span-1 sm:col-span-2 lg:col-span-1">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
             Ativos em Custódia
           </p>
           <p
             id="metric-active-assets"
-            className="text-xl font-bold text-indigo-400 mt-1 tracking-tight"
+            className="text-lg sm:text-xl font-bold text-indigo-400 mt-1 tracking-tight"
           >
             {activeCount}{' '}
             <span className="text-xs font-normal text-slate-400">
-              {activeCount === 1 ? 'posição ativa' : 'posições ativas'}
+              {activeCount === 1 ? 'posição ativa' : 'posições'}
             </span>
           </p>
           <p className="text-[11px] text-slate-500 mt-0.5">
@@ -331,6 +346,7 @@ export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTablePr
                 <tr className="border-b border-slate-800/80 bg-slate-950/40 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                   <th className="px-6 py-3">Ativo</th>
                   <th className="px-4 py-3 text-right">Taxas Totais</th>
+                  <th className="px-4 py-3 text-right">Proventos Recebidos</th>
                   <th className="px-6 py-3 text-right">Resultado Realizado Final</th>
                   <th className="px-4 py-3 text-center">Histórico</th>
                 </tr>
@@ -366,6 +382,9 @@ export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTablePr
                       </td>
                       <td className="px-4 py-3.5 text-right font-mono text-xs text-slate-400">
                         {formatMoney(pos.totalFees, pos.currency)}
+                      </td>
+                      <td className="px-4 py-3.5 text-right font-mono text-xs text-amber-400">
+                        {formatMoney(pos.totalIncomeReceived || '0', pos.currency)}
                       </td>
                       <td
                         className={`px-6 py-3.5 text-right font-mono font-semibold text-sm ${

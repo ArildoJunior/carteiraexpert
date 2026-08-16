@@ -172,6 +172,7 @@ export function AssetSearchSelect({
                     role="option"
                     aria-selected="false"
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => {
                       onSelectAsset(asset);
                       setIsOpen(false);
@@ -213,9 +214,11 @@ export function AssetSearchSelect({
                     <button
                       id="btn-create-custom-asset"
                       type="button"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => {
+                        const trimmed = query.trim().toUpperCase();
                         setIsOpen(false);
-                        onRequestCreateCustomAsset(query);
+                        onRequestCreateCustomAsset(trimmed);
                       }}
                       className="inline-flex items-center text-xs font-semibold text-emerald-400 hover:text-emerald-300 underline"
                     >

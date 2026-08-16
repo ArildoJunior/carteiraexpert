@@ -102,6 +102,26 @@ export function PortfolioEventTable({
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-950/80 text-blue-400 border border-blue-800/60">
                         🔵 Venda
                       </span>
+                    ) : event.type === 'SPLIT' ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-950/80 text-purple-400 border border-purple-800/60">
+                        🔀 Desdobramento
+                      </span>
+                    ) : event.type === 'GROUPING' ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-950/80 text-amber-400 border border-amber-800/60">
+                        🔄 Grupamento
+                      </span>
+                    ) : event.type === 'BONUS_SHARE' ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-pink-950/80 text-pink-400 border border-pink-800/60">
+                        🎁 Bonificação
+                      </span>
+                    ) : event.type === 'DIVIDEND' ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-700/60">
+                        💵 Dividendo
+                      </span>
+                    ) : event.type === 'JCP' ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-950/80 text-teal-300 border border-teal-700/60">
+                        🏛️ JCP
+                      </span>
                     ) : (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-300">
                         {event.type}

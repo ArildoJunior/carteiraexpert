@@ -11,6 +11,9 @@ export type PortfolioEventType =
   | 'MANUAL_ADJUSTMENT'
   | 'REVERSAL'
   | 'SPLIT'
-  | 'GROUPING';
+  | 'GROUPING'
+  | 'BONUS_SHARE'
+  | 'DIVIDEND'
+  | 'JCP';
 
 export type EventSource = 'manual' | 'import' | 'corporate_action';

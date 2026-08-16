@@ -29,6 +29,7 @@ export interface TimelineEvent {
   assetId: string;
   type: string; // 'BUY' | 'SELL' | 'TRANSFER_IN' | 'TRANSFER_OUT' | string
   tradeDate: Date;
+  settlementDate?: Date | null;
   quantity: Decimal | string;
   unitPrice: Decimal | string;
   fees: Decimal | string;
@@ -79,6 +80,7 @@ export function calculateAssetPosition(
   let runningCost = new Decimal(0);
   let runningFees = new Decimal(0);
   let runningRealizedPnL = new Decimal(0);
+  let runningIncome = new Decimal(0);
   let lastTradeDate: Date | null = null;
   const realizedTrades: RealizedTradePnL[] = [];
 
@@ -175,6 +177,87 @@ export function calculateAssetPosition(
       }
       runningQuantity = runningQuantity.dividedBy(factor);
       // runningCost permanece invariante!
+    } else if (event.type === 'BONUS_SHARE') {
+      if (qty.lessThanOrEqualTo(0)) {
+        throw new Error('Quantidade bonificada (BONUS_SHARE) deve ser maior que zero.');
+      }
+      if (price.lessThan(0)) {
+        throw new Error('Custo unitário atribuído da bonificação não pode ser negativo.');
+      }
+      if (runningQuantity.lessThanOrEqualTo(0)) {
+        throw new InsufficientPositionError(
+          `Posição insuficiente para bonificação (BONUS_SHARE) na data ${lastTradeDate.toISOString().slice(0, 10)}. Posição disponível: ${runningQuantity.toString()}.`,
+          {
+            availableQuantity: runningQuantity.toString(),
+            requestedQuantity: qty.toString(),
+            assetId,
+            tradeDate: lastTradeDate,
+          }
+        );
+      }
+      const bonusCostDelta = qty.times(price);
+      runningQuantity = runningQuantity.plus(qty);
+      runningCost = runningCost.plus(bonusCostDelta);
+    } else if (event.type === 'DIVIDEND') {
+      if (price.lessThanOrEqualTo(0)) {
+        throw new Error('Valor por ação do dividendo deve ser maior que zero.');
+      }
+      if (runningQuantity.lessThanOrEqualTo(0)) {
+        throw new InsufficientPositionError(
+          `Posição insuficiente para recebimento de dividendo na data de corte ${lastTradeDate.toISOString().slice(0, 10)}. Posição disponível: ${runningQuantity.toString()}.`,
+          {
+            availableQuantity: runningQuantity.toString(),
+            requestedQuantity: qty.toString(),
+            assetId,
+            tradeDate: lastTradeDate,
+          }
+        );
+      }
+      if (qty.greaterThan(runningQuantity)) {
+        throw new InsufficientPositionError(
+          `Quantidade elegível de dividendo (${qty.toString()}) não pode exceder a posição disponível na data de corte (${runningQuantity.toString()}).`,
+          {
+            availableQuantity: runningQuantity.toString(),
+            requestedQuantity: qty.toString(),
+            assetId,
+            tradeDate: lastTradeDate,
+          }
+        );
+      }
+      const dividendAmount = qty.times(price);
+      runningIncome = runningIncome.plus(dividendAmount);
+    } else if (event.type === 'JCP') {
+      if (price.lessThanOrEqualTo(0)) {
+        throw new Error('Valor bruto por ação do JCP deve ser maior que zero.');
+      }
+      if (runningQuantity.lessThanOrEqualTo(0)) {
+        throw new InsufficientPositionError(
+          `Posição insuficiente para recebimento de JCP na data de corte ${lastTradeDate.toISOString().slice(0, 10)}. Posição disponível: ${runningQuantity.toString()}.`,
+          {
+            availableQuantity: runningQuantity.toString(),
+            requestedQuantity: qty.toString(),
+            assetId,
+            tradeDate: lastTradeDate,
+          }
+        );
+      }
+      if (qty.greaterThan(runningQuantity)) {
+        throw new InsufficientPositionError(
+          `Quantidade elegível de JCP (${qty.toString()}) não pode exceder a posição disponível na data de corte (${runningQuantity.toString()}).`,
+          {
+            availableQuantity: runningQuantity.toString(),
+            requestedQuantity: qty.toString(),
+            assetId,
+            tradeDate: lastTradeDate,
+          }
+        );
+      }
+      const grossAmount = qty.times(price);
+      if (fees.greaterThanOrEqualTo(grossAmount)) {
+        throw new Error('O valor do IRRF retido no JCP não pode ser igual ou superior ao valor bruto total.');
+      }
+      const netAmount = grossAmount.minus(fees);
+      runningIncome = runningIncome.plus(netAmount);
     }
   }
 
@@ -198,6 +281,7 @@ export function calculateAssetPosition(
     totalCost: runningCost,
     totalFees: runningFees,
     totalRealizedPnL: runningRealizedPnL,
+    totalIncomeReceived: runningIncome,
     lastTradeDate,
     hasFractionalShares,
   };
@@ -309,6 +393,73 @@ export function validateTimelineConsistency(
         }
       }
       runningQuantity = runningQuantity.dividedBy(factor);
+    } else if (event.type === 'BONUS_SHARE') {
+      if (runningQuantity.lessThanOrEqualTo(0)) {
+        if (prospectiveEvent && event.id === prospectiveEvent.id) {
+          throw new InsufficientPositionError(
+            `Posição insuficiente para bonificação (BONUS_SHARE). Posição disponível: ${runningQuantity.toString()}.`,
+            {
+              availableQuantity: runningQuantity.toString(),
+              requestedQuantity: qty.toString(),
+              assetId: event.assetId,
+              tradeDate: eventDate,
+            }
+          );
+        } else {
+          throw new RetroactiveInconsistencyError(
+            `A bonificação não pode ser aplicada pois a posição na data ${eventDate.toISOString().slice(0, 10)} é nula ou insuficiente.`,
+            {
+              assetId: event.assetId,
+              conflictingDate: eventDate,
+            }
+          );
+        }
+      }
+      runningQuantity = runningQuantity.plus(qty);
+    } else if (event.type === 'DIVIDEND') {
+      if (runningQuantity.lessThanOrEqualTo(0) || qty.greaterThan(runningQuantity)) {
+        if (prospectiveEvent && event.id === prospectiveEvent.id) {
+          throw new InsufficientPositionError(
+            `Posição insuficiente para recebimento de dividendo. Posição disponível: ${runningQuantity.toString()}, Elegível: ${qty.toString()}.`,
+            {
+              availableQuantity: runningQuantity.toString(),
+              requestedQuantity: qty.toString(),
+              assetId: event.assetId,
+              tradeDate: eventDate,
+            }
+          );
+        } else {
+          throw new RetroactiveInconsistencyError(
+            `O dividendo não pode ser aplicado pois a posição na data ${eventDate.toISOString().slice(0, 10)} é inferior à quantidade elegível informada.`,
+            {
+              assetId: event.assetId,
+              conflictingDate: eventDate,
+            }
+          );
+        }
+      }
+    } else if (event.type === 'JCP') {
+      if (runningQuantity.lessThanOrEqualTo(0) || qty.greaterThan(runningQuantity)) {
+        if (prospectiveEvent && event.id === prospectiveEvent.id) {
+          throw new InsufficientPositionError(
+            `Posição insuficiente para recebimento de JCP. Posição disponível: ${runningQuantity.toString()}, Elegível: ${qty.toString()}.`,
+            {
+              availableQuantity: runningQuantity.toString(),
+              requestedQuantity: qty.toString(),
+              assetId: event.assetId,
+              tradeDate: eventDate,
+            }
+          );
+        } else {
+          throw new RetroactiveInconsistencyError(
+            `O JCP não pode ser aplicado pois a posição na data ${eventDate.toISOString().slice(0, 10)} é inferior à quantidade elegível informada.`,
+            {
+              assetId: event.assetId,
+              conflictingDate: eventDate,
+            }
+          );
+        }
+      }
     }
   }
 }
@@ -329,6 +480,7 @@ export function calculatePortfolioPositionsSummary(
   let totalInvestedCost = new Decimal(0);
   let totalFees = new Decimal(0);
   let totalRealizedPnL = new Decimal(0);
+  let totalIncomeReceived = new Decimal(0);
 
   for (const assetId of assetIds) {
     const assetEvents = activeEvents.filter((e) => e.assetId === assetId);
@@ -337,12 +489,17 @@ export function calculatePortfolioPositionsSummary(
 
     totalFees = totalFees.plus(position.totalFees);
     totalRealizedPnL = totalRealizedPnL.plus(position.totalRealizedPnL);
+    totalIncomeReceived = totalIncomeReceived.plus(position.totalIncomeReceived);
 
     if (position.quantity.greaterThan(0)) {
       activePositions.push(position);
       totalInvestedCost = totalInvestedCost.plus(position.totalCost);
-    } else if (position.totalRealizedPnL.abs().greaterThan(0) || position.totalFees.greaterThan(0)) {
-      // Posição zerada com histórico
+    } else if (
+      position.totalRealizedPnL.abs().greaterThan(0) ||
+      position.totalFees.greaterThan(0) ||
+      position.totalIncomeReceived.greaterThan(0)
+    ) {
+      // Posição zerada com histórico (vendas com lucro/prejuízo, taxas ou proventos recebidos)
       closedPositions.push(position);
     }
   }
@@ -358,6 +515,7 @@ export function calculatePortfolioPositionsSummary(
     totalInvestedCost,
     totalFees,
     totalRealizedPnL,
+    totalIncomeReceived,
     calculatedAt: new Date(),
   };
 }
@@ -379,6 +537,7 @@ export function serializeAssetPosition(pos: AssetPosition): SerializedAssetPosit
     totalCost: pos.totalCost.toFixed(8),
     totalFees: pos.totalFees.toFixed(8),
     totalRealizedPnL: pos.totalRealizedPnL.toFixed(8),
+    totalIncomeReceived: pos.totalIncomeReceived.toFixed(8),
     lastTradeDate: pos.lastTradeDate ? pos.lastTradeDate.toISOString() : null,
     hasFractionalShares: pos.hasFractionalShares,
   };
@@ -409,13 +568,14 @@ export function serializePositionsSummary(
     totalInvestedCost: summary.totalInvestedCost.toFixed(8),
     totalFees: summary.totalFees.toFixed(8),
     totalRealizedPnL: summary.totalRealizedPnL.toFixed(8),
+    totalIncomeReceived: summary.totalIncomeReceived.toFixed(8),
     calculatedAt: summary.calculatedAt.toISOString(),
   };
 }
 
 /**
  * Consolida os resumos de múltiplas carteiras agrupando por moeda base.
- * Totaliza investimento em custódia, PnL realizado, taxas e contagem de ativos ativos.
+ * Totaliza investimento em custódia, PnL realizado, taxas, proventos recebidos e contagem de ativos ativos.
  */
 export function calculateUserDashboardSummary(
   portfolioData: {
@@ -432,6 +592,7 @@ export function calculateUserDashboardSummary(
       totalInvestedCost: Decimal;
       totalFees: Decimal;
       totalRealizedPnL: Decimal;
+      totalIncomeReceived: Decimal;
       activePositionsCount: number;
       portfoliosCount: number;
     }
@@ -447,6 +608,7 @@ export function calculateUserDashboardSummary(
         totalInvestedCost: new Decimal(0),
         totalFees: new Decimal(0),
         totalRealizedPnL: new Decimal(0),
+        totalIncomeReceived: new Decimal(0),
         activePositionsCount: 0,
         portfoliosCount: 0,
       });
@@ -456,6 +618,7 @@ export function calculateUserDashboardSummary(
     group.totalInvestedCost = group.totalInvestedCost.plus(item.summary.totalInvestedCost);
     group.totalFees = group.totalFees.plus(item.summary.totalFees);
     group.totalRealizedPnL = group.totalRealizedPnL.plus(item.summary.totalRealizedPnL);
+    group.totalIncomeReceived = group.totalIncomeReceived.plus(item.summary.totalIncomeReceived);
     group.activePositionsCount += item.summary.positions.length;
     group.portfoliosCount += 1;
 
@@ -469,6 +632,7 @@ export function calculateUserDashboardSummary(
       totalInvestedCost: data.totalInvestedCost,
       totalFees: data.totalFees,
       totalRealizedPnL: data.totalRealizedPnL,
+      totalIncomeReceived: data.totalIncomeReceived,
       activePositionsCount: data.activePositionsCount,
       portfoliosCount: data.portfoliosCount,
     }))
@@ -485,6 +649,7 @@ export function calculateUserDashboardSummary(
       totalInvestedCost: new Decimal(0),
       totalFees: new Decimal(0),
       totalRealizedPnL: new Decimal(0),
+      totalIncomeReceived: new Decimal(0),
       activePositionsCount: 0,
       portfoliosCount: 0,
     });
@@ -542,6 +707,7 @@ export function serializeCurrencyGroupSummary(
     totalInvestedCost: group.totalInvestedCost.toFixed(8),
     totalFees: group.totalFees.toFixed(8),
     totalRealizedPnL: group.totalRealizedPnL.toFixed(8),
+    totalIncomeReceived: group.totalIncomeReceived.toFixed(8),
     activePositionsCount: group.activePositionsCount,
     portfoliosCount: group.portfoliosCount,
   };

@@ -8,82 +8,86 @@
 
 ## Estado Geral
 
-A fundação técnica, a camada de identidade, segurança, governança, o módulo de carteiras com operações manuais, motor de posições, dashboard consolidado, extrato global de operações e o suporte a eventos corporativos de Split e Grupamento encontram-se no seguinte status:
+A fundação técnica, a camada de identidade, segurança, governança, o módulo de carteiras com operações manuais, motor de posições, dashboard consolidado, extrato global de operações e o suporte a eventos corporativos de Split, Grupamento, Bonificação, Dividendos e Juros sobre Capital Próprio (JCP) encontram-se no seguinte status:
 
 - **Fase 01 — Fundação Técnica:** Concluída (Arquitetura modular, motor financeiro baseado em `Decimal`, persistência `NUMERIC`, auditoria imutável e testes de infraestrutura).
 - **Fase 02 — Identidade, Acesso e Segurança:** Concluída (Cadastro, login com Argon2id, sessões em banco com SHA-256, controle de taxa com HMAC-SHA256, redefinição atômica de senha, logout auditado, consentimentos versionados LGPD *append-only* e motor de verificação física de schema).
 - **Fase 03 — Carteiras, Ativos e Posições:** Concluída e Publicada (Pacotes 03.00-E, 03.01-D, 03.02, 03.03 e 03.04 — Gestão de carteiras, ativos globais e customizados, lançamentos manuais, motor de custo médio ponderado, validação temporal de vendas, apuração de PnL realizado, dashboard global consolidado e extrato de histórico paginado com filtros avançados).
 - **Fase 04 — Eventos Corporativos:**
-  - **Pacote 04.01 — Split e Grupamento de Ativos:** **IMPLEMENTADO E HOMOLOGADO COM SUCESSO (`PASS`)** (Commit base publicado: `38b9f606f5c7d487dcc5f0126448a0b96f034902` — Processamento determinístico, auditável e idempotente de desdobramentos (`SPLIT`) e grupamentos (`GROUPING`), preservação rigorosa do custo total de aquisição invariante, identificação e preservação de frações residuais em `Decimal`, validação temporal retroativa, persistência compatível com schema existente sem migrations e integração total à interface, extrato `/history`, feed recente e detalhamento de ativo).
-- **Próximo Pacote:** **Pacote 04.02 — Bonificação, Dividendos e JCP**.
+  - **Pacote 04.01 — Split e Grupamento de Ativos:** **IMPLEMENTADO E HOMOLOGADO COM SUCESSO (`PASS`)** (Processamento determinístico, auditável e idempotente de desdobramentos (`SPLIT`) e grupamentos (`GROUPING`), preservação rigorosa do custo total de aquisição invariante, identificação e preservação de frações residuais em `Decimal`, validação temporal retroativa, persistência compatível com schema existente sem migrations e integração total à interface, extrato `/history`, feed recente e detalhamento de ativo).
+  - **Pacote 04.02 — Bonificação, Dividendos e JCP:** **IMPLEMENTADO E HOMOLOGADO COM SUCESSO (`PASS`)** (Processamento determinístico de bonificação de ações (`BONUS_SHARE`) com custo atribuído opcional e recálculo de custo médio, recebimento de proventos em dinheiro — dividendos isentos (`DIVIDEND`) e Juros sobre Capital Próprio (`JCP`) com apuração líquida e retenção de IRRF —, exigência mandatória de Data de Pagamento (`settlementDate`), validação de elegibilidade de custódia na Data-Com (`tradeDate`), totalização acumulada de proventos em `totalIncomeReceived`, preservação estrita de quantidade e custo em proventos, consolidação no dashboard e extrato multicarteiras, e correção de compatibilidade/foco e empilhamento de modais no Firefox).
+- **Próximo Pacote:** **Pacote 04.03 — Subscrição e Eventos Societários**.
 
 ---
 
-## Homologação Funcional do Pacote 04.01 (Veredicto: `PASS`)
+## Homologação Funcional do Pacote 04.02 (Veredicto: `PASS`)
 
-A homologação funcional foi executada pela interface real da aplicação em ambiente local utilizando o runner Playwright Chromium, exercitando todos os fluxos de usuário, atualizações visuais e probes de segurança:
+A homologação funcional foi executada pela interface real da aplicação em ambiente local utilizando o runner Playwright Chromium e Firefox, exercitando todos os fluxos de usuário, atualizações visuais e probes de segurança:
 
 ### Fluxos Validados com Sucesso:
-1. **Compra Inicial:** Cadastro de ativo customizado e compra de 100 unidades @ R$ 25,00 (Total: R$ 2.500,00).
-2. **Desdobramento (SPLIT 1:2):** Lançamento de Split com fator 2, recalculando a posição para 200 unidades @ R$ 12,50 e preservando o custo total em R$ 2.500,00.
-3. **Grupamento (GROUPING 5:1):** Lançamento de Grupamento com fator 5, recalculando a posição para 40 unidades @ R$ 62,50 com custo total invariante de R$ 2.500,00.
-4. **Venda Parcial Pós-Eventos:** Venda de 10 unidades @ R$ 70,00 com apuração exata de PnL realizado de `+R$ 75,00`, restando posição residual de 30 unidades em custódia @ R$ 62,50 (Custo investido em custódia: R$ 1.875,00).
-5. **Persistência Pós-Recarregamento:** Recarregamento completo da aplicação (`F5`) confirmando idempotência e reprocessamento determinístico da linha do tempo.
-6. **Extrato Cronológico (`/history`):** Exibição correta dos badges `Desdobramento` e `Grupamento`, indicação de proporção (`Fator 1:2` e `Fator 5:1`) e omissão de preço unitário/taxas com traço (`—`).
+1. **Compra Inicial:** Cadastro de ativo customizado e compra de 100 unidades @ R$ 20,00 (Total investido: R$ 2.000,00).
+2. **Bonificação de Ações (`BONUS_SHARE`):** Lançamento de bonificação de 10 ações com custo unitário atribuído de R$ 5,00, recalculando a posição para 110 unidades @ R$ 18,64 (R$ 18,63636364) e elevando o custo total para R$ 2.050,00.
+3. **Dividendos em Dinheiro (`DIVIDEND`):** Registro de dividendo de R$ 1,50/ação sobre 110 ações elegíveis com Data de Pagamento preenchida, creditando R$ 165,00 em proventos e mantendo estritamente inalteradas a quantidade (110) e o custo total (R$ 2.050,00).
+4. **Juros sobre Capital Próprio (`JCP`):** Registro de JCP bruto de R$ 0,80/ação sobre 110 ações (R$ 88,00 bruto) com desconto de IRRF de R$ 13,20 (15%), creditando rendimento líquido de R$ 74,80 e totalizando R$ 239,80 em proventos acumulados.
+5. **Dashboard Consolidado (`/dashboard`):** Exibição em tempo real do card de métrica "Proventos Recebidos" consolidando R$ 239,80 em BRL.
+6. **Extrato Cronológico Geral (`/history`):** Exibição correta dos badges `🎁 Bonificação`, `💵 Dividendo` e `🏛️ JCP`, com indicação de valor bruto por ação, quantidade elegível e discriminação de IRRF retido.
+7. **Filtros Avançados:** Filtros específicos de extrato para isolar bonificações, dividendos e JCP funcionando com precisão.
 
 ### Probes Negativos e Segurança Validados:
-1. **Fator Zero (`0`):** Rejeitado preventivamente no formulário por validação de limite mínimo positivo.
-2. **Fator Negativo (`-2`):** Rejeitado preventivamente por validação de limite numérico positivo.
-3. **Fator Vazio:** Rejeitado por obrigatoriedade do campo.
-4. **Data Retroativa Inconsistente:** Rejeitado no servidor com mensagem de domínio (*"Posição insuficiente para desdobramento (SPLIT). Posição disponível: 0."*).
-5. **Isolamento Multiusuário (Anti-IDOR):** Bloqueio de visualização e edição entre usuários distintos, impedindo acesso indevido a carteiras e posições de terceiros.
-6. **Lançamento sem Posição em Custódia:** Rejeitado no servidor (*"Posição insuficiente para desdobramento (SPLIT). Posição disponível: 0."*) ao tentar lançar split em ativo com saldo zero.
-7. **Não Persistência de Eventos Rejeitados:** Comprovado que nenhum evento inválido é gravado na tabela `portfolio_events` ou exibido no extrato.
+1. **Data Inexistente/Sem Custódia:** Rejeitado no servidor com mensagem de domínio quando tentado provento em data anterior à compra ou com saldo zero.
+2. **Quantidade Elegível Excessiva:** Rejeitado no servidor (*"Posição insuficiente para recebimento de dividendo. Posição disponível: 110, Elegível: 200."*).
+3. **IRRF Superior ao Valor Bruto:** Rejeitado preventivamente no schema Zod (*"O IRRF retido não pode exceder o valor total bruto do JCP."*).
+4. **Data de Pagamento Ausente:** Rejeitado pelo schema com obrigatoriedade de `settlementDate` para dividendos e JCP.
+5. **Isolamento Multiusuário (Anti-IDOR):** Bloqueio de visualização e edição de eventos corporativos e proventos entre contas distintas.
 
 ### Evidências Visuais da Homologação:
-- `1_posicao_antes_split.png`: Posição inicial de 100 ações @ R$ 25,00 (Total: R$ 2.500,00).
-- `2_posicao_apos_split.png`: Posição pós-Split 1:2 de 200 ações @ R$ 12,50 com custo total invariante de R$ 2.500,00.
-- `3_historico_split_grupamento.png`: Extrato geral `/history` com badges `Desdobramento` (Fator 1:2) e `Grupamento` (Fator 5:1).
-- `4_posicao_apos_venda_parcial.png`: Posição pós-Grupamento 5:1 e venda parcial de 10 ações @ R$ 70,00 (Restam 30 ações @ R$ 62,50 e PnL Realizado de +R$ 75,00).
-- `5_rejeicoes_probes.png`: Rejeição com banner de erro para data retroativa inconsistente e probes de fatores inválidos.
-- `6_rejeicao_sem_custodia.png`: Rejeição no modal com banner de posição insuficiente ao tentar split em ativo sem posição em custódia.
-- `7_historico_sem_evento_invalido.png`: Extrato geral comprovando que nenhum evento corporativo rejeitado foi persistido no banco de dados.
+- `0402_1_posicao_apos_compra.png`: Posição inicial de 100 ações @ R$ 20,00 (Total: R$ 2.000,00).
+- `0402_2_posicao_apos_bonificacao.png`: Posição pós-Bonificação de 10 ações @ R$ 5,00 (110 ações @ R$ 18,64, Custo total: R$ 2.050,00).
+- `0402_3_posicao_apos_proventos.png`: Posição pós-Dividendo (R$ 165,00) e pós-JCP (R$ 74,80 líquido), exibindo R$ 239,80 em proventos recebidos.
+- `0402_4_historico_proventos_bonificacao.png`: Extrato geral `/history` exibindo todos os eventos com badges, datas de liquidação e valores.
+- `0402_5_filtro_bonificacao.png`: Extrato filtrado por Bonificação.
+- `0402_6_filtro_dividendos.png`: Extrato filtrado por Dividendos.
+- `0402_7_filtro_jcp.png`: Extrato filtrado por JCP.
+- `0402_8_dashboard_proventos.png`: Card de "Proventos Recebidos" no dashboard consolidado.
+- `0402_9_probe_data_invalida.png`: Rejeição de lançamento em data anterior à compra (posição zero).
+- `0402_10_probe_quantidade_excessiva.png`: Rejeição de provento para quantidade superior à custódia disponível na Data-Com.
+- `0402_11_probe_irrf_excessivo.png`: Rejeição no formulário para IRRF maior que o valor bruto do JCP.
 
 ---
 
-## Componentes Implementados no Pacote 04.01
+## Componentes Implementados no Pacote 04.02
 
-1. **Tipos e Contratos de Domínio (`portfolio-event.schema.ts` e `portfolio-event.types.ts`):**
-   - Inclusão dos tipos `SPLIT` e `GROUPING` na união canônica `PORTFOLIO_EVENT_TYPES` e `PortfolioEventType`;
-   - Schema Zod `createCorporateActionEventSchema` com validação de `portfolioId`, `assetId`, `type` (`SPLIT` | `GROUPING`), `tradeDate` (ISO estrito com timezone), `factor` (positivo, não nulo e validado como Decimal) e `notes`;
-   - Flag de domínio `hasFractionalShares: boolean` obrigatória em `AssetPosition` e `SerializedAssetPosition`.
+1. **Tipos e Contratos de Domínio (`portfolio-event.schema.ts`, `portfolio-event.types.ts`, `position.types.ts`, `dashboard.types.ts`):**
+   - Inclusão dos tipos `BONUS_SHARE`, `DIVIDEND` e `JCP` na união canônica `PORTFOLIO_EVENT_TYPES` e `CORPORATE_ACTION_TYPES`;
+   - Schemas Zod `createBonusEventSchema` e `createIncomeEventSchema` com validação de `portfolioId`, `assetId`, `tradeDate` (Data-Com), `settlementDate` (Data de Pagamento obrigatória para proventos), `quantity`, `unitPrice` e `fees` (IRRF);
+   - Campo de domínio `totalIncomeReceived: Decimal` integrado a `AssetPosition`, `PortfolioPositionsSummary` e `CurrencyGroupSummary`.
 
 2. **Motor de Domínio Puro (`position-engine.ts`):**
-   - Tratamento de `SPLIT`: multiplicação de quantidade ($Q \times F$) e divisão proporcional de custo médio ($P \div F$), com invariância estrita do custo total investido ($Q \times P$ constante);
-   - Tratamento de `GROUPING`: divisão de quantidade ($Q \div F$) e multiplicação proporcional de custo médio ($P \times F$), com invariância do custo total;
-   - Detecção e preservação exata de frações residuais sem arredondamento forçado e sem conversão compulsória em dinheiro;
-   - Validação temporal em `validateTimelineConsistency`: rejeição de splits/grupamentos em datas com posição nula ou negativa, e reprocessamento cronológico correto de vendas posteriores.
+   - Tratamento de `BONUS_SHARE`: soma de quantidade ($Q_{nova} = Q_{anterior} + Q_{bonus}$), incorporação de custo total ($Custo_{novo} = Custo_{anterior} + (Q_{bonus} \times Custo_{atribuido})$) e recálculo de custo médio ($CM = Custo_{novo} \div Q_{nova}$);
+   - Tratamento de `DIVIDEND`: crédito de $Q_{elegivel} \times ValorPorAcao$ em `totalIncomeReceived`, preservando quantidade e custo;
+   - Tratamento de `JCP`: crédito líquido $(Q_{elegivel} \times ValorPorAcao) - IRRF$ em `totalIncomeReceived`, com IRRF em `totalFees`/`fees`;
+   - Validação temporal em `validateTimelineConsistency`: exigência de custódia positiva na Data-Com e $Q_{elegivel} \le Q_{disponivel}$.
 
 3. **Consultas e Serviços no Servidor (`portfolio-event.service.ts` e `portfolio.actions.ts`):**
-   - Função `createCorporateActionEvent`: criação transacional com lock pessimista (`FOR UPDATE`), validação de ownership, persistência na tabela física `portfolio_events` (com `quantity` contendo o fator, `unitPrice = 0`, `fees = 0` e `source = 'corporate_action'`) e gravação em `audit_logs`;
-   - Server Action `createCorporateActionEventAction` com revalidação automática de rotas.
+   - Funções `createBonusEvent` e `createIncomeEvent` com transação atômica, lock pessimista (`FOR UPDATE`), validação de ownership e registro imutável em `audit_logs`;
+   - Server Actions `createBonusEventAction` e `createIncomeEventAction` com revalidação automática de rotas (`/dashboard`, `/history`, `/portfolios/[id]`).
 
 4. **Componentes de Interface e SSR (`src/modules/portfolio/ui/` e `/history`):**
-   - **`AssetPositionDetailModal`:** Formulário recolhível para lançamento de split e grupamento, feedback visual de sucesso/erro e badge informativo de fração residual (`⚠️ Fração Residual`);
-   - **`PositionTable`:** Identificação e badge de frações residuais na coluna de quantidade;
-   - **`HistoryFilterBar`:** Opções de filtro por `SPLIT` (🔀 Desdobramento) e `GROUPING` (🔄 Grupamento);
-   - **Página `/history`:** Badges visuais dedicados, formatação da coluna "Quantidade / Fator" (ex: `Fator 1:X` ou `Fator X:1`) e omissão de preço/taxas para eventos corporativos;
-   - **`RecentActivityFeed`:** Renderização de badges e fatores no dashboard.
+   - **`AssetPositionDetailModal`:** Abas para lançamento de Bonificação de Ações e Proventos em Dinheiro (Dividendo/JCP), cálculo em tempo real de proventos brutos, IRRF e valor líquido, e estimativa de novo custo médio;
+   - **`PositionTable`:** Card métrico de "Proventos Recebidos" e coluna dedicada na listagem de posições ativas e encerradas;
+   - **`DashboardMetricsCards`:** Card consolidado de "Proventos Recebidos" segregado por moeda;
+   - **`HistoryFilterBar` e `/history`:** Badges dedicados (`🎁 Bonificação`, `💵 Dividendo`, `🏛️ JCP`), formatação de ações elegíveis e discriminação de IRRF;
+   - **`RecentActivityFeed`:** Renderização de proventos e bonificações no dashboard;
+   - **Compatibilidade Cross-Browser (`AssetSearchSelect` e `CustomAssetModal`):** Prevenção de perda de foco prematura em eventos `mousedown` e z-index `z-[60]` para empilhamento estrito de modais no Firefox e WebKit.
 
 ---
 
-## O que Permanece Explicitamente Fora do Escopo do Pacote 04.01
+## O que Permanece Explicitamente Fora do Escopo do Pacote 04.02
 
-- **Bonificação em Ações:** Pertence ao Pacote 04.02.
-- **Proventos em Dinheiro:** Dividendos e Juros sobre Capital Próprio (JCP) pertencem ao Pacote 04.02.
-- **Eventos Societários Complexos:** Subscrição, cisão, incorporação e troca de ticker.
+- **Eventos Societários Complexos:** Subscrição, cisão, incorporação e troca de ticker (previstos para o Pacote 04.03).
+- **Saldo de Caixa da Carteira:** Depósitos, retiradas e saldo monetário em conta corrente permanecem fora do escopo.
+- **Marcação a Mercado e Rentabilidade Não Realizada:** Integração com cotações externas em tempo real e gráficos de rentabilidade previstos para fases futuras.
 - **Ingestão Automática de Provedores Externos:** Pertence à Fase 06.
-- **Leilão de Frações da B3:** Venda compulsória em leilão não é realizada automaticamente.
 - **Alterações de Schema de Banco de Dados:** Nenhuma migração ou alteração DDL (mantido o schema físico canônico de 9 tabelas).
 
 ---
@@ -92,14 +96,14 @@ A homologação funcional foi executada pela interface real da aplicação em am
 
 - [x] **Typecheck:** Aprovado (`tsc --noEmit` — 0 erros estáticos de tipagem).
 - [x] **Lint:** Aprovado (`biome lint ./src` — 0 violações de regras ou formatação).
-- [x] **Testes Unitários:** Aprovados (23 arquivos, 283 testes unitários aprovados).
-- [x] **Testes de Integração:** Aprovados (15 arquivos, 126 testes de integração aprovados em PostgreSQL real).
+- [x] **Testes Unitários:** Aprovados (23 arquivos, 298 testes unitários aprovados).
+- [x] **Testes de Integração:** Aprovados (15 arquivos, 132 testes de integração aprovados em PostgreSQL real).
 - [x] **Build de Produção:** Aprovado (`pnpm run build` / `next build` com 12 rotas estáticas e dinâmicas compiladas).
 - [x] **Testes End-to-End (E2E):** Aprovados (51 testes aprovados no total):
   - **Chromium:** 17/17 testes aprovados;
   - **Firefox:** 17/17 testes aprovados;
   - **WebKit:** 17/17 testes aprovados.
-- [x] **Homologação Funcional no Navegador:** Aprovada com veredicto `PASS` via Playwright Chromium local.
+- [x] **Homologação Funcional no Navegador:** Aprovada com veredicto `PASS` via Playwright local.
 - [x] **Verificação Física do Schema:** Aprovada (`pnpm run db:verify -- --test` — 9 tabelas físicas validadas).
 - [x] **Rollback Transacional e Auditoria:** Comprovados fisicamente no PostgreSQL.
 - [x] **Isolamento Multiusuário e Anti-IDOR:** 100% validado no servidor e em testes E2E.

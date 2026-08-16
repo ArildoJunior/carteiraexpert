@@ -217,15 +217,23 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
                   const isSell = event.type === 'SELL';
                   const isSplit = event.type === 'SPLIT';
                   const isGrouping = event.type === 'GROUPING';
+                  const isBonus = event.type === 'BONUS_SHARE';
+                  const isDividend = event.type === 'DIVIDEND';
+                  const isJcp = event.type === 'JCP';
 
                   const tradeDateFormatted = new Date(event.tradeDate).toLocaleDateString(
                     'pt-BR',
                     { timeZone: 'UTC' }
                   );
+                  const settlementDateFormatted = event.settlementDate
+                    ? new Date(event.settlementDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+                    : null;
+
                   const decQty = new Decimal(event.quantity || '0');
                   const decPrice = new Decimal(event.unitPrice || '0');
                   const decFees = new Decimal(event.fees || '0');
                   const totalGross = decQty.times(decPrice);
+                  const totalNetJcp = totalGross.minus(decFees);
                   const hasFees = decFees.greaterThan(0);
 
                   return (
@@ -254,6 +262,21 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
                         {isGrouping && (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-950/80 text-amber-400 border border-amber-800/60">
                             🔄 Grupamento
+                          </span>
+                        )}
+                        {isBonus && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-pink-950/80 text-pink-400 border border-pink-800/60">
+                            🎁 Bonificação
+                          </span>
+                        )}
+                        {isDividend && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-700/60">
+                            💵 Dividendo
+                          </span>
+                        )}
+                        {isJcp && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-950/80 text-teal-300 border border-teal-700/60">
+                            🏛️ JCP
                           </span>
                         )}
                       </td>
@@ -286,33 +309,60 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
 
                       {/* Data */}
                       <td className="px-4 py-3.5 font-mono text-xs text-slate-300 whitespace-nowrap">
-                        {tradeDateFormatted}
+                        <div>{tradeDateFormatted}</div>
+                        {settlementDateFormatted && (
+                          <div className="text-[10px] text-slate-500">
+                            Pagto: {settlementDateFormatted}
+                          </div>
+                        )}
                       </td>
 
                       {/* Quantidade / Fator */}
                       <td className="px-4 py-3.5 text-right font-mono font-medium text-slate-200 whitespace-nowrap">
                         {isSplit && `Fator 1:${formatQuantity(event.quantity)}`}
                         {isGrouping && `Fator ${formatQuantity(event.quantity)}:1`}
-                        {!isSplit && !isGrouping && formatQuantity(event.quantity)}
+                        {isBonus && `+${formatQuantity(event.quantity)}`}
+                        {(isDividend || isJcp) && `${formatQuantity(event.quantity)} ações`}
+                        {!isSplit && !isGrouping && !isBonus && !isDividend && !isJcp && formatQuantity(event.quantity)}
                       </td>
 
                       {/* Preço Unitário */}
                       <td className="px-4 py-3.5 text-right font-mono font-medium text-slate-200 whitespace-nowrap">
-                        {isSplit || isGrouping ? '—' : formatMoney(event.unitPrice, event.currency)}
+                        {isSplit || isGrouping ? (
+                          '—'
+                        ) : isBonus ? (
+                          decPrice.greaterThan(0) ? formatMoney(event.unitPrice, event.currency) : 'R$ 0,00'
+                        ) : (
+                          formatMoney(event.unitPrice, event.currency)
+                        )}
                       </td>
 
                       {/* Taxas */}
                       <td className="px-4 py-3.5 text-right font-mono text-xs text-slate-400 whitespace-nowrap">
-                        {isSplit || isGrouping
+                        {isJcp
+                          ? `IRRF ${formatMoney(event.fees, event.currency)}`
+                          : isSplit || isGrouping || isBonus
                           ? '—'
                           : hasFees
-                            ? formatMoney(event.fees, event.currency)
-                            : '—'}
+                          ? formatMoney(event.fees, event.currency)
+                          : '—'}
                       </td>
 
                       {/* Total da Operação */}
-                      <td className="px-4 py-3.5 text-right font-mono font-semibold text-white whitespace-nowrap">
-                        {isSplit || isGrouping ? '—' : formatMoney(totalGross, event.currency)}
+                      <td className="px-4 py-3.5 text-right font-mono font-semibold whitespace-nowrap">
+                        {isSplit || isGrouping ? (
+                          <span className="text-slate-400">—</span>
+                        ) : isBonus ? (
+                          <span className="text-slate-300">
+                            {decPrice.greaterThan(0) ? `+${formatMoney(totalGross, event.currency)}` : 'R$ 0,00'}
+                          </span>
+                        ) : isDividend ? (
+                          <span className="text-amber-400">+{formatMoney(totalGross, event.currency)}</span>
+                        ) : isJcp ? (
+                          <span className="text-amber-400">+{formatMoney(totalNetJcp, event.currency)}</span>
+                        ) : (
+                          <span className="text-white">{formatMoney(totalGross, event.currency)}</span>
+                        )}
                       </td>
 
                       {/* Notas / Observações */}

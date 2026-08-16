@@ -69,31 +69,31 @@ export function DashboardMetricsCards({
       )}
 
       {/* Cards de Resumo */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
         {/* Total em Custódia */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-1">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg space-y-1">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
             Total em Custódia
           </p>
           <p
             id="dashboard-total-custody"
-            className="text-2xl font-bold text-white tracking-tight"
+            className="text-xl sm:text-2xl font-bold text-white tracking-tight"
           >
             {formatMoney(activeGroup.totalInvestedCost, activeGroup.currency)}
           </p>
           <p className="text-[11px] text-slate-500">
-            Custo total de aquisição consolidado
+            Custo total consolidado
           </p>
         </div>
 
         {/* Resultado Realizado */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-1">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg space-y-1">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-            Resultado Realizado (PnL)
+            Resultado Realizado
           </p>
           <p
             id="dashboard-realized-pnl"
-            className={`text-2xl font-bold tracking-tight ${
+            className={`text-xl sm:text-2xl font-bold tracking-tight ${
               isPositivePnL
                 ? 'text-emerald-400'
                 : isNegativePnL
@@ -105,43 +105,59 @@ export function DashboardMetricsCards({
             {formatMoney(activeGroup.totalRealizedPnL, activeGroup.currency)}
           </p>
           <p className="text-[11px] text-slate-500">
-            Lucro/prejuízo de vendas encerradas
+            Lucro/prejuízo de vendas
+          </p>
+        </div>
+
+        {/* Proventos Recebidos */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg space-y-1">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            Proventos Recebidos
+          </p>
+          <p
+            id="dashboard-total-income"
+            className="text-xl sm:text-2xl font-bold text-amber-400 tracking-tight"
+          >
+            {formatMoney(activeGroup.totalIncomeReceived || '0', activeGroup.currency)}
+          </p>
+          <p className="text-[11px] text-slate-500">
+            Dividendos e JCP
           </p>
         </div>
 
         {/* Taxas Acumuladas */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-1">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg space-y-1">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
             Taxas Acumuladas
           </p>
           <p
             id="dashboard-total-fees"
-            className="text-2xl font-bold text-amber-400 tracking-tight"
+            className="text-xl sm:text-2xl font-bold text-slate-200 tracking-tight"
           >
             {formatMoney(activeGroup.totalFees, activeGroup.currency)}
           </p>
           <p className="text-[11px] text-slate-500">
-            Corretagens e emolumentos totais
+            Corretagens e emolumentos
           </p>
         </div>
 
         {/* Ativos em Gestão */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-1">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg space-y-1 col-span-1 sm:col-span-2 lg:col-span-1">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
             Ativos em Carteira
           </p>
           <p
             id="dashboard-active-assets"
-            className="text-2xl font-bold text-indigo-400 tracking-tight"
+            className="text-xl sm:text-2xl font-bold text-indigo-400 tracking-tight"
           >
             {activeGroup.activePositionsCount}{' '}
-            <span className="text-sm font-normal text-slate-400">
+            <span className="text-xs sm:text-sm font-normal text-slate-400">
               {activeGroup.activePositionsCount === 1 ? 'ativo' : 'ativos'}
             </span>
           </p>
           <p className="text-[11px] text-slate-500">
             Em {totalActivePortfolios}{' '}
-            {totalActivePortfolios === 1 ? 'carteira ativa' : 'carteiras ativas'}
+            {totalActivePortfolios === 1 ? 'carteira' : 'carteiras'}
           </p>
         </div>
       </div>

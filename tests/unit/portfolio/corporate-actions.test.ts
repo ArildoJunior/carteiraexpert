@@ -11,6 +11,8 @@ import {
 } from '../../../src/modules/portfolio/domain/errors';
 import {
   createCorporateActionEventSchema,
+  createBonusEventSchema,
+  createIncomeEventSchema,
 } from '../../../src/modules/portfolio/domain/portfolio-event.schema';
 import type { Asset } from '../../../src/modules/portfolio/domain/asset.types';
 
@@ -586,6 +588,461 @@ describe('Unidade: Eventos Corporativos — Split e Grupamento (Pacote 04.01)', 
           type: 'BUY' as any,
           tradeDate: '2026-08-15T12:00:00.000Z',
           factor: '2',
+        });
+      }).toThrow();
+    });
+  });
+
+  describe('5. Bonificação de Ações (BONUS_SHARE — Pacote 04.02)', () => {
+    it('deve processar bonificação com custo unitário zero (reduzindo custo médio unitário)', () => {
+      const events: TimelineEvent[] = [
+        {
+          id: 'ev-buy-1',
+          portfolioId,
+          assetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-10T12:00:00Z'),
+          quantity: '100',
+          unitPrice: '30.00',
+          fees: '0.00', // Custo total: 3.000,00
+        },
+        {
+          id: 'ev-bonus-1',
+          portfolioId,
+          assetId,
+          type: 'BONUS_SHARE',
+          tradeDate: new Date('2026-01-20T12:00:00Z'),
+          quantity: '20', // +20 ações
+          unitPrice: '0.00', // Custo atribuído: 0
+          fees: '0.00',
+        },
+      ];
+
+      const { position } = calculateAssetPosition(assetId, events, mockAsset);
+
+      // Quantidade: 100 + 20 = 120
+      // Custo Total: 3.000 + (20 * 0) = 3.000
+      // Custo Médio: 3.000 / 120 = 25,00
+      expect(position.quantity.toString()).toBe('120');
+      expect(position.totalCost.toString()).toBe('3000');
+      expect(position.averagePrice.toString()).toBe('25');
+      expect(position.hasFractionalShares).toBe(false);
+    });
+
+    it('deve processar bonificação com custo unitário atribuído positivo aumentando o custo total', () => {
+      const events: TimelineEvent[] = [
+        {
+          id: 'ev-buy-1',
+          portfolioId,
+          assetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-10T12:00:00Z'),
+          quantity: '100',
+          unitPrice: '20.00',
+          fees: '0.00', // Custo total: 2.000,00
+        },
+        {
+          id: 'ev-bonus-1',
+          portfolioId,
+          assetId,
+          type: 'BONUS_SHARE',
+          tradeDate: new Date('2026-01-20T12:00:00Z'),
+          quantity: '10', // +10 ações
+          unitPrice: '15.40', // Custo atribuído: R$ 15,40 por ação = R$ 154,00 adicionados
+          fees: '0.00',
+        },
+      ];
+
+      const { position } = calculateAssetPosition(assetId, events, mockAsset);
+
+      // Quantidade: 100 + 10 = 110
+      // Custo Total: 2.000 + 154 = 2.154,00
+      // Custo Médio: 2.154 / 110 = 19.58181818...
+      expect(position.quantity.toString()).toBe('110');
+      expect(position.totalCost.toString()).toBe('2154');
+      expect(position.averagePrice.toFixed(8)).toBe(new Decimal('2154').dividedBy('110').toFixed(8));
+      expect(position.hasFractionalShares).toBe(false);
+    });
+
+    it('deve preservar frações decimais e sinalizar hasFractionalShares em bonificações fracionárias', () => {
+      const events: TimelineEvent[] = [
+        {
+          id: 'ev-buy-1',
+          portfolioId,
+          assetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-10T12:00:00Z'),
+          quantity: '100',
+          unitPrice: '10.00',
+          fees: '0.00',
+        },
+        {
+          id: 'ev-bonus-1',
+          portfolioId,
+          assetId,
+          type: 'BONUS_SHARE',
+          tradeDate: new Date('2026-01-20T12:00:00Z'),
+          quantity: '7.5', // 7.5 ações bonificadas
+          unitPrice: '0.00',
+          fees: '0.00',
+        },
+      ];
+
+      const { position } = calculateAssetPosition(assetId, events, mockAsset);
+
+      expect(position.quantity.toString()).toBe('107.5');
+      expect(position.hasFractionalShares).toBe(true);
+    });
+
+    it('deve apurar PnL de venda corretamente após bonificação de ações', () => {
+      const events: TimelineEvent[] = [
+        {
+          id: 'ev-buy-1',
+          portfolioId,
+          assetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-10T12:00:00Z'),
+          quantity: '100',
+          unitPrice: '30.00',
+          fees: '0.00', // Custo total: 3.000,00
+        },
+        {
+          id: 'ev-bonus-1',
+          portfolioId,
+          assetId,
+          type: 'BONUS_SHARE',
+          tradeDate: new Date('2026-01-15T12:00:00Z'),
+          quantity: '20', // 120 ações a CM 25.00
+          unitPrice: '0.00',
+          fees: '0.00',
+        },
+        {
+          id: 'ev-sell-1',
+          portfolioId,
+          assetId,
+          type: 'SELL',
+          tradeDate: new Date('2026-01-25T12:00:00Z'),
+          quantity: '40', // Venda de 40 ações a R$ 35,00 (CM = 25.00 -> Lucro de 10,00 por ação = 400,00)
+          unitPrice: '35.00',
+          fees: '0.00',
+        },
+      ];
+
+      const { position, realizedTrades } = calculateAssetPosition(assetId, events, mockAsset);
+
+      expect(position.quantity.toString()).toBe('80');
+      expect(position.averagePrice.toString()).toBe('25');
+      expect(position.totalCost.toString()).toBe('2000');
+      expect(position.totalRealizedPnL.toString()).toBe('400');
+
+      expect(realizedTrades).toHaveLength(1);
+      expect(realizedTrades[0].costBasisPrice.toString()).toBe('25');
+      expect(realizedTrades[0].realizedPnL.toString()).toBe('400');
+    });
+
+    it('deve rejeitar bonificação quando não houver posição em custódia na Data-Com', () => {
+      const prospectiveBonus: TimelineEvent = {
+        id: 'ev-bonus-fail',
+        portfolioId,
+        assetId,
+        type: 'BONUS_SHARE',
+        tradeDate: new Date('2026-01-15T12:00:00Z'),
+        quantity: '10',
+        unitPrice: '0',
+        fees: '0',
+      };
+
+      expect(() => {
+        validateTimelineConsistency([], prospectiveBonus);
+      }).toThrow(InsufficientPositionError);
+    });
+  });
+
+  describe('6. Dividendos (DIVIDEND — Pacote 04.02)', () => {
+    it('deve acumular totalIncomeReceived sem alterar quantidade, custo total ou custo médio da posição', () => {
+      const events: TimelineEvent[] = [
+        {
+          id: 'ev-buy-1',
+          portfolioId,
+          assetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-10T12:00:00Z'),
+          quantity: '100',
+          unitPrice: '25.00',
+          fees: '10.00', // Custo total: 2.510,00 | CM: 25.10
+        },
+        {
+          id: 'ev-div-1',
+          portfolioId,
+          assetId,
+          type: 'DIVIDEND',
+          tradeDate: new Date('2026-01-20T12:00:00Z'),
+          settlementDate: new Date('2026-01-25T12:00:00Z'),
+          quantity: '100', // 100 ações elegíveis
+          unitPrice: '0.80', // R$ 0,80 por ação = R$ 80,00 de proventos
+          fees: '0.00',
+        },
+      ];
+
+      const { position } = calculateAssetPosition(assetId, events, mockAsset);
+
+      // Quantidade e custos permanecem idênticos
+      expect(position.quantity.toString()).toBe('100');
+      expect(position.totalCost.toString()).toBe('2510');
+      expect(position.averagePrice.toString()).toBe('25.1');
+      expect(position.totalIncomeReceived.toString()).toBe('80');
+    });
+
+    it('deve rejeitar dividendo se a quantidade informada for maior que a custódia na Data-Com', () => {
+      const existingEvents: TimelineEvent[] = [
+        {
+          id: 'ev-buy-1',
+          portfolioId,
+          assetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-10T12:00:00Z'),
+          quantity: '50',
+          unitPrice: '20.00',
+          fees: '0.00',
+        },
+      ];
+
+      const prospectiveDiv: TimelineEvent = {
+        id: 'ev-div-oversize',
+        portfolioId,
+        assetId,
+        type: 'DIVIDEND',
+        tradeDate: new Date('2026-01-15T12:00:00Z'),
+        settlementDate: new Date('2026-01-20T12:00:00Z'),
+        quantity: '100', // 100 > 50 existente
+        unitPrice: '1.00',
+        fees: '0.00',
+      };
+
+      expect(() => {
+        validateTimelineConsistency(existingEvents, prospectiveDiv);
+      }).toThrow(InsufficientPositionError);
+    });
+
+    it('deve manter ativo zerado com proventos recebidos na lista de posições encerradas', () => {
+      const events: TimelineEvent[] = [
+        {
+          id: 'ev-buy-1',
+          portfolioId,
+          assetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-10T12:00:00Z'),
+          quantity: '100',
+          unitPrice: '20.00',
+          fees: '0.00',
+        },
+        {
+          id: 'ev-div-1',
+          portfolioId,
+          assetId,
+          type: 'DIVIDEND',
+          tradeDate: new Date('2026-01-15T12:00:00Z'),
+          settlementDate: new Date('2026-01-20T12:00:00Z'),
+          quantity: '100',
+          unitPrice: '1.50', // R$ 150,00 de proventos
+          fees: '0.00',
+        },
+        {
+          id: 'ev-sell-1',
+          portfolioId,
+          assetId,
+          type: 'SELL',
+          tradeDate: new Date('2026-01-25T12:00:00Z'),
+          quantity: '100', // Liquidação total
+          unitPrice: '20.00',
+          fees: '0.00',
+        },
+      ];
+
+      const { position } = calculateAssetPosition(assetId, events, mockAsset);
+
+      expect(position.quantity.toString()).toBe('0');
+      expect(position.totalIncomeReceived.toString()).toBe('150');
+    });
+  });
+
+  describe('7. Juros sobre Capital Próprio (JCP — Pacote 04.02)', () => {
+    it('deve calcular provento líquido subtraindo o IRRF retido e manter posição intacta', () => {
+      const events: TimelineEvent[] = [
+        {
+          id: 'ev-buy-1',
+          portfolioId,
+          assetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-10T12:00:00Z'),
+          quantity: '200',
+          unitPrice: '15.00',
+          fees: '0.00', // Custo total: 3.000,00 | CM: 15.00
+        },
+        {
+          id: 'ev-jcp-1',
+          portfolioId,
+          assetId,
+          type: 'JCP',
+          tradeDate: new Date('2026-01-20T12:00:00Z'),
+          settlementDate: new Date('2026-01-28T12:00:00Z'),
+          quantity: '200', // 200 ações elegíveis
+          unitPrice: '0.50', // R$ 0,50 bruto por ação = R$ 100,00 bruto
+          fees: '15.00', // R$ 15,00 de IRRF (15%) -> Líquido = R$ 85,00
+        },
+      ];
+
+      const { position } = calculateAssetPosition(assetId, events, mockAsset);
+
+      expect(position.quantity.toString()).toBe('200');
+      expect(position.totalCost.toString()).toBe('3000');
+      expect(position.averagePrice.toString()).toBe('15');
+      // Provento líquido acumulado = 100 - 15 = 85
+      expect(position.totalIncomeReceived.toString()).toBe('85');
+    });
+
+    it('deve rejeitar JCP se quantidade informada exceder a custódia na Data-Com', () => {
+      const existingEvents: TimelineEvent[] = [
+        {
+          id: 'ev-buy-1',
+          portfolioId,
+          assetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-10T12:00:00Z'),
+          quantity: '50',
+          unitPrice: '20.00',
+          fees: '0.00',
+        },
+      ];
+
+      const prospectiveJcp: TimelineEvent = {
+        id: 'ev-jcp-oversize',
+        portfolioId,
+        assetId,
+        type: 'JCP',
+        tradeDate: new Date('2026-01-15T12:00:00Z'),
+        settlementDate: new Date('2026-01-20T12:00:00Z'),
+        quantity: '80', // 80 > 50
+        unitPrice: '1.00',
+        fees: '12.00',
+      };
+
+      expect(() => {
+        validateTimelineConsistency(existingEvents, prospectiveJcp);
+      }).toThrow(InsufficientPositionError);
+    });
+  });
+
+  describe('8. Validação de Schemas Zod (Bonificação e Proventos)', () => {
+    const validPortfolioId = '123e4567-e89b-12d3-a456-426614174000';
+    const validAssetId = '223e4567-e89b-12d3-a456-426614174000';
+
+    it('deve validar criação de BONUS_SHARE com unitPrice zero', () => {
+      const parsed = createBonusEventSchema.parse({
+        portfolioId: validPortfolioId,
+        assetId: validAssetId,
+        type: 'BONUS_SHARE',
+        tradeDate: '2026-08-15T12:00:00.000Z',
+        quantity: '10',
+        unitPrice: '0',
+      });
+
+      expect(parsed.type).toBe('BONUS_SHARE');
+      expect(parsed.quantity).toBe('10');
+      expect(parsed.unitPrice).toBe('0');
+    });
+
+    it('deve rejeitar BONUS_SHARE com unitPrice negativo ou quantity <= 0', () => {
+      expect(() => {
+        createBonusEventSchema.parse({
+          portfolioId: validPortfolioId,
+          assetId: validAssetId,
+          type: 'BONUS_SHARE',
+          tradeDate: '2026-08-15T12:00:00.000Z',
+          quantity: '0',
+          unitPrice: '10',
+        });
+      }).toThrow();
+
+      expect(() => {
+        createBonusEventSchema.parse({
+          portfolioId: validPortfolioId,
+          assetId: validAssetId,
+          type: 'BONUS_SHARE',
+          tradeDate: '2026-08-15T12:00:00.000Z',
+          quantity: '10',
+          unitPrice: '-1',
+        });
+      }).toThrow();
+    });
+
+    it('deve validar criação de DIVIDEND e JCP com settlementDate válida', () => {
+      const div = createIncomeEventSchema.parse({
+        portfolioId: validPortfolioId,
+        assetId: validAssetId,
+        type: 'DIVIDEND',
+        tradeDate: '2026-08-15T12:00:00.000Z',
+        settlementDate: '2026-08-20T12:00:00.000Z',
+        quantity: '100',
+        unitPrice: '0.75',
+      });
+
+      expect(div.type).toBe('DIVIDEND');
+      expect(div.quantity).toBe('100');
+
+      const jcp = createIncomeEventSchema.parse({
+        portfolioId: validPortfolioId,
+        assetId: validAssetId,
+        type: 'JCP',
+        tradeDate: '2026-08-15T12:00:00.000Z',
+        settlementDate: '2026-08-20T12:00:00.000Z',
+        quantity: '100',
+        unitPrice: '1.00',
+        fees: '15.00',
+      });
+
+      expect(jcp.type).toBe('JCP');
+      expect(jcp.fees).toBe('15');
+    });
+
+    it('deve rejeitar provento com settlementDate anterior à tradeDate', () => {
+      expect(() => {
+        createIncomeEventSchema.parse({
+          portfolioId: validPortfolioId,
+          assetId: validAssetId,
+          type: 'DIVIDEND',
+          tradeDate: '2026-08-20T12:00:00.000Z',
+          settlementDate: '2026-08-15T12:00:00.000Z', // Anterior!
+          quantity: '100',
+          unitPrice: '0.75',
+        });
+      }).toThrow();
+    });
+
+    it('deve rejeitar JCP quando IRRF (fees) for maior ou igual ao valor bruto total', () => {
+      expect(() => {
+        createIncomeEventSchema.parse({
+          portfolioId: validPortfolioId,
+          assetId: validAssetId,
+          type: 'JCP',
+          tradeDate: '2026-08-15T12:00:00.000Z',
+          settlementDate: '2026-08-20T12:00:00.000Z',
+          quantity: '10',
+          unitPrice: '1.00', // Gross = 10.00
+          fees: '10.00', // Fees == Gross (Rejeita!)
+        });
+      }).toThrow();
+
+      expect(() => {
+        createIncomeEventSchema.parse({
+          portfolioId: validPortfolioId,
+          assetId: validAssetId,
+          type: 'JCP',
+          tradeDate: '2026-08-15T12:00:00.000Z',
+          settlementDate: '2026-08-20T12:00:00.000Z',
+          quantity: '10',
+          unitPrice: '1.00', // Gross = 10.00
+          fees: '12.00', // Fees > Gross (Rejeita!)
         });
       }).toThrow();
     });

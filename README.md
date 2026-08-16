@@ -13,7 +13,8 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 - **Fase 03 — Carteiras, Ativos e Posições:** Concluída e Publicada (Pacotes 03.00-E, 03.01-D, 03.02, 03.03 e 03.04 — Gestão de carteiras, ativos globais e customizados, lançamentos manuais, motor de custo médio ponderado, validação temporal de vendas, apuração de PnL realizado, dashboard global consolidado e extrato de histórico paginado com filtros avançados).
 - **Fase 04 — Eventos Corporativos:**
   - **Pacote 04.01 — Split e Grupamento de Ativos:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Processamento determinístico e idempotente de desdobramentos (`SPLIT`) e grupamentos (`GROUPING`), preservação rigorosa do custo total de aquisição invariante, identificação e preservação de frações residuais em `Decimal`, recálculo automático de quantidade e custo médio, suporte a venda parcial subsequente com apuração exata de PnL, extrato cronológico `/history` com exibição de fatores, validações negativas completas, isolamento multiusuário anti-IDOR e rejeição atômica de eventos sem posição em custódia).
-- **Próximo Pacote Previsto:** **Pacote 04.02 — Bonificação, Dividendos e JCP**.
+  - **Pacote 04.02 — Bonificação, Dividendos e JCP:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Processamento determinístico de bonificação de ações (`BONUS_SHARE`) com custo atribuído opcional e recálculo de custo médio, recebimento de proventos em dinheiro — dividendos isentos (`DIVIDEND`) e Juros sobre Capital Próprio (`JCP`) com apuração líquida e retenção de IRRF —, exigência mandatória de Data de Pagamento (`settlementDate`), validação de elegibilidade de custódia na Data-Com (`tradeDate`), totalização acumulada de proventos em `totalIncomeReceived`, preservação estrita de quantidade e custo em proventos, consolidação no dashboard e extrato multicarteiras, e correção de compatibilidade/foco e empilhamento de modais no Firefox).
+- **Próximo Pacote Previsto:** **Pacote 04.03 — Subscrição e Eventos Societários**.
 
 ---
 
@@ -52,7 +53,7 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 ### 5. Histórico e Dashboard Básico Consolidado (Pacotes 03.03 e 03.04)
 - **Dashboard Consolidado SSR (`/dashboard`):** Visão geral patrimonial em Server Component com cálculo em tempo real e revalidação sob demanda.
 - **Segregação por Moeda Base:** Agrupamento estrito de métricas por moeda (`BRL`, `USD`, `EUR`), sem conversão cambial fictícia.
-- **Métricas Consolidadas:** Custo total de aquisição em custódia, PnL realizado acumulado de vendas, taxas acumuladas, contagem de ativos distintos e carteiras ativas.
+- **Métricas Consolidadas:** Custo total de aquisição em custódia, PnL realizado acumulado de vendas, taxas acumuladas, proventos acumulados, contagem de ativos distintos e carteiras ativas.
 - **Feed Unificado e Extrato Geral (`/history`):** Extrato cronológico multicarteiras de compras, vendas e eventos corporativos, com filtros avançados por carteira, tipo de operação, ativo e período de datas.
 - **Exclusão de Soft Deletes:** Desconsideração estrita de eventos e carteiras canceladas/excluídas em todas as consultas e agregações.
 
@@ -64,7 +65,17 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 - **Validação Temporal e Rejeições de Domínio:** Bloqueio e não persistência de eventos retroativos fora de ordem, fatores inválidos (zero, negativos, vazios) ou tentativa de lançamento sem saldo em custódia.
 - **Extrato e Histórico Integrados:** Badges dedicados de `Desdobramento` e `Grupamento` com indicação visual de proporção (`Fator 1:X` e `Fator X:1`) no extrato `/history` e no feed de atividades recentes.
 
-### 7. Integridade de Schema, Contratos e Banco de Dados
+### 7. Eventos Corporativos — Bonificação, Dividendos e JCP (Pacote 04.02)
+- **Bonificação em Ações (BONUS_SHARE):** Adição de novas ações bonificadas à custódia ($Q_{nova} = Q_{anterior} + Q_{bonus}$) com acréscimo de custo total ($Custo_{novo} = Custo_{anterior} + (Q_{bonus} \times Custo_{atribuido})$) e recálculo determinístico do custo médio unitário.
+- **Dividendos em Dinheiro (DIVIDEND):** Proventos monetários isentos ($Provento = Q_{elegivel} \times ValorPorAcao$), creditados sem alteração na quantidade em custódia ou no custo de aquisição do ativo.
+- **Juros sobre Capital Próprio (JCP):** Proventos monetários tributados com apuração líquida ($(Q_{elegivel} \times ValorPorAcao) - IRRF$), armazenando o IRRF na coluna `fees` e creditando o rendimento líquido em `totalIncomeReceived`.
+- **Data-Com e Data de Pagamento Obrigatória:** Validação da custódia elegível na Data-Com (`tradeDate`) e exigência obrigatória de Data de Pagamento (`settlementDate`) para todos os proventos em dinheiro.
+- **Consolidação em Tempo Real:** Agregação de proventos recebidos nos resumos do ativo, da carteira e do dashboard consolidado multimoedas.
+- **Extrato e Feed Dedicados:** Badges contextuais (`🎁 Bonificação`, `💵 Dividendo`, `🏛️ JCP`), detalhamento de ações elegíveis, valor unitário e destaque do IRRF retido.
+- **Compatibilidade Cross-Browser:** Otimização de eventos de foco/blur no componente `AssetSearchSelect` e hierarquia de modais (`z-[60]`) em `CustomAssetModal` garantindo 100% de estabilidade no Firefox e WebKit.
+
+### 8. Integridade de Schema, Contratos e Banco de Dados
+
 - **Schema Guardian:** Validação física em tempo de execução (`assertSchemaCompatible`) e via CLI (`db:verify`) inspecionando o catálogo PostgreSQL (9 tabelas validadas).
 - **Contratos Drizzle Tipados:** Exportação canônica de `Database`, `DatabaseTransaction`, `DbExecutor`, `SchemaQueryExecutor` e `AuditExecutor`, com eliminação de `any` em assinaturas e callbacks.
 - **Fixture Estática de Tipos:** Arquivo `tests/types/database-contracts.test-d.ts` validando compatibilidade estrutural e rejeição em tempo de compilação via `@ts-expect-error`.
@@ -183,10 +194,10 @@ pnpm db:seed:dev      # Popular ativos de teste (exige ALLOW_DEV_SEED=true)
 
 ---
 
-## Limitações e Escopo Fora do Pacote 04.01
+## Limitações e Escopo Fora do Pacote 04.02
 
-1. **Bonificação em Ações e Proventos em Dinheiro:** Módulos de bonificação, dividendos e JCP previstos para o Pacote 04.02.
+1. **Eventos Societários Complexos:** Subscrições, cisões, incorporações e troca de tickers previstos para o Pacote 04.03.
 2. **Saldo de Caixa da Carteira:** Depósitos, retiradas, liquidação financeira em conta corrente e saldo monetário da carteira permanecem fora do escopo.
 3. **Marcação a Mercado e Rentabilidade Não Realizada:** Integração com cotações externas em tempo real, variação patrimonial não realizada e gráficos de rentabilidade previstos para fases futuras.
-4. **Eventos Societários Complexos:** Subscrições, cisões, incorporações e troca de tickers permanecem fora do escopo.
+4. **Ingestão Automática de Provedores de Mercado:** Integração com APIs externas de mercado prevista para a Fase 06.
 5. **IA Editorial Interna:** Módulo editorial com apoio de IA e revisão humana mandatória previsto para fases futuras.

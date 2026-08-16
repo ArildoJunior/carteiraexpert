@@ -13,6 +13,7 @@ export interface AssetPosition {
   totalCost: Decimal;
   totalFees: Decimal;
   totalRealizedPnL: Decimal;
+  totalIncomeReceived: Decimal;
   lastTradeDate: Date | null;
   hasFractionalShares: boolean;
 }
@@ -30,6 +31,7 @@ export interface SerializedAssetPosition {
   totalCost: string;
   totalFees: string;
   totalRealizedPnL: string;
+  totalIncomeReceived: string;
   lastTradeDate: string | null;
   hasFractionalShares: boolean;
 }
@@ -67,6 +69,7 @@ export interface PortfolioPositionsSummary {
   totalInvestedCost: Decimal;
   totalFees: Decimal;
   totalRealizedPnL: Decimal;
+  totalIncomeReceived: Decimal;
   calculatedAt: Date;
 }
 
@@ -77,6 +80,7 @@ export interface SerializedPortfolioPositionsSummary {
   totalInvestedCost: string;
   totalFees: string;
   totalRealizedPnL: string;
+  totalIncomeReceived: string;
   calculatedAt: string;
 }
 

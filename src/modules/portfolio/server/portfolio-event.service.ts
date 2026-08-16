@@ -9,12 +9,18 @@ import type { SafeUser } from '../../identity/domain/user.types';
 import {
   createPortfolioEventSchema,
   createCorporateActionEventSchema,
+  createBonusEventSchema,
+  createIncomeEventSchema,
   cancelPortfolioEventSchema,
   listPortfolioEventsSchema,
   type CreatePortfolioEventInput,
   type CreatePortfolioEventOutput,
   type CreateCorporateActionEventInput,
   type CreateCorporateActionEventOutput,
+  type CreateBonusEventInput,
+  type CreateBonusEventOutput,
+  type CreateIncomeEventInput,
+  type CreateIncomeEventOutput,
   type CancelPortfolioEventInput,
   type CancelPortfolioEventOutput,
   type ListPortfolioEventsInput,
@@ -333,6 +339,278 @@ export async function createCorporateActionEvent(
 
   return await database.transaction(async (tx) => {
     return await createCorporateActionEventInTransaction(input, user, tx, auditLogger);
+  });
+}
+
+/**
+ * Operação transacional de registro de bonificação de ações (BONUS_SHARE).
+ */
+export async function createBonusEventInTransaction(
+  input: CreateBonusEventOutput,
+  user: SafeUser,
+  tx: DatabaseTransaction,
+  auditLogger: typeof insertAuditLog = insertAuditLog
+): Promise<PortfolioEvent> {
+  // 1. Valida existência e titularidade da carteira
+  await getPortfolioById(input.portfolioId, user, tx);
+
+  // 2. Valida existência e acesso ao ativo
+  const asset = await getAssetById(input.assetId, user, tx);
+
+  // 3. Lock pessimista na carteira
+  await tx
+    .select({ id: portfolios.id })
+    .from(portfolios)
+    .where(eq(portfolios.id, input.portfolioId))
+    .for('update');
+
+  const id = crypto.randomUUID();
+  const now = new Date();
+
+  // 4. Busca eventos ativos do ativo nesta carteira
+  const activeEvents = await tx
+    .select()
+    .from(portfolioEvents)
+    .where(
+      and(
+        eq(portfolioEvents.portfolioId, input.portfolioId),
+        eq(portfolioEvents.assetId, input.assetId),
+        isNull(portfolioEvents.deletedAt)
+      )
+    );
+
+  const prospectiveEvent: TimelineEvent = {
+    id,
+    portfolioId: input.portfolioId,
+    assetId: input.assetId,
+    type: 'BONUS_SHARE',
+    tradeDate: input.tradeDate,
+    quantity: input.quantity,
+    unitPrice: input.unitPrice,
+    fees: '0',
+    createdAt: now,
+  };
+
+  // 5. Valida consistência temporal (rejeita bonificação em posições nulas)
+  validateTimelineConsistency(activeEvents, prospectiveEvent);
+
+  // 6. Insere o evento de bonificação
+  const [createdEvent] = await tx
+    .insert(portfolioEvents)
+    .values({
+      id,
+      portfolioId: input.portfolioId,
+      assetId: input.assetId,
+      type: 'BONUS_SHARE',
+      tradeDate: input.tradeDate,
+      settlementDate: null,
+      quantity: input.quantity.toString(),
+      unitPrice: input.unitPrice.toString(),
+      fees: '0.00000000',
+      currency: asset.currency || 'BRL',
+      notes: input.notes ?? null,
+      source: input.source,
+      createdBy: user.id,
+      createdAt: now,
+    })
+    .returning();
+
+  if (!createdEvent) {
+    throw new Error('Falha ao registrar bonificação de ações.');
+  }
+
+  // 7. Registra auditoria transacional
+  await auditLogger(
+    {
+      tableName: 'portfolio_events',
+      recordId: id,
+      action: 'INSERT',
+      actorId: user.id,
+      actorType: 'user',
+      source: 'manual',
+    },
+    {
+      newValue: {
+        portfolioId: input.portfolioId,
+        assetId: input.assetId,
+        type: 'BONUS_SHARE',
+        tradeDate: input.tradeDate.toISOString(),
+        quantity: input.quantity.toString(),
+        unitPrice: input.unitPrice.toString(),
+        fees: '0.00000000',
+        currency: asset.currency || 'BRL',
+        source: input.source,
+      },
+    },
+    {
+      allowlist: [
+        'portfolioId',
+        'assetId',
+        'type',
+        'tradeDate',
+        'quantity',
+        'unitPrice',
+        'fees',
+        'currency',
+        'source',
+      ],
+    },
+    tx
+  );
+
+  return createdEvent;
+}
+
+/**
+ * Registra um evento de bonificação de ações (BONUS_SHARE).
+ */
+export async function createBonusEvent(
+  rawInput: CreateBonusEventInput,
+  user: SafeUser,
+  database: Database = db,
+  auditLogger: typeof insertAuditLog = insertAuditLog
+): Promise<PortfolioEvent> {
+  const input = createBonusEventSchema.parse(rawInput);
+
+  return await database.transaction(async (tx) => {
+    return await createBonusEventInTransaction(input, user, tx, auditLogger);
+  });
+}
+
+/**
+ * Operação transacional de registro de proventos em dinheiro (DIVIDEND ou JCP).
+ */
+export async function createIncomeEventInTransaction(
+  input: CreateIncomeEventOutput,
+  user: SafeUser,
+  tx: DatabaseTransaction,
+  auditLogger: typeof insertAuditLog = insertAuditLog
+): Promise<PortfolioEvent> {
+  // 1. Valida existência e titularidade da carteira
+  await getPortfolioById(input.portfolioId, user, tx);
+
+  // 2. Valida existência e acesso ao ativo
+  const asset = await getAssetById(input.assetId, user, tx);
+
+  // 3. Lock pessimista na carteira
+  await tx
+    .select({ id: portfolios.id })
+    .from(portfolios)
+    .where(eq(portfolios.id, input.portfolioId))
+    .for('update');
+
+  const id = crypto.randomUUID();
+  const now = new Date();
+
+  // 4. Busca eventos ativos do ativo nesta carteira
+  const activeEvents = await tx
+    .select()
+    .from(portfolioEvents)
+    .where(
+      and(
+        eq(portfolioEvents.portfolioId, input.portfolioId),
+        eq(portfolioEvents.assetId, input.assetId),
+        isNull(portfolioEvents.deletedAt)
+      )
+    );
+
+  const prospectiveEvent: TimelineEvent = {
+    id,
+    portfolioId: input.portfolioId,
+    assetId: input.assetId,
+    type: input.type,
+    tradeDate: input.tradeDate,
+    quantity: input.quantity,
+    unitPrice: input.unitPrice,
+    fees: input.fees,
+    createdAt: now,
+  };
+
+  // 5. Valida consistência temporal (rejeita dividendo/JCP em posições nulas ou insuficientes)
+  validateTimelineConsistency(activeEvents, prospectiveEvent);
+
+  // 6. Insere o evento de provento
+  const [createdEvent] = await tx
+    .insert(portfolioEvents)
+    .values({
+      id,
+      portfolioId: input.portfolioId,
+      assetId: input.assetId,
+      type: input.type,
+      tradeDate: input.tradeDate,
+      settlementDate: input.settlementDate,
+      quantity: input.quantity.toString(),
+      unitPrice: input.unitPrice.toString(),
+      fees: input.fees.toString(),
+      currency: asset.currency || 'BRL',
+      notes: input.notes ?? null,
+      source: input.source,
+      createdBy: user.id,
+      createdAt: now,
+    })
+    .returning();
+
+  if (!createdEvent) {
+    throw new Error('Falha ao registrar provento.');
+  }
+
+  // 7. Registra auditoria transacional
+  await auditLogger(
+    {
+      tableName: 'portfolio_events',
+      recordId: id,
+      action: 'INSERT',
+      actorId: user.id,
+      actorType: 'user',
+      source: 'manual',
+    },
+    {
+      newValue: {
+        portfolioId: input.portfolioId,
+        assetId: input.assetId,
+        type: input.type,
+        tradeDate: input.tradeDate.toISOString(),
+        settlementDate: input.settlementDate.toISOString(),
+        quantity: input.quantity.toString(),
+        unitPrice: input.unitPrice.toString(),
+        fees: input.fees.toString(),
+        currency: asset.currency || 'BRL',
+        source: input.source,
+      },
+    },
+    {
+      allowlist: [
+        'portfolioId',
+        'assetId',
+        'type',
+        'tradeDate',
+        'settlementDate',
+        'quantity',
+        'unitPrice',
+        'fees',
+        'currency',
+        'source',
+      ],
+    },
+    tx
+  );
+
+  return createdEvent;
+}
+
+/**
+ * Registra um evento de provento em dinheiro (DIVIDEND ou JCP).
+ */
+export async function createIncomeEvent(
+  rawInput: CreateIncomeEventInput,
+  user: SafeUser,
+  database: Database = db,
+  auditLogger: typeof insertAuditLog = insertAuditLog
+): Promise<PortfolioEvent> {
+  const input = createIncomeEventSchema.parse(rawInput);
+
+  return await database.transaction(async (tx) => {
+    return await createIncomeEventInTransaction(input, user, tx, auditLogger);
   });
 }
 

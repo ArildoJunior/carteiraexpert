@@ -11,6 +11,8 @@ import {
   createCustomAssetAction,
   searchAssetsAction,
   createPortfolioEventAction,
+  createBonusEventAction,
+  createIncomeEventAction,
   cancelPortfolioEventAction,
 } from '../../../src/modules/portfolio/server/portfolio.actions';
 import type { SafeUser } from '../../../src/modules/identity/domain/user.types';
@@ -397,6 +399,69 @@ describe('Integração: Portfolio Server Actions e Isolamento Multiusuário', ()
       const res = await cancelPortfolioEventAction(null, formData);
       expect(res.success).toBe(false);
       expect(res.fieldErrors?.cancellationReason).toBeDefined();
+    });
+
+    it('deve criar evento de BONUS_SHARE com sucesso via createBonusEventAction', async () => {
+      activeUser = user1;
+
+      const formData = new FormData();
+      formData.set('portfolioId', testPortfolioId);
+      formData.set('assetId', globalAssetId);
+      formData.set('tradeDate', '2026-08-15');
+      formData.set('quantity', '10');
+      formData.set('unitPrice', '15.40');
+      formData.set('notes', 'Bonificação 10%');
+
+      const res = await createBonusEventAction(null, formData);
+      expect(res.success).toBe(true);
+      expect(res.data?.type).toBe('BONUS_SHARE');
+
+      if (res.data?.id) {
+        createdEventIds.push(res.data.id);
+      }
+    });
+
+    it('deve criar evento de DIVIDEND e JCP com sucesso via createIncomeEventAction', async () => {
+      activeUser = user1;
+
+      // Dividendo
+      const divFormData = new FormData();
+      divFormData.set('portfolioId', testPortfolioId);
+      divFormData.set('assetId', globalAssetId);
+      divFormData.set('type', 'DIVIDEND');
+      divFormData.set('tradeDate', '2026-08-15');
+      divFormData.set('settlementDate', '2026-08-20');
+      divFormData.set('quantity', '50');
+      divFormData.set('unitPrice', '0.80');
+      divFormData.set('notes', 'Dividendo intermediário');
+
+      const divRes = await createIncomeEventAction(null, divFormData);
+      expect(divRes.success).toBe(true);
+      expect(divRes.data?.type).toBe('DIVIDEND');
+
+      if (divRes.data?.id) {
+        createdEventIds.push(divRes.data.id);
+      }
+
+      // JCP
+      const jcpFormData = new FormData();
+      jcpFormData.set('portfolioId', testPortfolioId);
+      jcpFormData.set('assetId', globalAssetId);
+      jcpFormData.set('type', 'JCP');
+      jcpFormData.set('tradeDate', '2026-08-15');
+      jcpFormData.set('settlementDate', '2026-08-22');
+      jcpFormData.set('quantity', '50');
+      jcpFormData.set('unitPrice', '1.00');
+      jcpFormData.set('fees', '7.50');
+      jcpFormData.set('notes', 'JCP 3T');
+
+      const jcpRes = await createIncomeEventAction(null, jcpFormData);
+      expect(jcpRes.success).toBe(true);
+      expect(jcpRes.data?.type).toBe('JCP');
+
+      if (jcpRes.data?.id) {
+        createdEventIds.push(jcpRes.data.id);
+      }
     });
   });
 });

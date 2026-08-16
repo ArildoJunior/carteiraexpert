@@ -10,7 +10,7 @@ import type { UserRecentEventItem } from '../../../src/modules/portfolio/domain/
 import crypto from 'node:crypto';
 
 describe('Unitário: Motor de Consolidação do Dashboard Multi-Carteiras', () => {
-  const dummyAssetPos = (ticker: string, cost: string, pnl = '0'): AssetPosition => ({
+  const dummyAssetPos = (ticker: string, cost: string, pnl = '0', income = '0'): AssetPosition => ({
     assetId: crypto.randomUUID(),
     ticker,
     name: `${ticker} S.A.`,
@@ -23,6 +23,7 @@ describe('Unitário: Motor de Consolidação do Dashboard Multi-Carteiras', () =
     totalCost: new Decimal(cost),
     totalFees: new Decimal('5.00'),
     totalRealizedPnL: new Decimal(pnl),
+    totalIncomeReceived: new Decimal(income),
     lastTradeDate: new Date('2026-08-14T10:00:00.000Z'),
     hasFractionalShares: false,
   });
@@ -30,24 +31,26 @@ describe('Unitário: Motor de Consolidação do Dashboard Multi-Carteiras', () =
   it('deve consolidar corretamente múltiplas carteiras na mesma moeda base (BRL)', () => {
     const summary1: PortfolioPositionsSummary = {
       portfolioId: 'port-1',
-      positions: [dummyAssetPos('PETR4', '3000.00', '150.00')],
+      positions: [dummyAssetPos('PETR4', '3000.00', '150.00', '50.00')],
       closedPositions: [],
       totalInvestedCost: new Decimal('3000.00'),
       totalFees: new Decimal('10.00'),
       totalRealizedPnL: new Decimal('150.00'),
+      totalIncomeReceived: new Decimal('50.00'),
       calculatedAt: new Date(),
     };
 
     const summary2: PortfolioPositionsSummary = {
       portfolioId: 'port-2',
       positions: [
-        dummyAssetPos('VALE3', '5000.00', '300.00'),
-        dummyAssetPos('ITUB4', '2000.00', '-50.00'),
+        dummyAssetPos('VALE3', '5000.00', '300.00', '100.00'),
+        dummyAssetPos('ITUB4', '2000.00', '-50.00', '25.00'),
       ],
       closedPositions: [],
       totalInvestedCost: new Decimal('7000.00'),
       totalFees: new Decimal('25.00'),
       totalRealizedPnL: new Decimal('250.00'),
+      totalIncomeReceived: new Decimal('125.00'),
       calculatedAt: new Date(),
     };
 
@@ -79,6 +82,7 @@ describe('Unitário: Motor de Consolidação do Dashboard Multi-Carteiras', () =
     expect(brlGroup.totalInvestedCost.toString()).toBe('10000'); // 3000 + 7000
     expect(brlGroup.totalFees.toString()).toBe('35'); // 10 + 25
     expect(brlGroup.totalRealizedPnL.toString()).toBe('400'); // 150 + 250
+    expect(brlGroup.totalIncomeReceived.toString()).toBe('175'); // 50 + 125
   });
 
   it('deve segregar métricas por moeda base sem misturar valores quando houver moedas distintas', () => {
@@ -89,6 +93,7 @@ describe('Unitário: Motor de Consolidação do Dashboard Multi-Carteiras', () =
       totalInvestedCost: new Decimal('4000.00'),
       totalFees: new Decimal('12.00'),
       totalRealizedPnL: new Decimal('100.00'),
+      totalIncomeReceived: new Decimal('40.00'),
       calculatedAt: new Date(),
     };
 
@@ -99,6 +104,7 @@ describe('Unitário: Motor de Consolidação do Dashboard Multi-Carteiras', () =
       totalInvestedCost: new Decimal('1500.00'),
       totalFees: new Decimal('3.00'),
       totalRealizedPnL: new Decimal('50.00'),
+      totalIncomeReceived: new Decimal('15.00'),
       calculatedAt: new Date(),
     };
 
@@ -126,11 +132,13 @@ describe('Unitário: Motor de Consolidação do Dashboard Multi-Carteiras', () =
     // BRL deve vir em primeiro
     expect(result.currencyGroups[0].currency).toBe('BRL');
     expect(result.currencyGroups[0].totalInvestedCost.toString()).toBe('4000');
+    expect(result.currencyGroups[0].totalIncomeReceived.toString()).toBe('40');
     expect(result.currencyGroups[0].portfoliosCount).toBe(1);
 
     // USD em segundo
     expect(result.currencyGroups[1].currency).toBe('USD');
     expect(result.currencyGroups[1].totalInvestedCost.toString()).toBe('1500');
+    expect(result.currencyGroups[1].totalIncomeReceived.toString()).toBe('15');
     expect(result.currencyGroups[1].portfoliosCount).toBe(1);
   });
 
@@ -144,17 +152,19 @@ describe('Unitário: Motor de Consolidação do Dashboard Multi-Carteiras', () =
     expect(result.currencyGroups[0].totalInvestedCost.toString()).toBe('0');
     expect(result.currencyGroups[0].totalFees.toString()).toBe('0');
     expect(result.currencyGroups[0].totalRealizedPnL.toString()).toBe('0');
+    expect(result.currencyGroups[0].totalIncomeReceived.toString()).toBe('0');
     expect(result.recentEvents).toHaveLength(0);
   });
 
   it('deve serializar todos os dados do dashboard em strings formatadas com precisão', () => {
     const summary: PortfolioPositionsSummary = {
       portfolioId: 'port-1',
-      positions: [dummyAssetPos('B3SA3', '1250.50', '80.25')],
+      positions: [dummyAssetPos('B3SA3', '1250.50', '80.25', '20.00')],
       closedPositions: [],
       totalInvestedCost: new Decimal('1250.50'),
       totalFees: new Decimal('4.75'),
       totalRealizedPnL: new Decimal('80.25'),
+      totalIncomeReceived: new Decimal('20.00'),
       calculatedAt: new Date('2026-08-15T12:00:00.000Z'),
     };
 

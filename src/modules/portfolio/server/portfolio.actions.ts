@@ -17,6 +17,8 @@ import {
 import {
   createPortfolioEvent,
   createCorporateActionEvent,
+  createBonusEvent,
+  createIncomeEvent,
   cancelPortfolioEvent,
   listPortfolioEventsByPortfolio,
 } from './portfolio-event.service';
@@ -39,6 +41,8 @@ import {
 import {
   createPortfolioEventSchema,
   createCorporateActionEventSchema,
+  createBonusEventSchema,
+  createIncomeEventSchema,
   cancelPortfolioEventSchema,
 } from '../domain/portfolio-event.schema';
 import {
@@ -411,6 +415,91 @@ export async function createCorporateActionEventAction(
 
     const parsed = createCorporateActionEventSchema.parse(raw);
     const event = await createCorporateActionEvent(parsed, user);
+
+    safeRevalidatePath('/dashboard');
+    safeRevalidatePath('/history');
+    safeRevalidatePath(`/portfolios/${portfolioId}`);
+
+    return {
+      success: true,
+      data: event,
+    };
+  } catch (err) {
+    return handleActionError(err);
+  }
+}
+
+/**
+ * Registra uma bonificação de ações (BONUS_SHARE) na carteira.
+ */
+export async function createBonusEventAction(
+  _prevState: ActionResult<PortfolioEvent> | null,
+  formData: FormData
+): Promise<ActionResult<PortfolioEvent>> {
+  try {
+    const user = await requireAuth();
+
+    const portfolioId = formData.get('portfolioId')?.toString() || '';
+    const rawTradeDate = formData.get('tradeDate')?.toString();
+    const rawUnitPrice = formData.get('unitPrice')?.toString();
+
+    const raw = {
+      portfolioId,
+      assetId: formData.get('assetId'),
+      type: 'BONUS_SHARE',
+      tradeDate: normalizeFormDate(rawTradeDate),
+      quantity: formData.get('quantity'),
+      unitPrice: rawUnitPrice && rawUnitPrice.trim() !== '' ? rawUnitPrice : '0',
+      notes: formData.get('notes') || null,
+      source: 'corporate_action',
+    };
+
+    const parsed = createBonusEventSchema.parse(raw);
+    const event = await createBonusEvent(parsed, user);
+
+    safeRevalidatePath('/dashboard');
+    safeRevalidatePath('/history');
+    safeRevalidatePath(`/portfolios/${portfolioId}`);
+
+    return {
+      success: true,
+      data: event,
+    };
+  } catch (err) {
+    return handleActionError(err);
+  }
+}
+
+/**
+ * Registra um provento em dinheiro (DIVIDEND ou JCP) na carteira.
+ */
+export async function createIncomeEventAction(
+  _prevState: ActionResult<PortfolioEvent> | null,
+  formData: FormData
+): Promise<ActionResult<PortfolioEvent>> {
+  try {
+    const user = await requireAuth();
+
+    const portfolioId = formData.get('portfolioId')?.toString() || '';
+    const rawTradeDate = formData.get('tradeDate')?.toString();
+    const rawSettlementDate = formData.get('settlementDate')?.toString();
+    const rawFees = formData.get('fees')?.toString();
+
+    const raw = {
+      portfolioId,
+      assetId: formData.get('assetId'),
+      type: formData.get('type'),
+      tradeDate: normalizeFormDate(rawTradeDate),
+      settlementDate: normalizeFormDate(rawSettlementDate),
+      quantity: formData.get('quantity'),
+      unitPrice: formData.get('unitPrice'),
+      fees: rawFees && rawFees.trim() !== '' ? rawFees : '0',
+      notes: formData.get('notes') || null,
+      source: 'corporate_action',
+    };
+
+    const parsed = createIncomeEventSchema.parse(raw);
+    const event = await createIncomeEvent(parsed, user);
 
     safeRevalidatePath('/dashboard');
     safeRevalidatePath('/history');

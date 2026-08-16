@@ -104,11 +104,15 @@ export function RecentActivityFeed({ events }: RecentActivityFeedProps) {
               const isSell = event.type === 'SELL';
               const isSplit = event.type === 'SPLIT';
               const isGrouping = event.type === 'GROUPING';
+              const isBonus = event.type === 'BONUS_SHARE';
+              const isDividend = event.type === 'DIVIDEND';
+              const isJcp = event.type === 'JCP';
 
               const tradeDateFormatted = new Date(event.tradeDate).toLocaleDateString(
                 'pt-BR',
                 { timeZone: 'UTC' }
               );
+              const decPrice = new Decimal(event.unitPrice || '0');
               const decFees = new Decimal(event.fees || '0');
               const hasFees = decFees.greaterThan(0);
 
@@ -138,6 +142,21 @@ export function RecentActivityFeed({ events }: RecentActivityFeedProps) {
                     {isGrouping && (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-950/80 text-amber-400 border border-amber-800/60">
                         🔄 Grupamento
+                      </span>
+                    )}
+                    {isBonus && (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-pink-950/80 text-pink-400 border border-pink-800/60">
+                        🎁 Bonificação
+                      </span>
+                    )}
+                    {isDividend && (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-700/60">
+                        💵 Dividendo
+                      </span>
+                    )}
+                    {isJcp && (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-950/80 text-teal-300 border border-teal-700/60">
+                        🏛️ JCP
                       </span>
                     )}
                   </td>
@@ -177,21 +196,31 @@ export function RecentActivityFeed({ events }: RecentActivityFeedProps) {
                   <td className="px-4 py-3.5 text-right font-mono font-medium text-slate-200 whitespace-nowrap">
                     {isSplit && `Fator 1:${formatQuantity(event.quantity)}`}
                     {isGrouping && `Fator ${formatQuantity(event.quantity)}:1`}
-                    {!isSplit && !isGrouping && formatQuantity(event.quantity)}
+                    {isBonus && `+${formatQuantity(event.quantity)}`}
+                    {(isDividend || isJcp) && `${formatQuantity(event.quantity)} ações`}
+                    {!isSplit && !isGrouping && !isBonus && !isDividend && !isJcp && formatQuantity(event.quantity)}
                   </td>
 
                   {/* Preço Unitário */}
                   <td className="px-4 py-3.5 text-right font-mono font-medium text-slate-200 whitespace-nowrap">
-                    {isSplit || isGrouping ? '—' : formatMoney(event.unitPrice, event.currency)}
+                    {isSplit || isGrouping ? (
+                      '—'
+                    ) : isBonus ? (
+                      decPrice.greaterThan(0) ? formatMoney(event.unitPrice, event.currency) : 'R$ 0,00'
+                    ) : (
+                      formatMoney(event.unitPrice, event.currency)
+                    )}
                   </td>
 
                   {/* Taxas */}
                   <td className="px-6 py-3.5 text-right font-mono text-xs text-slate-400 whitespace-nowrap">
-                    {isSplit || isGrouping
+                    {isJcp
+                      ? `IRRF ${formatMoney(event.fees, event.currency)}`
+                      : isSplit || isGrouping || isBonus
                       ? '—'
                       : hasFees
-                        ? formatMoney(event.fees, event.currency)
-                        : '—'}
+                      ? formatMoney(event.fees, event.currency)
+                      : '—'}
                   </td>
                 </tr>
               );

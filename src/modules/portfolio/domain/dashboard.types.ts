@@ -12,6 +12,7 @@ export interface CurrencyGroupSummary {
   totalInvestedCost: Decimal;
   totalFees: Decimal;
   totalRealizedPnL: Decimal;
+  totalIncomeReceived: Decimal;
   activePositionsCount: number;
   portfoliosCount: number;
 }
@@ -52,6 +53,7 @@ export interface SerializedCurrencyGroupSummary {
   totalInvestedCost: string;
   totalFees: string;
   totalRealizedPnL: string;
+  totalIncomeReceived: string;
   activePositionsCount: number;
   portfoliosCount: number;
 }

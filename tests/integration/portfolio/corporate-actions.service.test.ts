@@ -14,6 +14,8 @@ import { createCustomAsset } from '../../../src/modules/portfolio/server/asset.s
 import {
   createPortfolioEvent,
   createCorporateActionEvent,
+  createBonusEvent,
+  createIncomeEvent,
   cancelPortfolioEvent,
 } from '../../../src/modules/portfolio/server/portfolio-event.service';
 import { getAssetPositionInPortfolio } from '../../../src/modules/portfolio/server/position.service';
@@ -263,6 +265,214 @@ describe('Integração: Eventos Corporativos no PostgreSQL Real (Pacote 04.01)',
           type: 'SPLIT',
           tradeDate: new Date('2026-01-15T12:00:00Z'),
           factor: '2',
+        },
+        userB
+      )
+    ).rejects.toThrow();
+  });
+
+  it('deve persistir um evento de BONUS_SHARE no PostgreSQL, atualizar posição e auditar operação', async () => {
+    const portfolio = await createPortfolio(
+      { name: 'Carteira Bonificação', baseCurrency: 'BRL' },
+      userA
+    );
+    const asset = await createCustomAsset(
+      { ticker: 'BONT3_TEST', name: 'Bonificação Test', currency: 'BRL' },
+      userA
+    );
+
+    // Compra inicial: 100 ações a R$ 20,00 = R$ 2.000,00
+    await createPortfolioEvent(
+      {
+        portfolioId: portfolio.id,
+        assetId: asset.id,
+        type: 'BUY',
+        tradeDate: new Date('2026-01-10T12:00:00Z'),
+        quantity: '100',
+        unitPrice: '20.00',
+        fees: '0',
+        currency: 'BRL',
+      },
+      userA
+    );
+
+    // Bonificação de 10 ações com custo atribuído de R$ 15,40
+    const bonusEvent = await createBonusEvent(
+      {
+        portfolioId: portfolio.id,
+        assetId: asset.id,
+        tradeDate: new Date('2026-01-20T12:00:00Z'),
+        quantity: '10',
+        unitPrice: '15.40',
+        notes: 'Bonificação 10%',
+      },
+      userA
+    );
+
+    expect(bonusEvent.type).toBe('BONUS_SHARE');
+    expect(bonusEvent.source).toBe('corporate_action');
+
+    // Consulta a posição consolidada
+    const { position } = await getAssetPositionInPortfolio(portfolio.id, asset.id, userA);
+
+    // 100 + 10 = 110 ações | Custo: 2000 + 154 = 2154
+    expect(position.quantity.toString()).toBe('110');
+    expect(position.totalCost.toString()).toBe('2154');
+    expect(position.hasFractionalShares).toBe(false);
+  });
+
+  it('deve persistir um evento de DIVIDEND e acumular totalIncomeReceived sem alterar quantidade e custo total', async () => {
+    const portfolio = await createPortfolio(
+      { name: 'Carteira Dividendos', baseCurrency: 'BRL' },
+      userA
+    );
+    const asset = await createCustomAsset(
+      { ticker: 'DIVT3_TEST', name: 'Dividendos Test', currency: 'BRL' },
+      userA
+    );
+
+    // Compra inicial: 200 ações a R$ 25,00 = R$ 5.000,00
+    await createPortfolioEvent(
+      {
+        portfolioId: portfolio.id,
+        assetId: asset.id,
+        type: 'BUY',
+        tradeDate: new Date('2026-01-10T12:00:00Z'),
+        quantity: '200',
+        unitPrice: '25.00',
+        fees: '0',
+        currency: 'BRL',
+      },
+      userA
+    );
+
+    // Dividendo: R$ 0,50 por ação para 200 ações = R$ 100,00
+    const divEvent = await createIncomeEvent(
+      {
+        portfolioId: portfolio.id,
+        assetId: asset.id,
+        type: 'DIVIDEND',
+        tradeDate: new Date('2026-01-15T12:00:00Z'),
+        settlementDate: new Date('2026-01-20T12:00:00Z'),
+        quantity: '200',
+        unitPrice: '0.50',
+        notes: 'Dividendo intermediário',
+      },
+      userA
+    );
+
+    expect(divEvent.type).toBe('DIVIDEND');
+    expect(divEvent.settlementDate).not.toBeNull();
+
+    // Consulta a posição
+    const { position } = await getAssetPositionInPortfolio(portfolio.id, asset.id, userA);
+
+    expect(position.quantity.toString()).toBe('200');
+    expect(position.totalCost.toString()).toBe('5000');
+    expect(position.averagePrice.toString()).toBe('25');
+    expect(position.totalIncomeReceived.toString()).toBe('100');
+  });
+
+  it('deve persistir um evento de JCP com retenção de IRRF e computar valor líquido em totalIncomeReceived', async () => {
+    const portfolio = await createPortfolio(
+      { name: 'Carteira JCP', baseCurrency: 'BRL' },
+      userA
+    );
+    const asset = await createCustomAsset(
+      { ticker: 'JCPT3_TEST', name: 'JCP Test', currency: 'BRL' },
+      userA
+    );
+
+    // Compra inicial: 100 ações a R$ 50,00 = R$ 5.000,00
+    await createPortfolioEvent(
+      {
+        portfolioId: portfolio.id,
+        assetId: asset.id,
+        type: 'BUY',
+        tradeDate: new Date('2026-01-10T12:00:00Z'),
+        quantity: '100',
+        unitPrice: '50.00',
+        fees: '0',
+        currency: 'BRL',
+      },
+      userA
+    );
+
+    // JCP: R$ 1,00 bruto por ação para 100 ações = R$ 100,00 bruto | IRRF: R$ 15,00 | Líquido: R$ 85,00
+    const jcpEvent = await createIncomeEvent(
+      {
+        portfolioId: portfolio.id,
+        assetId: asset.id,
+        type: 'JCP',
+        tradeDate: new Date('2026-01-15T12:00:00Z'),
+        settlementDate: new Date('2026-01-22T12:00:00Z'),
+        quantity: '100',
+        unitPrice: '1.00',
+        fees: '15.00',
+        notes: 'JCP 4T25',
+      },
+      userA
+    );
+
+    expect(jcpEvent.type).toBe('JCP');
+
+    // Consulta a posição
+    const { position } = await getAssetPositionInPortfolio(portfolio.id, asset.id, userA);
+
+    expect(position.quantity.toString()).toBe('100');
+    expect(position.totalCost.toString()).toBe('5000');
+    expect(position.totalIncomeReceived.toString()).toBe('85');
+  });
+
+  it('deve impedir que o Usuário B lance Bonificação ou Proventos na carteira do Usuário A', async () => {
+    const portfolioA = await createPortfolio(
+      { name: 'Carteira Privada User A', baseCurrency: 'BRL' },
+      userA
+    );
+    const assetA = await createCustomAsset(
+      { ticker: 'PRIVB3', name: 'Privado B', currency: 'BRL' },
+      userA
+    );
+
+    await createPortfolioEvent(
+      {
+        portfolioId: portfolioA.id,
+        assetId: assetA.id,
+        type: 'BUY',
+        tradeDate: new Date('2026-01-10T12:00:00Z'),
+        quantity: '100',
+        unitPrice: '10.00',
+        fees: '0',
+        currency: 'BRL',
+      },
+      userA
+    );
+
+    // User B tenta lançar bonificação em A
+    await expect(
+      createBonusEvent(
+        {
+          portfolioId: portfolioA.id,
+          assetId: assetA.id,
+          tradeDate: new Date('2026-01-15T12:00:00Z'),
+          quantity: '10',
+          unitPrice: '0',
+        },
+        userB
+      )
+    ).rejects.toThrow();
+
+    // User B tenta lançar dividendo em A
+    await expect(
+      createIncomeEvent(
+        {
+          portfolioId: portfolioA.id,
+          assetId: assetA.id,
+          type: 'DIVIDEND',
+          tradeDate: new Date('2026-01-15T12:00:00Z'),
+          settlementDate: new Date('2026-01-20T12:00:00Z'),
+          quantity: '100',
+          unitPrice: '1.00',
         },
         userB
       )

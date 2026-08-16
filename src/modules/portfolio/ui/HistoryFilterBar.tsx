@@ -93,6 +93,9 @@ export function HistoryFilterBar({
             <option value="SELL">🔵 Venda</option>
             <option value="SPLIT">🔀 Desdobramento (Split)</option>
             <option value="GROUPING">🔄 Grupamento</option>
+            <option value="BONUS_SHARE">🎁 Bonificação</option>
+            <option value="DIVIDEND">💵 Dividendo</option>
+            <option value="JCP">🏛️ JCP</option>
           </select>
         </div>
 

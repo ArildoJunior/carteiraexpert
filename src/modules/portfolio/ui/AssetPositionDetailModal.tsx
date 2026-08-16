@@ -5,6 +5,8 @@ import { Decimal } from '@/lib/decimal';
 import {
   getAssetPositionAction,
   createCorporateActionEventAction,
+  createBonusEventAction,
+  createIncomeEventAction,
 } from '../server/portfolio.actions';
 import type { SerializedAssetPositionDetail } from '../domain/position.types';
 
@@ -41,6 +43,8 @@ function formatQuantity(quantity: string | Decimal): string {
   }
 }
 
+export type ActionFormType = 'SPLIT' | 'GROUPING' | 'BONUS_SHARE' | 'DIVIDEND' | 'JCP';
+
 export function AssetPositionDetailModal({
   portfolioId,
   assetId,
@@ -50,14 +54,25 @@ export function AssetPositionDetailModal({
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<SerializedAssetPositionDetail | null>(null);
 
-  // Estado do formulário de evento corporativo (Split / Grupamento)
+  // Estado do formulário de eventos corporativos e proventos
   const [showActionForm, setShowActionForm] = useState(false);
-  const [actionType, setActionType] = useState<'SPLIT' | 'GROUPING'>('SPLIT');
+  const [actionType, setActionType] = useState<ActionFormType>('SPLIT');
   const [actionTradeDate, setActionTradeDate] = useState(() => {
     return new Date().toISOString().slice(0, 10);
   });
+  const [actionSettlementDate, setActionSettlementDate] = useState(() => {
+    return new Date().toISOString().slice(0, 10);
+  });
+
+  // Campos específicos
   const [actionFactor, setActionFactor] = useState('2');
+  const [bonusQuantity, setBonusQuantity] = useState('10');
+  const [bonusUnitPrice, setBonusUnitPrice] = useState('0');
+  const [incomeQuantity, setIncomeQuantity] = useState('100');
+  const [incomeUnitPrice, setIncomeUnitPrice] = useState('0.50');
+  const [incomeFees, setIncomeFees] = useState('0');
   const [actionNotes, setActionNotes] = useState('');
+
   const [actionSubmitting, setActionSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
@@ -69,6 +84,9 @@ export function AssetPositionDetailModal({
 
     if (res.success && res.data) {
       setDetail(res.data);
+      if (res.data.position.quantity && new Decimal(res.data.position.quantity).greaterThan(0)) {
+        setIncomeQuantity(res.data.position.quantity);
+      }
     } else {
       setError(res.error || 'Não foi possível carregar os detalhes do ativo.');
     }
@@ -86,37 +104,100 @@ export function AssetPositionDetailModal({
     };
   }, [loadData]);
 
-  async function handleCorporateActionSubmit(e: React.FormEvent<HTMLFormElement>) {
+  // Auxiliar para calcular 15% de IRRF para JCP
+  function handleCalculateJcpIrrf() {
+    try {
+      const q = new Decimal(incomeQuantity || '0');
+      const p = new Decimal(incomeUnitPrice || '0');
+      const gross = q.times(p);
+      const irrf = gross.times('0.15');
+      setIncomeFees(irrf.toFixed(2));
+    } catch {
+      // no-op
+    }
+  }
+
+  async function handleEventSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setActionError(null);
     setActionSuccess(null);
     setActionSubmitting(true);
 
     try {
-      const formData = new FormData();
-      formData.set('portfolioId', portfolioId);
-      formData.set('assetId', assetId);
-      formData.set('type', actionType);
-      formData.set('tradeDate', actionTradeDate);
-      formData.set('factor', actionFactor);
-      if (actionNotes.trim()) {
-        formData.set('notes', actionNotes.trim());
-      }
+      if (actionType === 'SPLIT' || actionType === 'GROUPING') {
+        const formData = new FormData();
+        formData.set('portfolioId', portfolioId);
+        formData.set('assetId', assetId);
+        formData.set('type', actionType);
+        formData.set('tradeDate', actionTradeDate);
+        formData.set('factor', actionFactor);
+        if (actionNotes.trim()) {
+          formData.set('notes', actionNotes.trim());
+        }
 
-      const res = await createCorporateActionEventAction(null, formData);
+        const res = await createCorporateActionEventAction(null, formData);
 
-      if (res.success) {
-        setActionSuccess(
-          `Evento corporativo (${actionType === 'SPLIT' ? 'Desdobramento' : 'Grupamento'}) registrado com sucesso!`
-        );
-        setShowActionForm(false);
-        setActionNotes('');
-        await loadData();
-      } else {
-        setActionError(res.error || 'Falha ao registrar evento corporativo.');
+        if (res.success) {
+          setActionSuccess(
+            `Evento corporativo (${actionType === 'SPLIT' ? 'Desdobramento' : 'Grupamento'}) registrado com sucesso!`
+          );
+          setShowActionForm(false);
+          setActionNotes('');
+          await loadData();
+        } else {
+          setActionError(res.error || 'Falha ao registrar evento corporativo.');
+        }
+      } else if (actionType === 'BONUS_SHARE') {
+        const formData = new FormData();
+        formData.set('portfolioId', portfolioId);
+        formData.set('assetId', assetId);
+        formData.set('type', 'BONUS_SHARE');
+        formData.set('tradeDate', actionTradeDate);
+        formData.set('quantity', bonusQuantity);
+        formData.set('unitPrice', bonusUnitPrice || '0');
+        if (actionNotes.trim()) {
+          formData.set('notes', actionNotes.trim());
+        }
+
+        const res = await createBonusEventAction(null, formData);
+
+        if (res.success) {
+          setActionSuccess('Bonificação de ações registrada com sucesso!');
+          setShowActionForm(false);
+          setActionNotes('');
+          await loadData();
+        } else {
+          setActionError(res.error || 'Falha ao registrar bonificação de ações.');
+        }
+      } else if (actionType === 'DIVIDEND' || actionType === 'JCP') {
+        const formData = new FormData();
+        formData.set('portfolioId', portfolioId);
+        formData.set('assetId', assetId);
+        formData.set('type', actionType);
+        formData.set('tradeDate', actionTradeDate);
+        formData.set('settlementDate', actionSettlementDate);
+        formData.set('quantity', incomeQuantity);
+        formData.set('unitPrice', incomeUnitPrice);
+        formData.set('fees', actionType === 'JCP' ? incomeFees || '0' : '0');
+        if (actionNotes.trim()) {
+          formData.set('notes', actionNotes.trim());
+        }
+
+        const res = await createIncomeEventAction(null, formData);
+
+        if (res.success) {
+          setActionSuccess(
+            `Provento (${actionType === 'DIVIDEND' ? 'Dividendo' : 'JCP'}) registrado com sucesso!`
+          );
+          setShowActionForm(false);
+          setActionNotes('');
+          await loadData();
+        } else {
+          setActionError(res.error || 'Falha ao registrar provento.');
+        }
       }
     } catch {
-      setActionError('Erro inesperado ao registrar evento corporativo.');
+      setActionError('Erro inesperado ao registrar operação.');
     } finally {
       setActionSubmitting(false);
     }
@@ -126,6 +207,29 @@ export function AssetPositionDetailModal({
   const decPnL = new Decimal(pos?.totalRealizedPnL || '0');
   const isPositivePnL = decPnL.greaterThan(0);
   const isNegativePnL = decPnL.lessThan(0);
+
+  // Estimativa de provento em tempo real
+  let estimatedIncomeNet: string | null = null;
+  if (actionType === 'DIVIDEND') {
+    try {
+      const q = new Decimal(incomeQuantity || '0');
+      const p = new Decimal(incomeUnitPrice || '0');
+      estimatedIncomeNet = formatMoney(q.times(p), pos?.currency || 'BRL');
+    } catch {
+      estimatedIncomeNet = null;
+    }
+  } else if (actionType === 'JCP') {
+    try {
+      const q = new Decimal(incomeQuantity || '0');
+      const p = new Decimal(incomeUnitPrice || '0');
+      const f = new Decimal(incomeFees || '0');
+      const gross = q.times(p);
+      const net = gross.minus(f);
+      estimatedIncomeNet = formatMoney(net.greaterThan(0) ? net : new Decimal(0), pos?.currency || 'BRL');
+    } catch {
+      estimatedIncomeNet = null;
+    }
+  }
 
   return (
     <div
@@ -137,7 +241,7 @@ export function AssetPositionDetailModal({
     >
       <div
         id="asset-detail-modal-content"
-        className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl space-y-6 p-6 sm:p-8 max-h-[90vh] flex flex-col"
+        className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl space-y-6 p-6 sm:p-8 max-h-[90vh] flex flex-col"
       >
         {/* Cabeçalho */}
         <div className="flex items-start justify-between border-b border-slate-800 pb-4">
@@ -158,7 +262,7 @@ export function AssetPositionDetailModal({
                 <span
                   id="asset-detail-fractional-badge"
                   className="text-[11px] font-semibold text-amber-400 bg-amber-950/60 border border-amber-800/60 px-2 py-0.5 rounded-md flex items-center gap-1"
-                  title="A quantidade em custódia contém fração residual resultante de grupamento."
+                  title="A quantidade em custódia contém fração residual resultante de evento corporativo."
                 >
                   ⚠️ Fração Residual
                 </span>
@@ -184,7 +288,7 @@ export function AssetPositionDetailModal({
           </button>
         </div>
 
-        {/* Mensagens de Sucesso ou Erro da Ação Corporativa */}
+        {/* Mensagens de Sucesso ou Erro */}
         {actionSuccess && (
           <div
             id="corporate-action-success-msg"
@@ -216,15 +320,15 @@ export function AssetPositionDetailModal({
             </div>
           ) : (
             <>
-              {/* Cards de Métricas do Ativo */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-                <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-4 space-y-1">
+              {/* Cards de Métricas do Ativo (5 Colunas) */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-3.5 space-y-1">
                   <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                     Quantidade
                   </p>
                   <p
                     id="asset-detail-qty"
-                    className="text-lg font-bold font-mono text-white"
+                    className="text-base sm:text-lg font-bold font-mono text-white"
                   >
                     {formatQuantity(pos.quantity)}
                   </p>
@@ -233,39 +337,39 @@ export function AssetPositionDetailModal({
                   </p>
                 </div>
 
-                <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-4 space-y-1">
+                <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-3.5 space-y-1">
                   <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                     Custo Médio
                   </p>
                   <p
                     id="asset-detail-avg-price"
-                    className="text-lg font-bold font-mono text-slate-200"
+                    className="text-base sm:text-lg font-bold font-mono text-slate-200"
                   >
                     {formatMoney(pos.averagePrice, pos.currency)}
                   </p>
                   <p className="text-[10px] text-slate-500">Com taxas inclusas</p>
                 </div>
 
-                <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-4 space-y-1">
+                <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-3.5 space-y-1">
                   <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                     Total Investido
                   </p>
                   <p
                     id="asset-detail-total-cost"
-                    className="text-lg font-bold font-mono text-emerald-400"
+                    className="text-base sm:text-lg font-bold font-mono text-emerald-400"
                   >
                     {formatMoney(pos.totalCost, pos.currency)}
                   </p>
                   <p className="text-[10px] text-slate-500">Custo de aquisição</p>
                 </div>
 
-                <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-4 space-y-1">
+                <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-3.5 space-y-1">
                   <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                     PnL Realizado
                   </p>
                   <p
                     id="asset-detail-realized-pnl"
-                    className={`text-lg font-bold font-mono ${
+                    className={`text-base sm:text-lg font-bold font-mono ${
                       isPositivePnL
                         ? 'text-emerald-400'
                         : isNegativePnL
@@ -276,19 +380,32 @@ export function AssetPositionDetailModal({
                     {isPositivePnL ? '+' : ''}
                     {formatMoney(pos.totalRealizedPnL, pos.currency)}
                   </p>
-                  <p className="text-[10px] text-slate-500">Lucro/prejuízo de vendas</p>
+                  <p className="text-[10px] text-slate-500">Lucro de vendas</p>
+                </div>
+
+                <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-3.5 space-y-1 col-span-2 sm:col-span-1">
+                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                    Proventos
+                  </p>
+                  <p
+                    id="asset-detail-income-received"
+                    className="text-base sm:text-lg font-bold font-mono text-amber-400"
+                  >
+                    {formatMoney(pos.totalIncomeReceived || '0', pos.currency)}
+                  </p>
+                  <p className="text-[10px] text-slate-500">Dividendos e JCP</p>
                 </div>
               </div>
 
-              {/* Botão e Formulário de Lançamento de Evento Corporativo */}
+              {/* Seção de Lançamento de Eventos Corporativos e Proventos */}
               <div className="bg-slate-950/50 border border-slate-800/80 rounded-2xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                      Eventos Corporativos (Split / Grupamento)
+                      Eventos Corporativos & Proventos
                     </h3>
                     <p className="text-[11px] text-slate-500 mt-0.5">
-                      Ajusta a quantidade e o custo médio unitário mantendo o valor investido invariante.
+                      Registre desdobramentos, grupamentos, bonificações de ações, dividendos e JCP.
                     </p>
                   </div>
 
@@ -301,15 +418,15 @@ export function AssetPositionDetailModal({
                     }}
                     className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 bg-emerald-950/60 border border-emerald-800/60 px-3 py-1.5 rounded-xl transition-colors"
                   >
-                    {showActionForm ? 'Cancelar' : '+ Lançar Split / Grupamento'}
+                    {showActionForm ? 'Cancelar' : '+ Lançar Evento / Provento'}
                   </button>
                 </div>
 
                 {showActionForm && (
                   <form
                     id="corporate-action-form"
-                    onSubmit={handleCorporateActionSubmit}
-                    className="pt-3 border-t border-slate-800/80 space-y-3"
+                    onSubmit={handleEventSubmit}
+                    className="pt-3 border-t border-slate-800/80 space-y-4"
                   >
                     {actionError && (
                       <div
@@ -321,30 +438,37 @@ export function AssetPositionDetailModal({
                     )}
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {/* Tipo de Evento */}
                       <div>
                         <label
                           htmlFor="input-corporate-action-type"
                           className="block text-[11px] font-semibold text-slate-300 mb-1"
                         >
-                          Tipo de Evento
+                          Tipo de Operação
                         </label>
                         <select
                           id="input-corporate-action-type"
                           value={actionType}
-                          onChange={(e) => setActionType(e.target.value as any)}
+                          onChange={(e) => setActionType(e.target.value as ActionFormType)}
                           className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
                         >
                           <option value="SPLIT">🔀 Desdobramento (Split)</option>
                           <option value="GROUPING">🔄 Grupamento</option>
+                          <option value="BONUS_SHARE">🎁 Bonificação de Ações</option>
+                          <option value="DIVIDEND">💵 Dividendo em Dinheiro</option>
+                          <option value="JCP">🏛️ Juros sobre Capital Próprio (JCP)</option>
                         </select>
                       </div>
 
+                      {/* Data-Com / Data de Corte */}
                       <div>
                         <label
                           htmlFor="input-corporate-action-trade-date"
                           className="block text-[11px] font-semibold text-slate-300 mb-1"
                         >
-                          Data de Corte (Data Ex)
+                          {actionType === 'SPLIT' || actionType === 'GROUPING'
+                            ? 'Data de Corte (Data Ex)'
+                            : 'Data de Corte (Data-Com)'}
                         </label>
                         <input
                           id="input-corporate-action-trade-date"
@@ -356,27 +480,183 @@ export function AssetPositionDetailModal({
                         />
                       </div>
 
-                      <div>
-                        <label
-                          htmlFor="input-corporate-action-factor"
-                          className="block text-[11px] font-semibold text-slate-300 mb-1"
-                        >
-                          Fator de Proporção (ex: 2, 4, 10)
-                        </label>
-                        <input
-                          id="input-corporate-action-factor"
-                          type="number"
-                          step="any"
-                          min="0.0000000001"
-                          required
-                          placeholder="Ex: 10"
-                          value={actionFactor}
-                          onChange={(e) => setActionFactor(e.target.value)}
-                          className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
-                        />
-                      </div>
+                      {/* Data de Pagamento (para DIVIDEND e JCP) */}
+                      {(actionType === 'DIVIDEND' || actionType === 'JCP') && (
+                        <div>
+                          <label
+                            htmlFor="input-corporate-action-settlement-date"
+                            className="block text-[11px] font-semibold text-slate-300 mb-1"
+                          >
+                            Data de Pagamento *
+                          </label>
+                          <input
+                            id="input-corporate-action-settlement-date"
+                            type="date"
+                            required
+                            value={actionSettlementDate}
+                            onChange={(e) => setActionSettlementDate(e.target.value)}
+                            className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                          />
+                        </div>
+                      )}
+
+                      {/* Fator de Proporção (para SPLIT e GROUPING) */}
+                      {(actionType === 'SPLIT' || actionType === 'GROUPING') && (
+                        <div>
+                          <label
+                            htmlFor="input-corporate-action-factor"
+                            className="block text-[11px] font-semibold text-slate-300 mb-1"
+                          >
+                            Fator de Proporção (ex: 2, 4, 10)
+                          </label>
+                          <input
+                            id="input-corporate-action-factor"
+                            type="number"
+                            step="any"
+                            min="0.0000000001"
+                            required
+                            placeholder="Ex: 10"
+                            value={actionFactor}
+                            onChange={(e) => setActionFactor(e.target.value)}
+                            className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                          />
+                        </div>
+                      )}
+
+                      {/* Campos para BONUS_SHARE */}
+                      {actionType === 'BONUS_SHARE' && (
+                        <>
+                          <div>
+                            <label
+                              htmlFor="input-bonus-quantity"
+                              className="block text-[11px] font-semibold text-slate-300 mb-1"
+                            >
+                              Qtd de Ações Bonificadas *
+                            </label>
+                            <input
+                              id="input-bonus-quantity"
+                              type="number"
+                              step="any"
+                              min="0.0000000001"
+                              required
+                              placeholder="Ex: 10"
+                              value={bonusQuantity}
+                              onChange={(e) => setBonusQuantity(e.target.value)}
+                              className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                            />
+                          </div>
+
+                          <div>
+                            <label
+                              htmlFor="input-bonus-unit-price"
+                              className="block text-[11px] font-semibold text-slate-300 mb-1"
+                            >
+                              Custo Unitário Atribuído (R$)
+                            </label>
+                            <input
+                              id="input-bonus-unit-price"
+                              type="number"
+                              step="any"
+                              min="0"
+                              required
+                              placeholder="Ex: 15.40 (ou 0 se sem custo)"
+                              value={bonusUnitPrice}
+                              onChange={(e) => setBonusUnitPrice(e.target.value)}
+                              className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                            />
+                          </div>
+                        </>
+                      )}
+
+                      {/* Campos para DIVIDEND e JCP */}
+                      {(actionType === 'DIVIDEND' || actionType === 'JCP') && (
+                        <>
+                          <div>
+                            <label
+                              htmlFor="input-income-quantity"
+                              className="block text-[11px] font-semibold text-slate-300 mb-1"
+                            >
+                              Qtd de Ações Elegíveis *
+                            </label>
+                            <input
+                              id="input-income-quantity"
+                              type="number"
+                              step="any"
+                              min="0.0000000001"
+                              required
+                              placeholder="Ex: 100"
+                              value={incomeQuantity}
+                              onChange={(e) => setIncomeQuantity(e.target.value)}
+                              className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                            />
+                          </div>
+
+                          <div>
+                            <label
+                              htmlFor="input-income-unit-price"
+                              className="block text-[11px] font-semibold text-slate-300 mb-1"
+                            >
+                              {actionType === 'DIVIDEND' ? 'Valor por Ação (R$) *' : 'Valor Bruto por Ação (R$) *'}
+                            </label>
+                            <input
+                              id="input-income-unit-price"
+                              type="number"
+                              step="any"
+                              min="0.00000001"
+                              required
+                              placeholder="Ex: 0.55"
+                              value={incomeUnitPrice}
+                              onChange={(e) => setIncomeUnitPrice(e.target.value)}
+                              className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                            />
+                          </div>
+
+                          {actionType === 'JCP' && (
+                            <div>
+                              <div className="flex items-center justify-between mb-1">
+                                <label
+                                  htmlFor="input-income-fees"
+                                  className="block text-[11px] font-semibold text-slate-300"
+                                >
+                                  IRRF Retido Total (R$)
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={handleCalculateJcpIrrf}
+                                  className="text-[10px] text-amber-400 hover:text-amber-300 hover:underline"
+                                  title="Calcula 15% sobre o valor bruto"
+                                >
+                                  Calcular 15%
+                                </button>
+                              </div>
+                              <input
+                                id="input-income-fees"
+                                type="number"
+                                step="any"
+                                min="0"
+                                required
+                                placeholder="Ex: 7.50"
+                                value={incomeFees}
+                                onChange={(e) => setIncomeFees(e.target.value)}
+                                className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                              />
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
 
+                    {/* Feedback de Estimativa Líquida para Proventos */}
+                    {estimatedIncomeNet && (
+                      <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-300 flex items-center justify-between">
+                        <span className="text-slate-400">Total Líquido Estimado:</span>
+                        <span className="font-mono font-bold text-amber-400">
+                          {estimatedIncomeNet}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Observações */}
                     <div>
                       <label
                         htmlFor="input-corporate-action-notes"
@@ -388,7 +668,7 @@ export function AssetPositionDetailModal({
                         id="input-corporate-action-notes"
                         type="text"
                         maxLength={500}
-                        placeholder="Ex: Desdobramento 1:10 aprovado em AGE"
+                        placeholder="Ex: Aprovado em Assembleia Geral Ordinária"
                         value={actionNotes}
                         onChange={(e) => setActionNotes(e.target.value)}
                         className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
@@ -402,7 +682,7 @@ export function AssetPositionDetailModal({
                         disabled={actionSubmitting}
                         className="text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 px-4 py-2 rounded-xl transition-colors shadow-sm flex items-center gap-1.5"
                       >
-                        {actionSubmitting ? 'Registrando...' : 'Confirmar Evento Corporativo'}
+                        {actionSubmitting ? 'Registrando...' : 'Confirmar Lançamento'}
                       </button>
                     </div>
                   </form>
