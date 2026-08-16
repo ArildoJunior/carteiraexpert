@@ -10,11 +10,10 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 
 - **Fase 01 — Fundação Técnica:** Concluída (Arquitetura modular, motor financeiro baseado em `Decimal`, auditoria imutável e infraestrutura de testes).
 - **Fase 02 — Identidade, Acesso e Segurança:** Concluída (Cadastro, login com Argon2id, sessões em banco com SHA-256, controle de taxa com HMAC-SHA256, recuperação de senha atômica, consentimentos versionados LGPD *append-only* e motor de verificação física de schema).
-- **Fase 03 — Carteiras, Ativos e Posições:**
-  - **Pacote 03.00-E — Carteiras, Ativos, Eventos e Qualidade:** **ACEITO** (Modelagem de carteiras, ativos globais/customizados, eventos patrimoniais, contratos canônicos Drizzle tipados sem `any`, segregação de coordenadores públicos e funções `...InTransaction`, injeção explícita de `auditLogger`, isolamento multiusuário, proteção contra IDOR e fixture de tipos).
-  - **Pacote 03.01-D — Carteiras, Ativos e Operações Manuais:** **ACEITO** (Camada de entrega manual: Server Actions autenticadas, rotas `/portfolios` e `/portfolios/[id]`, autocomplete debounced de ativos, cadastro de ativo customizado, lançamento manual de compras/vendas, cancelamento auditado com justificativa obrigatória e seed de desenvolvimento protegido).
-  - **Pacote 03.02 — Motor de Posição, Custo Médio e Validação Temporal de Vendas:** **ACEITO** (Cálculo determinístico de posição e quantidade em custódia, custo médio ponderado por ativo incluindo taxas, custo total investido, resultado realizado por venda com dedução de taxas, rejeição atômica de vendas a descoberto, validação de consistência da linha do tempo para eventos retroativos e cancelamentos, proteção de concorrência com bloqueio pessimista `FOR UPDATE`, interface com blocos verticais e suíte completa de testes aprovada).
-  - **Pacote 03.03 — Histórico e Dashboard Básico:** **PRONTO PARA HOMOLOGAÇÃO** (Consolidação patrimonial global SSR em `/dashboard`, segregação estrita por moeda base sem conversão fictícia, agregação de custo total investido em posições ativas, PnL realizado acumulado de vendas, taxas totais, contagem de ativos em custódia e carteiras ativas, feed unificado e cronológico de atividades recentes com nomes de carteiras e ativos, proteção estrita anti-IDOR e exclusão de soft deletes).
+- **Fase 03 — Carteiras, Ativos e Posições:** Concluída e Publicada (Pacotes 03.00-E, 03.01-D, 03.02, 03.03 e 03.04 — Gestão de carteiras, ativos globais e customizados, lançamentos manuais, motor de custo médio ponderado, validação temporal de vendas, apuração de PnL realizado, dashboard global consolidado e extrato de histórico paginado com filtros avançados).
+- **Fase 04 — Eventos Corporativos:**
+  - **Pacote 04.01 — Split e Grupamento de Ativos:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Processamento determinístico e idempotente de desdobramentos (`SPLIT`) e grupamentos (`GROUPING`), preservação rigorosa do custo total de aquisição invariante, identificação e preservação de frações residuais em `Decimal`, recálculo automático de quantidade e custo médio, suporte a venda parcial subsequente com apuração exata de PnL, extrato cronológico `/history` com exibição de fatores, validações negativas completas, isolamento multiusuário anti-IDOR e rejeição atômica de eventos sem posição em custódia).
+- **Próximo Pacote Previsto:** **Pacote 04.02 — Bonificação, Dividendos e JCP**.
 
 ---
 
@@ -50,14 +49,22 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 - **Consistência da Linha do Tempo:** Rejeição de eventos retroativos fora de ordem ou cancelamento de compras antigas que invalidem vendas posteriores na linha do tempo.
 - **Proteção Contra Concorrência:** Bloqueio pessimista no PostgreSQL (`FOR UPDATE`) para serialização de transações na carteira.
 
-### 5. Histórico e Dashboard Básico Consolidado (Pacote 03.03)
+### 5. Histórico e Dashboard Básico Consolidado (Pacotes 03.03 e 03.04)
 - **Dashboard Consolidado SSR (`/dashboard`):** Visão geral patrimonial em Server Component com cálculo em tempo real e revalidação sob demanda.
 - **Segregação por Moeda Base:** Agrupamento estrito de métricas por moeda (`BRL`, `USD`, `EUR`), sem conversão cambial fictícia.
 - **Métricas Consolidadas:** Custo total de aquisição em custódia, PnL realizado acumulado de vendas, taxas acumuladas, contagem de ativos distintos e carteiras ativas.
-- **Feed Unificado de Atividades Recentes:** Histórico cronológico multicarteiras de compras e vendas com identificação de carteira, ativo, datas, quantidades e taxas.
+- **Feed Unificado e Extrato Geral (`/history`):** Extrato cronológico multicarteiras de compras, vendas e eventos corporativos, com filtros avançados por carteira, tipo de operação, ativo e período de datas.
 - **Exclusão de Soft Deletes:** Desconsideração estrita de eventos e carteiras canceladas/excluídas em todas as consultas e agregações.
 
-### 6. Integridade de Schema, Contratos e Banco de Dados
+### 6. Eventos Corporativos — Split e Grupamento de Ativos (Pacote 04.01)
+- **Desdobramentos (SPLIT):** Multiplicação de quantidade e divisão proporcional de custo médio mantendo o custo total de aquisição estritamente invariante ($Q \times P$ constante).
+- **Grupamentos (GROUPING):** Divisão de quantidade e multiplicação proporcional de custo médio com preservação integral do valor investido.
+- **Preservação de Frações Residuais:** Tratamento de quantidades fracionárias em `Decimal` puro e identificação visual com badge `⚠️ Fração Residual`.
+- **Venda Parcial Pós-Evento:** Apuração de resultado realizado ($PnL$) e recálculo determinístico da posição residual após eventos corporativos encadeados.
+- **Validação Temporal e Rejeições de Domínio:** Bloqueio e não persistência de eventos retroativos fora de ordem, fatores inválidos (zero, negativos, vazios) ou tentativa de lançamento sem saldo em custódia.
+- **Extrato e Histórico Integrados:** Badges dedicados de `Desdobramento` e `Grupamento` com indicação visual de proporção (`Fator 1:X` e `Fator X:1`) no extrato `/history` e no feed de atividades recentes.
+
+### 7. Integridade de Schema, Contratos e Banco de Dados
 - **Schema Guardian:** Validação física em tempo de execução (`assertSchemaCompatible`) e via CLI (`db:verify`) inspecionando o catálogo PostgreSQL (9 tabelas validadas).
 - **Contratos Drizzle Tipados:** Exportação canônica de `Database`, `DatabaseTransaction`, `DbExecutor`, `SchemaQueryExecutor` e `AuditExecutor`, com eliminação de `any` em assinaturas e callbacks.
 - **Fixture Estática de Tipos:** Arquivo `tests/types/database-contracts.test-d.ts` validando compatibilidade estrutural e rejeição em tempo de compilação via `@ts-expect-error`.
@@ -176,9 +183,10 @@ pnpm db:seed:dev      # Popular ativos de teste (exige ALLOW_DEV_SEED=true)
 
 ---
 
-## Limitações e Escopo Fora do Pacote 03.02
+## Limitações e Escopo Fora do Pacote 04.01
 
-1. **Saldo de Caixa da Carteira:** Depósitos, retiradas, liquidação financeira em conta corrente e saldo monetário da carteira permanecem fora do escopo.
-2. **Marcação a Mercado e Rentabilidade Não Realizada:** Integração com cotações externas em tempo real, variação patrimonial não realizada e gráficos de rentabilidade permanecem fora do escopo.
-3. **Eventos Corporativos e Provedores Externos:** Módulos de proventos, splits, grupamentos e integração com APIs de mercado (BRAPI, HG Brasil, B3, CVM) permanecem fora do escopo.
-4. **IA Editorial Interna:** Módulo editorial com apoio de IA e revisão humana mandatória previsto para fases futuras.
+1. **Bonificação em Ações e Proventos em Dinheiro:** Módulos de bonificação, dividendos e JCP previstos para o Pacote 04.02.
+2. **Saldo de Caixa da Carteira:** Depósitos, retiradas, liquidação financeira em conta corrente e saldo monetário da carteira permanecem fora do escopo.
+3. **Marcação a Mercado e Rentabilidade Não Realizada:** Integração com cotações externas em tempo real, variação patrimonial não realizada e gráficos de rentabilidade previstos para fases futuras.
+4. **Eventos Societários Complexos:** Subscrições, cisões, incorporações e troca de tickers permanecem fora do escopo.
+5. **IA Editorial Interna:** Módulo editorial com apoio de IA e revisão humana mandatória previsto para fases futuras.
