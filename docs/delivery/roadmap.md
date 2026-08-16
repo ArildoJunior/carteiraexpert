@@ -1,39 +1,20 @@
-# Roadmap de Entregas
+# Roadmap — visão ampla sem construção desordenada
 
-## Macrofas es e pacotes
+A visão completa permanece preservada. A alteração é estrutural: análise, screening, valuation e projeções passam a ser uma trilha própria, construída sobre dados confiáveis, sem contaminar a carteira real.
 
-| Fase | Pacotes | Objetivo |
-|---|---:|---|
-| 01. Fundação | 2 | Base técnica, qualidade e documentação |
-| 02. Identidade e acesso | 2 | Usuários, sessões, consentimentos e isolamento |
-| 03. Carteira | 3 | Eventos, operações manuais e projeções |
-| 04. Eventos corporativos | 2 | Split, grupamento, bonificação e proventos |
-| 05. Planos | 2 | Free, Premium, Compartilhado e privacidade |
-| 06. Mercado e gráficos | 2 | Dados internos, cotações e visualizações |
-| 07. Importações | 2 | CSV/XLSX e PDF revisável |
-| 08. Exterior e cripto | 2 | Múltiplas moedas, ativos globais e cripto |
-| 09. Projeções, opções e tributário | 3 | Simulações, alertas e apoio tributário |
-| 10. IA editorial e lançamento | 2 | Governança editorial e preparação de lançamento |
+| Ordem | Linha | Pré-requisito | Resultado demonstrável |
+|---:|---|---|---|
+| 01 | Fundação, Decimal, auditoria e jobs | Nenhum | Base determinística e observável |
+| 02 | Identity, authorization e isolamento | Fundação | Usuários e recursos protegidos |
+| 03 | Portfolio e motor de eventos | 01–02 | Compra, venda, posição e custo médio |
+| 04 | Cadastro de ativos, séries e fontes | 01–03 | Ativo, listagem, moeda e histórico identificados |
+| 05 | Análise fundamentalista e filtros | 04 | Indicadores e screening reproduzíveis |
+| 06 | Análise técnica e gráficos | 04 | Séries e indicadores descritivos |
+| 07 | Valuations | 03–05 | Bazin, Graham, Lynch e DCF versionados |
+| 08 | Projeções de ativo e carteira | 03, 05, 07 | Cenários isolados da carteira real |
+| 09 | Eventos corporativos e importações | 03–04 | Dados reais revisáveis e rastreáveis |
+| 10 | Mercado ampliado, Premium e compartilhamento | 02–09 | Evolução comercial com privacidade |
+| 11 | Exterior, cripto, opções e apoio tributário | Núcleo estável + validação | Linhas condicionais por demanda |
+| 12 | IA editorial e lançamento | Governança e operação | Conteúdo interno revisado, nunca automático |
 
-Total: 22 pacotes de entrega.
-
-## Regra de início de pacote
-
-Um pacote só começa quando:
-
-- O pacote anterior estiver aprovado;
-- Testes obrigatórios estiverem passando;
-- delivery-status.md estiver atualizado;
-- Decisões necessárias estiverem documentadas;
-- O escopo estiver fechado em um brief.
-
-## Regra de término
-
-Um pacote só termina quando:
-
-- Critérios de aceite forem atendidos;
-- Lint, typecheck, testes e build forem executados;
-- Revisão de IA for concluída;
-- Revisão manual mínima for concluída;
-- Arquivo de encerramento for preenchido;
-- Estado do projeto for atualizado.
+A ordem não impede desenvolver protótipos visuais antes; impede que protótipos sejam tratados como resultado financeiro confiável.

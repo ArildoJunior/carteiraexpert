@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1786549687035,
+      "tag": "0000_rich_anita_blake",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786564151150,
+      "tag": "0001_smiling_black_cat",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786622521354,
+      "tag": "0002_add_user_consents",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786700000000,
+      "tag": "0003_add_portfolio_core",
+      "breakpoints": true
+    }
+  ]
+}

@@ -10,8 +10,7 @@ coverage/
 
 # Variáveis de ambiente e segredos
 .env
-.env.local
-.env.*.local
+.env.*
 !.env.example
 
 # Logs
@@ -30,3 +29,9 @@ Thumbs.db
 # Arquivos temporários
 tmp/
 temp/
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
