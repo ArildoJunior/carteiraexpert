@@ -8,10 +8,13 @@ import { assertOwnership } from '../../identity/server/authorization-service';
 import type { SafeUser } from '../../identity/domain/user.types';
 import {
   createPortfolioEventSchema,
+  createCorporateActionEventSchema,
   cancelPortfolioEventSchema,
   listPortfolioEventsSchema,
   type CreatePortfolioEventInput,
   type CreatePortfolioEventOutput,
+  type CreateCorporateActionEventInput,
+  type CreateCorporateActionEventOutput,
   type CancelPortfolioEventInput,
   type CancelPortfolioEventOutput,
   type ListPortfolioEventsInput,
@@ -179,6 +182,157 @@ export async function createPortfolioEvent(
 
   return await database.transaction(async (tx) => {
     return await createPortfolioEventInTransaction(input, user, tx, auditLogger);
+  });
+}
+
+/**
+ * Função interna para inserção transacional de evento corporativo (SPLIT / GROUPING).
+ */
+export async function createCorporateActionEventInTransaction(
+  input: CreateCorporateActionEventOutput,
+  user: SafeUser,
+  tx: DatabaseTransaction,
+  auditLogger: typeof insertAuditLog = insertAuditLog
+): Promise<PortfolioEvent> {
+  // 1. Valida existência e titularidade da carteira (aciona assertOwnership em caso de IDOR)
+  await getPortfolioById(input.portfolioId, user, tx);
+
+  // 2. Valida existência e visibilidade do ativo
+  const asset = await getAssetById(input.assetId, user, tx);
+
+  // 3. Aplica lock pessimista na carteira para serializar operações concorrentes
+  await tx
+    .select()
+    .from(portfolios)
+    .where(eq(portfolios.id, input.portfolioId))
+    .for('update');
+
+  // 4. Busca todos os eventos ativos existentes do mesmo ativo na carteira
+  const existingEvents = await tx
+    .select()
+    .from(portfolioEvents)
+    .where(
+      and(
+        eq(portfolioEvents.portfolioId, input.portfolioId),
+        eq(portfolioEvents.assetId, input.assetId),
+        isNull(portfolioEvents.deletedAt)
+      )
+    );
+
+  const activeEvents: TimelineEvent[] = existingEvents.map((e) => ({
+    id: e.id,
+    portfolioId: e.portfolioId,
+    assetId: e.assetId,
+    type: e.type as any,
+    tradeDate: e.tradeDate,
+    quantity: new Decimal(e.quantity),
+    unitPrice: new Decimal(e.unitPrice),
+    fees: new Decimal(e.fees || 0),
+    deletedAt: e.deletedAt,
+    createdAt: e.createdAt,
+  }));
+
+  const id = crypto.randomUUID();
+  const now = new Date();
+  const factorDec = new Decimal(input.factor);
+
+  const prospectiveEvent: TimelineEvent = {
+    id,
+    portfolioId: input.portfolioId,
+    assetId: input.assetId,
+    type: input.type,
+    tradeDate: input.tradeDate,
+    quantity: factorDec.toString(),
+    unitPrice: '0',
+    fees: '0',
+    createdAt: now,
+  };
+
+  // 5. Valida a consistência temporal (rejeita desdobramento/grupamento em posições nulas ou insuficientes)
+  validateTimelineConsistency(activeEvents, prospectiveEvent);
+
+  // 6. Insere o evento corporativo
+  const [createdEvent] = await tx
+    .insert(portfolioEvents)
+    .values({
+      id,
+      portfolioId: input.portfolioId,
+      assetId: input.assetId,
+      type: input.type,
+      tradeDate: input.tradeDate,
+      settlementDate: null,
+      quantity: factorDec.toString(),
+      unitPrice: '0.00000000',
+      fees: '0.00000000',
+      currency: asset.currency || 'BRL',
+      notes: input.notes ?? null,
+      source: input.source,
+      createdBy: user.id,
+      createdAt: now,
+    })
+    .returning();
+
+  if (!createdEvent) {
+    throw new Error('Falha ao registrar evento corporativo.');
+  }
+
+  // 7. Registra auditoria transacional
+  await auditLogger(
+    {
+      tableName: 'portfolio_events',
+      recordId: id,
+      action: 'INSERT',
+      actorId: user.id,
+      actorType: 'user',
+      source: 'manual',
+    },
+    {
+      newValue: {
+        portfolioId: input.portfolioId,
+        assetId: input.assetId,
+        type: input.type,
+        tradeDate: input.tradeDate.toISOString(),
+        settlementDate: null,
+        quantity: factorDec.toString(),
+        unitPrice: '0.00000000',
+        fees: '0.00000000',
+        currency: asset.currency || 'BRL',
+        source: input.source,
+      },
+    },
+    {
+      allowlist: [
+        'portfolioId',
+        'assetId',
+        'type',
+        'tradeDate',
+        'quantity',
+        'unitPrice',
+        'fees',
+        'currency',
+        'source',
+      ],
+    },
+    tx
+  );
+
+  return createdEvent;
+}
+
+/**
+ * Registra um novo evento corporativo (SPLIT ou GROUPING) na carteira.
+ * Valida existência da carteira, titularidade, consistência cronológica e isolamento multiusuário.
+ */
+export async function createCorporateActionEvent(
+  rawInput: CreateCorporateActionEventInput,
+  user: SafeUser,
+  database: Database = db,
+  auditLogger: typeof insertAuditLog = insertAuditLog
+): Promise<PortfolioEvent> {
+  const input = createCorporateActionEventSchema.parse(rawInput);
+
+  return await database.transaction(async (tx) => {
+    return await createCorporateActionEventInTransaction(input, user, tx, auditLogger);
   });
 }
 

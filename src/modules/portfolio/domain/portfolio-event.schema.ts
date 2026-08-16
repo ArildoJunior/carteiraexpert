@@ -9,7 +9,11 @@ export const PORTFOLIO_EVENT_TYPES = [
   'TRANSFER_OUT',
   'MANUAL_ADJUSTMENT',
   'REVERSAL',
+  'SPLIT',
+  'GROUPING',
 ] as const;
+
+export const CORPORATE_ACTION_TYPES = ['SPLIT', 'GROUPING'] as const;
 
 export const EVENT_SOURCES = ['manual', 'import', 'corporate_action'] as const;
 
@@ -20,6 +24,14 @@ export const quantitySchema = createDecimalValidator({
   maxPrecision: 28,
   maxScale: 10,
   fieldName: 'Quantidade',
+});
+
+// Fator de Evento Corporativo: NUMERIC(28, 10), estritamente > 0
+export const corporateActionFactorSchema = createDecimalValidator({
+  minExclusive: new Decimal('0'),
+  maxPrecision: 28,
+  maxScale: 10,
+  fieldName: 'Fator de proporção',
 });
 
 // Preço Unitário: NUMERIC(20, 8), >= 0
@@ -157,6 +169,25 @@ export const createPortfolioEventSchema = z
 
 export type CreatePortfolioEventInput = z.input<typeof createPortfolioEventSchema>;
 export type CreatePortfolioEventOutput = z.output<typeof createPortfolioEventSchema>;
+
+// ─── Schema de Criação de Evento Corporativo (SPLIT / GROUPING) ─────────────
+export const createCorporateActionEventSchema = z.object({
+  portfolioId: z.string().uuid('ID de carteira inválido.'),
+  assetId: z.string().uuid('ID de ativo inválido.'),
+  type: z.enum(['SPLIT', 'GROUPING']),
+  tradeDate: eventDateSchema,
+  factor: corporateActionFactorSchema,
+  notes: z
+    .string()
+    .max(1000, 'As observações não podem exceder 1000 caracteres.')
+    .transform((val) => val.trim())
+    .nullable()
+    .optional(),
+  source: z.enum(EVENT_SOURCES).default('corporate_action'),
+});
+
+export type CreateCorporateActionEventInput = z.input<typeof createCorporateActionEventSchema>;
+export type CreateCorporateActionEventOutput = z.output<typeof createCorporateActionEventSchema>;
 
 // ─── Schema de Cancelamento de Evento de Carteira ───────────────────────────
 export const cancelPortfolioEventSchema = z.object({

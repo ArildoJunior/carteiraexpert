@@ -192,7 +192,7 @@ test.describe('E2E: Carteiras, Posições e Operações Manuais (Pacote 03.02)',
     await page.click('#btn-apply-history-filters');
     await expect(page.locator('#history-table')).toContainText(customTicker.toUpperCase());
 
-    // 13. Retorna à carteira e valida o Modal de Detalhamento de Histórico por Ativo
+    // 13. Retorna à carteira e valida o Modal de Detalhamento e Lançamento de Split
     await page.goto(userAPortfolioUrl);
     await expect(page.locator('#portfolio-positions-table')).toBeVisible();
 
@@ -204,9 +204,31 @@ test.describe('E2E: Carteiras, Posições e Operações Manuais (Pacote 03.02)',
     await expect(page.locator('#asset-detail-qty')).toContainText('100');
     await expect(page.locator('#asset-detail-avg-price')).toContainText('25,00');
 
+    // 14. Lança Desdobramento (Split 1:2) pelo modal
+    await page.click('#btn-toggle-corporate-action-form');
+    await expect(page.locator('#corporate-action-form')).toBeVisible();
+
+    await page.selectOption('#input-corporate-action-type', 'SPLIT');
+    await page.fill('#input-corporate-action-factor', '2');
+    await page.click('#btn-submit-corporate-action');
+
+    await expect(page.locator('#corporate-action-success-msg')).toBeVisible();
+    await expect(page.locator('#asset-detail-qty')).toContainText('200');
+    await expect(page.locator('#asset-detail-avg-price')).toContainText('12,50');
+
     // Fecha o modal
     await page.click('#btn-close-asset-detail-modal');
     await expect(page.locator('#asset-detail-modal-backdrop')).not.toBeVisible();
+
+    // Valida que a tabela de posições da carteira reflete as 200 ações
+    await expect(
+      page.locator(`#position-qty-${customTicker.toUpperCase()}`)
+    ).toContainText('200');
+
+    // 15. Acessa /history e valida a presença do evento de Desdobramento
+    await page.goto('/history');
+    await expect(page.locator('#history-table')).toContainText('Desdobramento');
+    await expect(page.locator('#history-table')).toContainText('Fator 1:2');
   });
 
   // ─── 2. Isolamento Multiusuário (Proteção contra IDOR) ──────────────────────

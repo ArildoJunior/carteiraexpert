@@ -16,6 +16,7 @@ import {
 } from './asset.service';
 import {
   createPortfolioEvent,
+  createCorporateActionEvent,
   cancelPortfolioEvent,
   listPortfolioEventsByPortfolio,
 } from './portfolio-event.service';
@@ -37,6 +38,7 @@ import {
 } from '../domain/asset.schema';
 import {
   createPortfolioEventSchema,
+  createCorporateActionEventSchema,
   cancelPortfolioEventSchema,
 } from '../domain/portfolio-event.schema';
 import {
@@ -370,6 +372,45 @@ export async function createPortfolioEventAction(
 
     const parsed = createPortfolioEventSchema.parse(raw);
     const event = await createPortfolioEvent(parsed, user);
+
+    safeRevalidatePath('/dashboard');
+    safeRevalidatePath('/history');
+    safeRevalidatePath(`/portfolios/${portfolioId}`);
+
+    return {
+      success: true,
+      data: event,
+    };
+  } catch (err) {
+    return handleActionError(err);
+  }
+}
+
+/**
+ * Registra um evento corporativo (SPLIT ou GROUPING) na carteira.
+ */
+export async function createCorporateActionEventAction(
+  _prevState: ActionResult<PortfolioEvent> | null,
+  formData: FormData
+): Promise<ActionResult<PortfolioEvent>> {
+  try {
+    const user = await requireAuth();
+
+    const portfolioId = formData.get('portfolioId')?.toString() || '';
+    const rawTradeDate = formData.get('tradeDate')?.toString();
+
+    const raw = {
+      portfolioId,
+      assetId: formData.get('assetId'),
+      type: formData.get('type'),
+      tradeDate: normalizeFormDate(rawTradeDate),
+      factor: formData.get('factor'),
+      notes: formData.get('notes') || null,
+      source: 'corporate_action',
+    };
+
+    const parsed = createCorporateActionEventSchema.parse(raw);
+    const event = await createCorporateActionEvent(parsed, user);
 
     safeRevalidatePath('/dashboard');
     safeRevalidatePath('/history');

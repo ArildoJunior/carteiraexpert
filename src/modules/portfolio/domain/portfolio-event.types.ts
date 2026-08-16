@@ -9,6 +9,8 @@ export type PortfolioEventType =
   | 'TRANSFER_IN'
   | 'TRANSFER_OUT'
   | 'MANUAL_ADJUSTMENT'
-  | 'REVERSAL';
+  | 'REVERSAL'
+  | 'SPLIT'
+  | 'GROUPING';
 
 export type EventSource = 'manual' | 'import' | 'corporate_action';

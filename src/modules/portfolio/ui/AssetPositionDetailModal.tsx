@@ -1,8 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Decimal } from '@/lib/decimal';
-import { getAssetPositionAction } from '../server/portfolio.actions';
+import {
+  getAssetPositionAction,
+  createCorporateActionEventAction,
+} from '../server/portfolio.actions';
 import type { SerializedAssetPositionDetail } from '../domain/position.types';
 
 interface AssetPositionDetailModalProps {
@@ -47,28 +50,77 @@ export function AssetPositionDetailModal({
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<SerializedAssetPositionDetail | null>(null);
 
+  // Estado do formulário de evento corporativo (Split / Grupamento)
+  const [showActionForm, setShowActionForm] = useState(false);
+  const [actionType, setActionType] = useState<'SPLIT' | 'GROUPING'>('SPLIT');
+  const [actionTradeDate, setActionTradeDate] = useState(() => {
+    return new Date().toISOString().slice(0, 10);
+  });
+  const [actionFactor, setActionFactor] = useState('2');
+  const [actionNotes, setActionNotes] = useState('');
+  const [actionSubmitting, setActionSubmitting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    const res = await getAssetPositionAction(portfolioId, assetId);
+
+    if (res.success && res.data) {
+      setDetail(res.data);
+    } else {
+      setError(res.error || 'Não foi possível carregar os detalhes do ativo.');
+    }
+    setLoading(false);
+  }, [portfolioId, assetId]);
+
   useEffect(() => {
     let isMounted = true;
-    async function loadData() {
-      setLoading(true);
-      setError(null);
-      const res = await getAssetPositionAction(portfolioId, assetId);
+    loadData().then(() => {
       if (!isMounted) return;
-
-      if (res.success && res.data) {
-        setDetail(res.data);
-      } else {
-        setError(res.error || 'Não foi possível carregar os detalhes do ativo.');
-      }
-      setLoading(false);
-    }
-
-    loadData();
+    });
 
     return () => {
       isMounted = false;
     };
-  }, [portfolioId, assetId]);
+  }, [loadData]);
+
+  async function handleCorporateActionSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setActionError(null);
+    setActionSuccess(null);
+    setActionSubmitting(true);
+
+    try {
+      const formData = new FormData();
+      formData.set('portfolioId', portfolioId);
+      formData.set('assetId', assetId);
+      formData.set('type', actionType);
+      formData.set('tradeDate', actionTradeDate);
+      formData.set('factor', actionFactor);
+      if (actionNotes.trim()) {
+        formData.set('notes', actionNotes.trim());
+      }
+
+      const res = await createCorporateActionEventAction(null, formData);
+
+      if (res.success) {
+        setActionSuccess(
+          `Evento corporativo (${actionType === 'SPLIT' ? 'Desdobramento' : 'Grupamento'}) registrado com sucesso!`
+        );
+        setShowActionForm(false);
+        setActionNotes('');
+        await loadData();
+      } else {
+        setActionError(res.error || 'Falha ao registrar evento corporativo.');
+      }
+    } catch {
+      setActionError('Erro inesperado ao registrar evento corporativo.');
+    } finally {
+      setActionSubmitting(false);
+    }
+  }
 
   const pos = detail?.position;
   const decPnL = new Decimal(pos?.totalRealizedPnL || '0');
@@ -90,7 +142,7 @@ export function AssetPositionDetailModal({
         {/* Cabeçalho */}
         <div className="flex items-start justify-between border-b border-slate-800 pb-4">
           <div>
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 flex-wrap">
               <h2
                 id="asset-detail-modal-title"
                 className="text-2xl font-bold text-white tracking-tight"
@@ -100,6 +152,15 @@ export function AssetPositionDetailModal({
               {pos?.isCustom && (
                 <span className="text-[11px] uppercase font-bold text-amber-400 bg-amber-950/60 border border-amber-800/60 px-2 py-0.5 rounded-md">
                   Customizado
+                </span>
+              )}
+              {pos?.hasFractionalShares && (
+                <span
+                  id="asset-detail-fractional-badge"
+                  className="text-[11px] font-semibold text-amber-400 bg-amber-950/60 border border-amber-800/60 px-2 py-0.5 rounded-md flex items-center gap-1"
+                  title="A quantidade em custódia contém fração residual resultante de grupamento."
+                >
+                  ⚠️ Fração Residual
                 </span>
               )}
               {pos && (
@@ -122,6 +183,23 @@ export function AssetPositionDetailModal({
             ✕
           </button>
         </div>
+
+        {/* Mensagens de Sucesso ou Erro da Ação Corporativa */}
+        {actionSuccess && (
+          <div
+            id="corporate-action-success-msg"
+            className="bg-emerald-950/50 border border-emerald-800/80 rounded-xl p-3.5 text-xs text-emerald-300 flex items-center justify-between"
+          >
+            <span>{actionSuccess}</span>
+            <button
+              type="button"
+              onClick={() => setActionSuccess(null)}
+              className="text-emerald-400 hover:text-white font-bold ml-2"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* Corpo do Modal */}
         <div className="flex-1 overflow-y-auto space-y-6 pr-1">
@@ -150,7 +228,9 @@ export function AssetPositionDetailModal({
                   >
                     {formatQuantity(pos.quantity)}
                   </p>
-                  <p className="text-[10px] text-slate-500">Em custódia ativa</p>
+                  <p className="text-[10px] text-slate-500">
+                    {pos.hasFractionalShares ? 'Com fração residual' : 'Em custódia ativa'}
+                  </p>
                 </div>
 
                 <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-4 space-y-1">
@@ -198,6 +278,135 @@ export function AssetPositionDetailModal({
                   </p>
                   <p className="text-[10px] text-slate-500">Lucro/prejuízo de vendas</p>
                 </div>
+              </div>
+
+              {/* Botão e Formulário de Lançamento de Evento Corporativo */}
+              <div className="bg-slate-950/50 border border-slate-800/80 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                      Eventos Corporativos (Split / Grupamento)
+                    </h3>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Ajusta a quantidade e o custo médio unitário mantendo o valor investido invariante.
+                    </p>
+                  </div>
+
+                  <button
+                    id="btn-toggle-corporate-action-form"
+                    type="button"
+                    onClick={() => {
+                      setShowActionForm(!showActionForm);
+                      setActionError(null);
+                    }}
+                    className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 bg-emerald-950/60 border border-emerald-800/60 px-3 py-1.5 rounded-xl transition-colors"
+                  >
+                    {showActionForm ? 'Cancelar' : '+ Lançar Split / Grupamento'}
+                  </button>
+                </div>
+
+                {showActionForm && (
+                  <form
+                    id="corporate-action-form"
+                    onSubmit={handleCorporateActionSubmit}
+                    className="pt-3 border-t border-slate-800/80 space-y-3"
+                  >
+                    {actionError && (
+                      <div
+                        id="corporate-action-error-msg"
+                        className="bg-red-950/50 border border-red-800/80 rounded-xl p-3 text-xs text-red-300"
+                      >
+                        {actionError}
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label
+                          htmlFor="input-corporate-action-type"
+                          className="block text-[11px] font-semibold text-slate-300 mb-1"
+                        >
+                          Tipo de Evento
+                        </label>
+                        <select
+                          id="input-corporate-action-type"
+                          value={actionType}
+                          onChange={(e) => setActionType(e.target.value as any)}
+                          className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                        >
+                          <option value="SPLIT">🔀 Desdobramento (Split)</option>
+                          <option value="GROUPING">🔄 Grupamento</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label
+                          htmlFor="input-corporate-action-trade-date"
+                          className="block text-[11px] font-semibold text-slate-300 mb-1"
+                        >
+                          Data de Corte (Data Ex)
+                        </label>
+                        <input
+                          id="input-corporate-action-trade-date"
+                          type="date"
+                          required
+                          value={actionTradeDate}
+                          onChange={(e) => setActionTradeDate(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label
+                          htmlFor="input-corporate-action-factor"
+                          className="block text-[11px] font-semibold text-slate-300 mb-1"
+                        >
+                          Fator de Proporção (ex: 2, 4, 10)
+                        </label>
+                        <input
+                          id="input-corporate-action-factor"
+                          type="number"
+                          step="any"
+                          min="0.0000000001"
+                          required
+                          placeholder="Ex: 10"
+                          value={actionFactor}
+                          onChange={(e) => setActionFactor(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="input-corporate-action-notes"
+                        className="block text-[11px] font-semibold text-slate-300 mb-1"
+                      >
+                        Observações (Opcional)
+                      </label>
+                      <input
+                        id="input-corporate-action-notes"
+                        type="text"
+                        maxLength={500}
+                        placeholder="Ex: Desdobramento 1:10 aprovado em AGE"
+                        value={actionNotes}
+                        onChange={(e) => setActionNotes(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div className="flex justify-end pt-1">
+                      <button
+                        id="btn-submit-corporate-action"
+                        type="submit"
+                        disabled={actionSubmitting}
+                        className="text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 px-4 py-2 rounded-xl transition-colors shadow-sm flex items-center gap-1.5"
+                      >
+                        {actionSubmitting ? 'Registrando...' : 'Confirmar Evento Corporativo'}
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
 
               {/* Tabela de Vendas Realizadas e Apuração de Lucro */}

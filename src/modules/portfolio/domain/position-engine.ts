@@ -139,12 +139,51 @@ export function calculateAssetPosition(
         // Reduz o custo total proporcionalmente mantendo o custo médio unitário
         runningCost = runningQuantity.times(priorAveragePrice);
       }
+    } else if (event.type === 'SPLIT') {
+      const factor = qty;
+      if (factor.lessThanOrEqualTo(0)) {
+        throw new Error('Fator de desdobramento (SPLIT) deve ser maior que zero.');
+      }
+      if (runningQuantity.lessThanOrEqualTo(0)) {
+        throw new InsufficientPositionError(
+          `Posição insuficiente para desdobramento (SPLIT) na data ${lastTradeDate.toISOString().slice(0, 10)}. Posição disponível: ${runningQuantity.toString()}.`,
+          {
+            availableQuantity: runningQuantity.toString(),
+            requestedQuantity: factor.toString(),
+            assetId,
+            tradeDate: lastTradeDate,
+          }
+        );
+      }
+      runningQuantity = runningQuantity.times(factor);
+      // runningCost permanece invariante!
+    } else if (event.type === 'GROUPING') {
+      const factor = qty;
+      if (factor.lessThanOrEqualTo(0)) {
+        throw new Error('Fator de grupamento (GROUPING) deve ser maior que zero.');
+      }
+      if (runningQuantity.lessThanOrEqualTo(0)) {
+        throw new InsufficientPositionError(
+          `Posição insuficiente para grupamento (GROUPING) na data ${lastTradeDate.toISOString().slice(0, 10)}. Posição disponível: ${runningQuantity.toString()}.`,
+          {
+            availableQuantity: runningQuantity.toString(),
+            requestedQuantity: factor.toString(),
+            assetId,
+            tradeDate: lastTradeDate,
+          }
+        );
+      }
+      runningQuantity = runningQuantity.dividedBy(factor);
+      // runningCost permanece invariante!
     }
   }
 
   const averagePrice = runningQuantity.isZero()
     ? new Decimal(0)
     : runningCost.dividedBy(runningQuantity);
+
+  const hasFractionalShares =
+    runningQuantity.greaterThan(0) && !runningQuantity.mod(1).isZero();
 
   const position: AssetPosition = {
     assetId,
@@ -160,6 +199,7 @@ export function calculateAssetPosition(
     totalFees: runningFees,
     totalRealizedPnL: runningRealizedPnL,
     lastTradeDate,
+    hasFractionalShares,
   };
 
   return { position, realizedTrades };
@@ -215,6 +255,60 @@ export function validateTimelineConsistency(
         }
       }
       runningQuantity = runningQuantity.minus(qty);
+    } else if (event.type === 'SPLIT') {
+      const factor = qty;
+      if (factor.lessThanOrEqualTo(0)) {
+        throw new Error('Fator de desdobramento (SPLIT) deve ser maior que zero.');
+      }
+      if (runningQuantity.lessThanOrEqualTo(0)) {
+        if (prospectiveEvent && event.id === prospectiveEvent.id) {
+          throw new InsufficientPositionError(
+            `Posição insuficiente para desdobramento (SPLIT). Posição disponível: ${runningQuantity.toString()}.`,
+            {
+              availableQuantity: runningQuantity.toString(),
+              requestedQuantity: factor.toString(),
+              assetId: event.assetId,
+              tradeDate: eventDate,
+            }
+          );
+        } else {
+          throw new RetroactiveInconsistencyError(
+            `O desdobramento não pode ser aplicado pois a posição na data ${eventDate.toISOString().slice(0, 10)} é nula ou insuficiente.`,
+            {
+              assetId: event.assetId,
+              conflictingDate: eventDate,
+            }
+          );
+        }
+      }
+      runningQuantity = runningQuantity.times(factor);
+    } else if (event.type === 'GROUPING') {
+      const factor = qty;
+      if (factor.lessThanOrEqualTo(0)) {
+        throw new Error('Fator de grupamento (GROUPING) deve ser maior que zero.');
+      }
+      if (runningQuantity.lessThanOrEqualTo(0)) {
+        if (prospectiveEvent && event.id === prospectiveEvent.id) {
+          throw new InsufficientPositionError(
+            `Posição insuficiente para grupamento (GROUPING). Posição disponível: ${runningQuantity.toString()}.`,
+            {
+              availableQuantity: runningQuantity.toString(),
+              requestedQuantity: factor.toString(),
+              assetId: event.assetId,
+              tradeDate: eventDate,
+            }
+          );
+        } else {
+          throw new RetroactiveInconsistencyError(
+            `O grupamento não pode ser aplicado pois a posição na data ${eventDate.toISOString().slice(0, 10)} é nula ou insuficiente.`,
+            {
+              assetId: event.assetId,
+              conflictingDate: eventDate,
+            }
+          );
+        }
+      }
+      runningQuantity = runningQuantity.dividedBy(factor);
     }
   }
 }
@@ -286,6 +380,7 @@ export function serializeAssetPosition(pos: AssetPosition): SerializedAssetPosit
     totalFees: pos.totalFees.toFixed(8),
     totalRealizedPnL: pos.totalRealizedPnL.toFixed(8),
     lastTradeDate: pos.lastTradeDate ? pos.lastTradeDate.toISOString() : null,
+    hasFractionalShares: pos.hasFractionalShares,
   };
 }
 

@@ -14,6 +14,7 @@ export interface AssetPosition {
   totalFees: Decimal;
   totalRealizedPnL: Decimal;
   lastTradeDate: Date | null;
+  hasFractionalShares: boolean;
 }
 
 export interface SerializedAssetPosition {
@@ -30,6 +31,7 @@ export interface SerializedAssetPosition {
   totalFees: string;
   totalRealizedPnL: string;
   lastTradeDate: string | null;
+  hasFractionalShares: boolean;
 }
 
 export interface RealizedTradePnL {

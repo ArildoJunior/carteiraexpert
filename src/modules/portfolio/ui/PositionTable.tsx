@@ -236,7 +236,18 @@ export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTablePr
                         id={`position-qty-${pos.ticker}`}
                         className="px-4 py-4 text-right font-mono font-medium text-white"
                       >
-                        {formatQuantity(pos.quantity)}
+                        <div className="flex items-center justify-end gap-1.5">
+                          {pos.hasFractionalShares && (
+                            <span
+                              id={`fractional-badge-${pos.ticker}`}
+                              title="Quantidade com fração residual decorrente de grupamento"
+                              className="text-[10px] font-sans font-semibold text-amber-400 bg-amber-950/60 border border-amber-800/60 px-1.5 py-0.2 rounded"
+                            >
+                              Fração
+                            </span>
+                          )}
+                          <span>{formatQuantity(pos.quantity)}</span>
+                        </div>
                       </td>
 
                       <td

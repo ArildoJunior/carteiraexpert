@@ -24,6 +24,7 @@ describe('Unitário: Motor de Consolidação do Dashboard Multi-Carteiras', () =
     totalFees: new Decimal('5.00'),
     totalRealizedPnL: new Decimal(pnl),
     lastTradeDate: new Date('2026-08-14T10:00:00.000Z'),
+    hasFractionalShares: false,
   });
 
   it('deve consolidar corretamente múltiplas carteiras na mesma moeda base (BRL)', () => {

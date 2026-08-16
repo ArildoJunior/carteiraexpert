@@ -101,6 +101,10 @@ export function RecentActivityFeed({ events }: RecentActivityFeedProps) {
           <tbody className="divide-y divide-slate-800/50 text-slate-300">
             {events.map((event) => {
               const isBuy = event.type === 'BUY';
+              const isSell = event.type === 'SELL';
+              const isSplit = event.type === 'SPLIT';
+              const isGrouping = event.type === 'GROUPING';
+
               const tradeDateFormatted = new Date(event.tradeDate).toLocaleDateString(
                 'pt-BR',
                 { timeZone: 'UTC' }
@@ -116,13 +120,24 @@ export function RecentActivityFeed({ events }: RecentActivityFeedProps) {
                 >
                   {/* Tipo */}
                   <td className="px-6 py-3.5 whitespace-nowrap">
-                    {isBuy ? (
+                    {isBuy && (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-400 border border-emerald-800/60">
                         🟢 Compra
                       </span>
-                    ) : (
+                    )}
+                    {isSell && (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-950/80 text-blue-400 border border-blue-800/60">
                         🔵 Venda
+                      </span>
+                    )}
+                    {isSplit && (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-950/80 text-purple-400 border border-purple-800/60">
+                        🔀 Desdobramento
+                      </span>
+                    )}
+                    {isGrouping && (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-950/80 text-amber-400 border border-amber-800/60">
+                        🔄 Grupamento
                       </span>
                     )}
                   </td>
@@ -158,19 +173,25 @@ export function RecentActivityFeed({ events }: RecentActivityFeedProps) {
                     {tradeDateFormatted}
                   </td>
 
-                  {/* Quantidade */}
+                  {/* Quantidade / Fator */}
                   <td className="px-4 py-3.5 text-right font-mono font-medium text-slate-200 whitespace-nowrap">
-                    {formatQuantity(event.quantity)}
+                    {isSplit && `Fator 1:${formatQuantity(event.quantity)}`}
+                    {isGrouping && `Fator ${formatQuantity(event.quantity)}:1`}
+                    {!isSplit && !isGrouping && formatQuantity(event.quantity)}
                   </td>
 
                   {/* Preço Unitário */}
                   <td className="px-4 py-3.5 text-right font-mono font-medium text-slate-200 whitespace-nowrap">
-                    {formatMoney(event.unitPrice, event.currency)}
+                    {isSplit || isGrouping ? '—' : formatMoney(event.unitPrice, event.currency)}
                   </td>
 
                   {/* Taxas */}
                   <td className="px-6 py-3.5 text-right font-mono text-xs text-slate-400 whitespace-nowrap">
-                    {hasFees ? formatMoney(event.fees, event.currency) : '—'}
+                    {isSplit || isGrouping
+                      ? '—'
+                      : hasFees
+                        ? formatMoney(event.fees, event.currency)
+                        : '—'}
                   </td>
                 </tr>
               );
