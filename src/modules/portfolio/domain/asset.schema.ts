@@ -10,6 +10,7 @@ export const ASSET_TYPES = [
   'option',
   'currency',
   'custom',
+  'subscription_right',
 ] as const;
 
 export const MARKETS = ['B3', 'NYSE', 'NASDAQ', 'CRYPTO', 'CUSTOM'] as const;
