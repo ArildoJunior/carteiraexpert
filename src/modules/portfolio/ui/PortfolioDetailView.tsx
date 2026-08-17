@@ -5,9 +5,14 @@ import type { Portfolio } from '../domain/portfolio.types';
 import type { PortfolioEvent } from '../domain/portfolio-event.types';
 import type { Asset } from '../domain/asset.types';
 import type { SerializedPortfolioPositionsSummary } from '../domain/position.types';
+import type {
+  SubscriptionRightWithOfferAndAssets,
+  SubscriptionOfferWithAssets,
+} from '@/modules/corporate-actions/server/subscription.service';
 import { PortfolioHeader } from './PortfolioHeader';
 import { PositionTable } from './PositionTable';
 import { PortfolioEventTable } from './PortfolioEventTable';
+import { SubscriptionPanel } from '@/modules/corporate-actions/ui/SubscriptionPanel';
 import { TransactionModal } from './TransactionModal';
 import { CancelEventModal } from './CancelEventModal';
 import { useRouter } from 'next/navigation';
@@ -17,6 +22,8 @@ interface PortfolioDetailViewProps {
   events: PortfolioEvent[];
   assetsMap: Record<string, Asset>;
   positionsSummary: SerializedPortfolioPositionsSummary;
+  subscriptions?: SubscriptionRightWithOfferAndAssets[];
+  availableOffers?: SubscriptionOfferWithAssets[];
 }
 
 export function PortfolioDetailView({
@@ -24,6 +31,8 @@ export function PortfolioDetailView({
   events,
   assetsMap,
   positionsSummary,
+  subscriptions = [],
+  availableOffers = [],
 }: PortfolioDetailViewProps) {
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
   const [eventToCancel, setEventToCancel] = useState<PortfolioEvent | null>(null);
@@ -44,7 +53,15 @@ export function PortfolioDetailView({
         baseCurrency={portfolio.baseCurrency}
       />
 
-      {/* 3. Bloco de Extrato de Operações Registradas */}
+      {/* 3. Bloco de Direitos de Subscrição Segregados */}
+      <SubscriptionPanel
+        portfolioId={portfolio.id}
+        subscriptions={subscriptions}
+        availableOffers={availableOffers}
+        onRefresh={() => router.refresh()}
+      />
+
+      {/* 4. Bloco de Extrato de Operações Registradas */}
       <div className="space-y-3" id="portfolio-events-section">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-white tracking-tight">

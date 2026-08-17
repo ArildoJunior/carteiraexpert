@@ -5,6 +5,7 @@ import { getPortfolioById } from '@/modules/portfolio/server/portfolio.service';
 import { listPortfolioEventsByPortfolio } from '@/modules/portfolio/server/portfolio-event.service';
 import { getAssetById } from '@/modules/portfolio/server/asset.service';
 import { getSerializedPortfolioPositions } from '@/modules/portfolio/server/position.service';
+import { listActiveSubscriptionsByPortfolio, listAvailableOffers } from '@/modules/corporate-actions/server/subscription.service';
 import { PortfolioDetailView } from '@/modules/portfolio/ui/PortfolioDetailView';
 import type { Asset } from '@/modules/portfolio/domain/asset.types';
 
@@ -56,9 +57,11 @@ export default async function PortfolioDetailPage({
     notFound();
   }
 
-  const [events, positionsSummary] = await Promise.all([
+  const [events, positionsSummary, subscriptions, availableOffers] = await Promise.all([
     listPortfolioEventsByPortfolio(id, user),
     getSerializedPortfolioPositions(id, user),
+    listActiveSubscriptionsByPortfolio(id, user),
+    listAvailableOffers(user),
   ]);
 
   // Mapeia os ativos únicos presentes nos eventos para exibição de ticker e nome
@@ -83,6 +86,8 @@ export default async function PortfolioDetailPage({
         events={events}
         assetsMap={assetsMap}
         positionsSummary={positionsSummary}
+        subscriptions={subscriptions}
+        availableOffers={availableOffers}
       />
     </div>
   );
