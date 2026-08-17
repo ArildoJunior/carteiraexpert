@@ -22,6 +22,13 @@ import {
   InsufficientPositionError,
   RetroactiveInconsistencyError,
 } from './errors';
+import {
+  applySplit,
+  applyGrouping,
+  applyBonusShare,
+  calculateDividend,
+  calculateJcp,
+} from '@/modules/corporate-actions/domain';
 
 export interface TimelineEvent {
   id: string;
@@ -157,8 +164,9 @@ export function calculateAssetPosition(
           }
         );
       }
-      runningQuantity = runningQuantity.times(factor);
-      // runningCost permanece invariante!
+      const splitResult = applySplit(runningQuantity, factor, runningCost);
+      runningQuantity = splitResult.quantity;
+      runningCost = splitResult.totalCost;
     } else if (event.type === 'GROUPING') {
       const factor = qty;
       if (factor.lessThanOrEqualTo(0)) {
@@ -175,8 +183,9 @@ export function calculateAssetPosition(
           }
         );
       }
-      runningQuantity = runningQuantity.dividedBy(factor);
-      // runningCost permanece invariante!
+      const groupingResult = applyGrouping(runningQuantity, factor, runningCost);
+      runningQuantity = groupingResult.quantity;
+      runningCost = groupingResult.totalCost;
     } else if (event.type === 'BONUS_SHARE') {
       if (qty.lessThanOrEqualTo(0)) {
         throw new Error('Quantidade bonificada (BONUS_SHARE) deve ser maior que zero.');
@@ -195,9 +204,9 @@ export function calculateAssetPosition(
           }
         );
       }
-      const bonusCostDelta = qty.times(price);
-      runningQuantity = runningQuantity.plus(qty);
-      runningCost = runningCost.plus(bonusCostDelta);
+      const bonusResult = applyBonusShare(runningQuantity, runningCost, qty, price);
+      runningQuantity = bonusResult.quantity;
+      runningCost = bonusResult.totalCost;
     } else if (event.type === 'DIVIDEND') {
       if (price.lessThanOrEqualTo(0)) {
         throw new Error('Valor por ação do dividendo deve ser maior que zero.');
@@ -224,8 +233,8 @@ export function calculateAssetPosition(
           }
         );
       }
-      const dividendAmount = qty.times(price);
-      runningIncome = runningIncome.plus(dividendAmount);
+      const dividendResult = calculateDividend(qty, price);
+      runningIncome = runningIncome.plus(dividendResult.incomeAmount);
     } else if (event.type === 'JCP') {
       if (price.lessThanOrEqualTo(0)) {
         throw new Error('Valor bruto por ação do JCP deve ser maior que zero.');
@@ -256,8 +265,8 @@ export function calculateAssetPosition(
       if (fees.greaterThanOrEqualTo(grossAmount)) {
         throw new Error('O valor do IRRF retido no JCP não pode ser igual ou superior ao valor bruto total.');
       }
-      const netAmount = grossAmount.minus(fees);
-      runningIncome = runningIncome.plus(netAmount);
+      const jcpResult = calculateJcp(qty, price, fees);
+      runningIncome = runningIncome.plus(jcpResult.netIncomeAmount);
     }
   }
 

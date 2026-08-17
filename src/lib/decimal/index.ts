@@ -8,3 +8,4 @@ Decimal.set({
 
 export { Decimal };
 export default Decimal;
+export * from './validator';

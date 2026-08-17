@@ -1047,4 +1047,202 @@ describe('Unidade: Eventos Corporativos — Split e Grupamento (Pacote 04.01)', 
       }).toThrow();
     });
   });
+
+  describe('8. Testes de Regressão de Replay (Validações de Domínio Direto na Reconstrução de Linha do Tempo)', () => {
+    it('deve lançar erro se evento SPLIT corrompido no banco possuir fator <= 0 durante o replay', () => {
+      const corruptEvents: TimelineEvent[] = [
+        {
+          id: 'ev-1',
+          portfolioId,
+          assetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-01'),
+          quantity: '100',
+          unitPrice: '10',
+          fees: '0',
+        },
+        {
+          id: 'ev-2',
+          portfolioId,
+          assetId,
+          type: 'SPLIT',
+          tradeDate: new Date('2026-01-02'),
+          quantity: '0', // Fator inválido
+          unitPrice: '0',
+          fees: '0',
+        },
+      ];
+      expect(() => calculateAssetPosition(assetId, corruptEvents, mockAsset)).toThrow(
+        'Fator de desdobramento (SPLIT) deve ser maior que zero.'
+      );
+    });
+
+    it('deve lançar erro se evento GROUPING corrompido no banco possuir fator <= 0 durante o replay', () => {
+      const corruptEvents: TimelineEvent[] = [
+        {
+          id: 'ev-1',
+          portfolioId,
+          assetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-01'),
+          quantity: '100',
+          unitPrice: '10',
+          fees: '0',
+        },
+        {
+          id: 'ev-2',
+          portfolioId,
+          assetId,
+          type: 'GROUPING',
+          tradeDate: new Date('2026-01-02'),
+          quantity: '-2', // Fator negativo
+          unitPrice: '0',
+          fees: '0',
+        },
+      ];
+      expect(() => calculateAssetPosition(assetId, corruptEvents, mockAsset)).toThrow(
+        'Fator de grupamento (GROUPING) deve ser maior que zero.'
+      );
+    });
+
+    it('deve lançar erro se evento BONUS_SHARE corrompido no banco possuir quantidade <= 0 durante o replay', () => {
+      const corruptEvents: TimelineEvent[] = [
+        {
+          id: 'ev-1',
+          portfolioId,
+          assetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-01'),
+          quantity: '100',
+          unitPrice: '10',
+          fees: '0',
+        },
+        {
+          id: 'ev-2',
+          portfolioId,
+          assetId,
+          type: 'BONUS_SHARE',
+          tradeDate: new Date('2026-01-02'),
+          quantity: '0', // Qty inválida
+          unitPrice: '5',
+          fees: '0',
+        },
+      ];
+      expect(() => calculateAssetPosition(assetId, corruptEvents, mockAsset)).toThrow(
+        'Quantidade bonificada (BONUS_SHARE) deve ser maior que zero.'
+      );
+    });
+
+    it('deve lançar erro se evento BONUS_SHARE corrompido no banco possuir preço negativo durante o replay', () => {
+      const corruptEvents: TimelineEvent[] = [
+        {
+          id: 'ev-1',
+          portfolioId,
+          assetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-01'),
+          quantity: '100',
+          unitPrice: '10',
+          fees: '0',
+        },
+        {
+          id: 'ev-2',
+          portfolioId,
+          assetId,
+          type: 'BONUS_SHARE',
+          tradeDate: new Date('2026-01-02'),
+          quantity: '10',
+          unitPrice: '-1.50', // Preço negativo inválido
+          fees: '0',
+        },
+      ];
+      expect(() => calculateAssetPosition(assetId, corruptEvents, mockAsset)).toThrow(
+        'Custo unitário atribuído da bonificação não pode ser negativo.'
+      );
+    });
+
+    it('deve lançar erro se evento DIVIDEND corrompido no banco possuir preço <= 0 durante o replay', () => {
+      const corruptEvents: TimelineEvent[] = [
+        {
+          id: 'ev-1',
+          portfolioId,
+          assetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-01'),
+          quantity: '100',
+          unitPrice: '10',
+          fees: '0',
+        },
+        {
+          id: 'ev-2',
+          portfolioId,
+          assetId,
+          type: 'DIVIDEND',
+          tradeDate: new Date('2026-01-02'),
+          quantity: '100',
+          unitPrice: '0', // Preço unitário zero
+          fees: '0',
+        },
+      ];
+      expect(() => calculateAssetPosition(assetId, corruptEvents, mockAsset)).toThrow(
+        'Valor por ação do dividendo deve ser maior que zero.'
+      );
+    });
+
+    it('deve lançar erro se evento JCP corrompido no banco possuir preço <= 0 durante o replay', () => {
+      const corruptEvents: TimelineEvent[] = [
+        {
+          id: 'ev-1',
+          portfolioId,
+          assetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-01'),
+          quantity: '100',
+          unitPrice: '10',
+          fees: '0',
+        },
+        {
+          id: 'ev-2',
+          portfolioId,
+          assetId,
+          type: 'JCP',
+          tradeDate: new Date('2026-01-02'),
+          quantity: '100',
+          unitPrice: '-0.50', // Preço unitário negativo
+          fees: '0',
+        },
+      ];
+      expect(() => calculateAssetPosition(assetId, corruptEvents, mockAsset)).toThrow(
+        'Valor bruto por ação do JCP deve ser maior que zero.'
+      );
+    });
+
+    it('deve lançar erro se evento JCP corrompido no banco possuir IRRF >= valor bruto total durante o replay', () => {
+      const corruptEvents: TimelineEvent[] = [
+        {
+          id: 'ev-1',
+          portfolioId,
+          assetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-01'),
+          quantity: '100',
+          unitPrice: '10',
+          fees: '0',
+        },
+        {
+          id: 'ev-2',
+          portfolioId,
+          assetId,
+          type: 'JCP',
+          tradeDate: new Date('2026-01-02'),
+          quantity: '100',
+          unitPrice: '1.00', // Gross = 100
+          fees: '100.00', // Fees == Gross
+        },
+      ];
+      expect(() => calculateAssetPosition(assetId, corruptEvents, mockAsset)).toThrow(
+        'O valor do IRRF retido no JCP não pode ser igual ou superior ao valor bruto total.'
+      );
+    });
+  });
 });
