@@ -27,6 +27,16 @@ describe('Unitário: Validação de Schemas Zod de Market Data e Câmbio', () =>
       expect(result.source).toBe('internal');
     });
 
+    it('deve aceitar preço zero no schema comum de cotações', () => {
+      const result = createMarketQuoteSchema.parse({
+        assetId: dummyAssetId,
+        price: '0.00',
+        quoteDate: '2026-08-18T18:00:00.000Z',
+      });
+
+      expect(result.price.toString()).toBe('0');
+    });
+
     it('deve rejeitar preço negativo', () => {
       expect(() =>
         createMarketQuoteSchema.parse({

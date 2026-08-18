@@ -87,7 +87,7 @@ export const quoteDateSchema = z
     }
   );
 
-// ─── Validação Estrita de Preço (Decimal / NUMERIC) ───────────────────────────
+// ─── Validação de Preço de Cotação de Mercado (Decimal / NUMERIC) ─────────────
 export const quotePriceSchema = z
   .custom<string | Decimal>(
     (val) => {
@@ -109,7 +109,36 @@ export const quotePriceSchema = z
     },
     {
       message:
-        'Preço de cotação inválido. Deve ser um valor monetário positivo ou zero em formato Decimal ou string numérica.',
+        'Preço de cotação inválido. Deve ser um valor monetário maior ou igual a zero em formato Decimal ou string numérica.',
+    }
+  )
+  .transform((val) => {
+    return val instanceof Decimal ? val : new Decimal(val.trim());
+  });
+
+// ─── Validação Estrita de Preço para Ingestão Manual (estritamente > 0) ───────
+export const ingestQuotePriceSchema = z
+  .custom<string | Decimal>(
+    (val) => {
+      if (typeof val === 'number') return false; // Proibição estrita de number do JS
+      if (val instanceof Decimal) {
+        return !val.isNaN() && val.isFinite() && val.greaterThan(0);
+      }
+      if (typeof val === 'string') {
+        try {
+          const trimmed = val.trim();
+          if (!trimmed || isNaN(Number(trimmed))) return false;
+          const d = new Decimal(trimmed);
+          return !d.isNaN() && d.isFinite() && d.greaterThan(0);
+        } catch {
+          return false;
+        }
+      }
+      return false;
+    },
+    {
+      message:
+        'Preço de cotação para ingestão inválido. Deve ser um valor monetário estritamente maior que zero em formato Decimal ou string numérica.',
     }
   )
   .transform((val) => {
@@ -189,3 +218,77 @@ export const createExchangeRateSchema = z.object({
 
 export type CreateExchangeRateInput = z.input<typeof createExchangeRateSchema>;
 export type CreateExchangeRateParsed = z.output<typeof createExchangeRateSchema>;
+
+// ─── Schemas de Ingestão de Lote (Manual e Provedores) ─────────────────────────
+export const ingestQuoteItemSchema = z
+  .object({
+    assetId: z.string().uuid('ID do ativo deve ser um UUID válido.').optional(),
+    ticker: z
+      .string()
+      .trim()
+      .min(1, 'Ticker do ativo não pode ser vazio ou composto somente por espaços.')
+      .optional(),
+    price: ingestQuotePriceSchema,
+    currency: z
+      .string()
+      .min(3, 'Código de moeda deve ter 3 caracteres.')
+      .max(3, 'Código de moeda deve ter 3 caracteres.')
+      .toUpperCase()
+      .default('BRL'),
+    market: z.string().trim().min(1, 'Mercado não pode ser vazio.').toUpperCase().optional(),
+    quoteDate: quoteDateSchema,
+    source: z.string().min(1, 'Fonte da cotação é obrigatória.').default('manual'),
+    delayStatus: z.enum(ALLOWED_INPUT_DELAY_STATUSES, {
+      message: 'Status de defasagem inválido para entrada manual. Status "realtime" não é permitido em cadastros manuais.',
+    }).default('manual'),
+    notes: z.string().nullable().optional(),
+  })
+  .refine(
+    (data) => Boolean(data.assetId || (data.ticker && data.ticker.length > 0)),
+    {
+      message: 'É obrigatório fornecer pelo menos assetId ou ticker.',
+      path: ['ticker'],
+    }
+  );
+
+export type IngestQuoteItemInput = z.input<typeof ingestQuoteItemSchema>;
+export type IngestQuoteItemParsed = z.output<typeof ingestQuoteItemSchema>;
+
+export const ingestExchangeRateItemSchema = z
+  .object({
+    fromCurrency: z
+      .string()
+      .min(3, 'Moeda de origem deve ter 3 caracteres.')
+      .max(3, 'Moeda de origem deve ter 3 caracteres.')
+      .toUpperCase(),
+    toCurrency: z
+      .string()
+      .min(3, 'Moeda de destino deve ter 3 caracteres.')
+      .max(3, 'Moeda de destino deve ter 3 caracteres.')
+      .toUpperCase()
+      .default('BRL'),
+    rate: exchangeRateSchema,
+    rateDate: quoteDateSchema,
+    source: z.string().min(1, 'Fonte cambial é obrigatória.').default('manual'),
+    delayStatus: z.enum(ALLOWED_INPUT_DELAY_STATUSES, {
+      message: 'Status de defasagem inválido para entrada manual. Status "realtime" não é permitido em cadastros manuais.',
+    }).default('manual'),
+  })
+  .refine(
+    (data) => data.fromCurrency.toUpperCase().trim() !== data.toCurrency.toUpperCase().trim(),
+    {
+      message: 'As moedas de origem e destino da taxa cambial devem ser distintas.',
+      path: ['toCurrency'],
+    }
+  );
+
+export type IngestExchangeRateItemInput = z.input<typeof ingestExchangeRateItemSchema>;
+export type IngestExchangeRateItemParsed = z.output<typeof ingestExchangeRateItemSchema>;
+
+export const ingestMarketDataPayloadSchema = z.object({
+  quotes: z.array(ingestQuoteItemSchema).optional().default([]),
+  exchangeRates: z.array(ingestExchangeRateItemSchema).optional().default([]),
+});
+
+export type IngestMarketDataPayloadInput = z.input<typeof ingestMarketDataPayloadSchema>;
+export type IngestMarketDataPayloadParsed = z.output<typeof ingestMarketDataPayloadSchema>;
