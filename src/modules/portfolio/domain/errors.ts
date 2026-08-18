@@ -88,3 +88,19 @@ export class RetroactiveInconsistencyError extends Error {
     this.conflictingDate = details?.conflictingDate;
   }
 }
+
+export class FutureDateNotAllowedError extends Error {
+  constructor(message = 'A data de referência não pode estar no futuro.') {
+    super(message);
+    this.name = 'FutureDateNotAllowedError';
+  }
+}
+
+export class InvalidEvolutionPeriodError extends Error {
+  constructor(
+    message = 'Período de evolução inválido. Valores aceitos: 1M, 3M, 6M, YTD, 1Y, ALL.'
+  ) {
+    super(message);
+    this.name = 'InvalidEvolutionPeriodError';
+  }
+}

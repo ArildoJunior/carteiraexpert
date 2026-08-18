@@ -108,6 +108,21 @@ test.describe('E2E: Carteiras, Posições e Operações Manuais (Pacote 03.02)',
       '100,00%'
     );
 
+    // 6.1. Valida Gráfico de Evolução Patrimonial (Pacote 06.04-A)
+    await expect(page.locator('#portfolio-evolution-card')).toBeVisible();
+    await expect(page.locator('#evolution-chart-container')).toBeVisible();
+    await expect(page.locator('#evolution-metric-cost')).toContainText('2.500,00');
+    await expect(page.locator('#evolution-badge-unquoted')).toBeVisible();
+    await expect(page.locator('#evolution-period-interval')).toBeVisible();
+    await page.click('#view-mode-btn-cost_basis');
+    await expect(page.locator('#view-mode-btn-cost_basis')).toHaveAttribute('aria-pressed', 'true');
+    await page.click('#period-btn-ALL');
+    await expect(page.locator('#period-btn-ALL')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('#evolution-period-interval')).toContainText('Período:');
+    await page.click('#period-btn-1M');
+    await expect(page.locator('#period-btn-1M')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('#evolution-period-interval')).toContainText('Período:');
+
     // 7. Valida que o Extrato de Operações exibe a compra
     await expect(page.locator('#portfolio-events-table')).toBeVisible();
     await expect(

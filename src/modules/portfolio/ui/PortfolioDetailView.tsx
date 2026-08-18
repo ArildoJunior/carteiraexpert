@@ -5,6 +5,7 @@ import type { Portfolio } from '../domain/portfolio.types';
 import type { PortfolioEvent } from '../domain/portfolio-event.types';
 import type { Asset } from '../domain/asset.types';
 import type { SerializedPortfolioPositionsSummary } from '../domain/position.types';
+import type { SerializedPortfolioEvolutionSummary } from '../domain/portfolio-evolution.types';
 import type {
   SubscriptionRightWithOfferAndAssets,
   SubscriptionOfferWithAssets,
@@ -12,6 +13,7 @@ import type {
 import { PortfolioHeader } from './PortfolioHeader';
 import { PositionTable } from './PositionTable';
 import { PortfolioAllocationCharts } from './PortfolioAllocationCharts';
+import { PortfolioEvolutionChart } from './PortfolioEvolutionChart';
 import { PortfolioEventTable } from './PortfolioEventTable';
 import { SubscriptionPanel } from '@/modules/corporate-actions/ui/SubscriptionPanel';
 import { TransactionModal } from './TransactionModal';
@@ -23,6 +25,7 @@ interface PortfolioDetailViewProps {
   events: PortfolioEvent[];
   assetsMap: Record<string, Asset>;
   positionsSummary: SerializedPortfolioPositionsSummary;
+  evolutionSummary?: SerializedPortfolioEvolutionSummary;
   subscriptions?: SubscriptionRightWithOfferAndAssets[];
   availableOffers?: SubscriptionOfferWithAssets[];
 }
@@ -32,6 +35,7 @@ export function PortfolioDetailView({
   events,
   assetsMap,
   positionsSummary,
+  evolutionSummary,
   subscriptions = [],
   availableOffers = [],
 }: PortfolioDetailViewProps) {
@@ -54,7 +58,12 @@ export function PortfolioDetailView({
         baseCurrency={portfolio.baseCurrency}
       />
 
-      {/* 3. Bloco de Gráficos de Alocação e Composição Patrimonial */}
+      {/* 3. Bloco de Gráficos de Evolução Patrimonial Histórica */}
+      {evolutionSummary && (positionsSummary.positions.length > 0 || events.length > 0) && (
+        <PortfolioEvolutionChart initialSummary={evolutionSummary} />
+      )}
+
+      {/* 4. Bloco de Gráficos de Alocação e Composição Patrimonial */}
       {positionsSummary.positions.length > 0 && (
         <PortfolioAllocationCharts
           positions={positionsSummary.positions}

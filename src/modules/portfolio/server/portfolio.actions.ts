@@ -32,6 +32,12 @@ import {
   getSerializedUserDashboardData,
   getSerializedUserHistoryData,
 } from './dashboard.service';
+import { getSerializedPortfolioEvolutionData } from './portfolio-evolution.service';
+import type {
+  EvolutionPeriod,
+  SerializedPortfolioEvolutionSummary,
+} from '../domain/portfolio-evolution.types';
+import { evolutionPeriodSchema } from '../domain/portfolio-evolution.schema';
 import {
   createPortfolioSchema,
   updatePortfolioSchema,
@@ -524,6 +530,31 @@ export async function getUserHistoryAction(
     const user = await requireAuth();
     const parsed = listUserHistorySchema.parse(rawFilters);
     const data = await getSerializedUserHistoryData(user, parsed);
+
+    return {
+      success: true,
+      data,
+    };
+  } catch (err) {
+    return handleActionError(err);
+  }
+}
+
+// ─── 7. EVOLUÇÃO PATRIMONIAL HISTÓRICA ───────────────────────────────────────
+
+/**
+ * Retorna a evolução patrimonial histórica de uma carteira para um período específico.
+ */
+export async function getPortfolioEvolutionAction(
+  portfolioId: string,
+  period: EvolutionPeriod | string = 'YTD'
+): Promise<ActionResult<SerializedPortfolioEvolutionSummary>> {
+  try {
+    const user = await requireAuth();
+    const validPeriod = evolutionPeriodSchema.parse(period);
+    const data = await getSerializedPortfolioEvolutionData(portfolioId, user, {
+      period: validPeriod,
+    });
 
     return {
       success: true,
