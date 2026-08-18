@@ -487,4 +487,442 @@ describe('Unidade: Motor de Posição, Custo Médio e PnL (Domain Engine)', () =
     expect(realizedTrades).toHaveLength(1);
     expect(position.totalRealizedPnL.greaterThan(0)).toBe(true);
   });
+
+  describe('Valuation em calculatePortfolioPositionsSummary', () => {
+    it('deve retornar totalMarketValue = 0 e totalUnrealizedPnL = 0 quando nenhuma posição tiver cotação, preservando totalInvestedCost', () => {
+      const events: TimelineEvent[] = [
+        {
+          id: 'ev-1',
+          portfolioId,
+          assetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-10T12:00:00Z'),
+          quantity: '100',
+          unitPrice: '25.00',
+          fees: '0.00',
+        },
+      ];
+
+      const assetsMap = new Map<string, Asset>([[assetId, mockAsset]]);
+      const summary = calculatePortfolioPositionsSummary(portfolioId, events, assetsMap);
+
+      expect(summary.totalInvestedCost.toString()).toBe('2500');
+      expect(summary.totalMarketValue.toString()).toBe('0');
+      expect(summary.totalUnrealizedPnL.toString()).toBe('0');
+      expect(summary.totalUnrealizedPnLPercent).toBeNull();
+      expect(summary.positions[0].hasQuote).toBe(false);
+      expect(summary.positions[0].marketValue).toBeNull();
+      expect(summary.positions[0].unrealizedPnL).toBeNull();
+    });
+
+    it('deve somar apenas ativos cotados em totalMarketValue em carteira mista', () => {
+      const asset2Id = 'asset-uuid-2';
+      const mockAsset2: Asset = {
+        id: asset2Id,
+        ticker: 'VALE3',
+        name: 'Vale ON',
+        assetType: 'stock',
+        market: 'B3',
+        currency: 'BRL',
+        isCustom: false,
+        userId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const events: TimelineEvent[] = [
+        // Ativo 1: 100 * 25 = 2500 (sem cotação)
+        {
+          id: 'ev-1',
+          portfolioId,
+          assetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-10T12:00:00Z'),
+          quantity: '100',
+          unitPrice: '25.00',
+          fees: '0.00',
+        },
+        // Ativo 2: 50 * 60 = 3000 (com cotação a 70.00 -> VM = 3500, PnL = +500)
+        {
+          id: 'ev-2',
+          portfolioId,
+          assetId: asset2Id,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-12T12:00:00Z'),
+          quantity: '50',
+          unitPrice: '60.00',
+          fees: '0.00',
+        },
+      ];
+
+      const assetsMap = new Map<string, Asset>([
+        [assetId, mockAsset],
+        [asset2Id, mockAsset2],
+      ]);
+
+      const quotesMap = new Map([
+        [
+          asset2Id,
+          {
+            id: 'quote-2',
+            assetId: asset2Id,
+            price: new Decimal('70.00'),
+            currency: 'BRL',
+            quoteDate: new Date('2026-08-18T18:00:00Z'),
+            source: 'internal',
+            delayStatus: 'eod' as const,
+            notes: null,
+            createdBy: 'user-1',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ],
+      ]);
+
+      const summary = calculatePortfolioPositionsSummary(
+        portfolioId,
+        events,
+        assetsMap,
+        quotesMap
+      );
+
+      // Custo Total = 2500 + 3000 = 5500
+      expect(summary.totalInvestedCost.toString()).toBe('5500');
+      // Apenas Ativo 2 entra no totalMarketValue: 3500 (não soma os 2500 do ativo 1!)
+      expect(summary.totalMarketValue.toString()).toBe('3500');
+      // PnL Não realizado soma apenas Ativo 2: +500
+      expect(summary.totalUnrealizedPnL.toString()).toBe('500');
+      // Ativo 1 permanece com hasQuote: false
+      const pos1 = summary.positions.find((p) => p.assetId === assetId);
+      expect(pos1?.hasQuote).toBe(false);
+      expect(pos1?.marketValue).toBeNull();
+      expect(pos1?.unrealizedPnL).toBeNull();
+
+      // Ativo 2 possui hasQuote: true e valores apurados
+      const pos2 = summary.positions.find((p) => p.assetId === asset2Id);
+      expect(pos2?.hasQuote).toBe(true);
+      expect(pos2?.marketValue?.toString()).toBe('3500');
+      expect(pos2?.unrealizedPnL?.toString()).toBe('500');
+
+      // Percentual total deve ser null pois nem todas as posições ativas possuem cotação
+      expect(summary.totalUnrealizedPnLPercent).toBeNull();
+    });
+
+    it('deve consolidar PnL de posição BRL com percentual calculado', () => {
+      const events: TimelineEvent[] = [
+        {
+          id: 'ev-1',
+          portfolioId,
+          assetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-10T12:00:00Z'),
+          quantity: '100',
+          unitPrice: '20.00',
+          fees: '0.00',
+        },
+      ];
+
+      const assetsMap = new Map<string, Asset>([[assetId, mockAsset]]);
+      const quotesMap = new Map([
+        [
+          assetId,
+          {
+            id: 'quote-1',
+            assetId,
+            price: new Decimal('25.00'),
+            currency: 'BRL',
+            quoteDate: new Date('2026-08-18T18:00:00Z'),
+            source: 'internal',
+            delayStatus: 'eod' as const,
+            notes: null,
+            createdBy: 'user-1',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ],
+      ]);
+
+      const summary = calculatePortfolioPositionsSummary(
+        portfolioId,
+        events,
+        assetsMap,
+        quotesMap
+      );
+
+      expect(summary.totalInvestedCost.toString()).toBe('2000');
+      expect(summary.totalMarketValue.toString()).toBe('2500');
+      expect(summary.totalUnrealizedPnL.toString()).toBe('500');
+      expect(summary.totalUnrealizedPnLPercent?.toFixed(2)).toBe('25.00');
+    });
+
+    it('deve converter PnL de posição USD para BRL usando taxa cambial válida', () => {
+      const usAssetId = 'us-asset-1';
+      const mockUsAsset: Asset = {
+        id: usAssetId,
+        ticker: 'AAPL',
+        name: 'Apple Inc.',
+        assetType: 'stock',
+        market: 'NASDAQ',
+        currency: 'USD',
+        isCustom: false,
+        userId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const events: TimelineEvent[] = [
+        {
+          id: 'ev-us-1',
+          portfolioId,
+          assetId: usAssetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-10T12:00:00Z'),
+          quantity: '10',
+          unitPrice: '150.00', // Custo = 1500 USD
+          fees: '0.00',
+        },
+      ];
+
+      const assetsMap = new Map<string, Asset>([[usAssetId, mockUsAsset]]);
+      const quotesMap = new Map([
+        [
+          usAssetId,
+          {
+            id: 'quote-us-1',
+            assetId: usAssetId,
+            price: new Decimal('200.00'), // VM = 2000 USD, PnL = +500 USD
+            currency: 'USD',
+            quoteDate: new Date('2026-08-18T18:00:00Z'),
+            source: 'internal',
+            delayStatus: 'eod' as const,
+            notes: null,
+            createdBy: 'user-1',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ],
+      ]);
+
+      const fxMap = new Map([
+        [
+          'USD',
+          {
+            id: 'fx-usd-1',
+            fromCurrency: 'USD',
+            toCurrency: 'BRL',
+            rate: new Decimal('5.50'),
+            rateDate: new Date('2026-08-18T18:00:00Z'),
+            source: 'internal',
+            delayStatus: 'eod' as const,
+            createdBy: 'user-1',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ],
+      ]);
+
+      const summary = calculatePortfolioPositionsSummary(
+        portfolioId,
+        events,
+        assetsMap,
+        quotesMap,
+        fxMap
+      );
+
+      const pos = summary.positions[0];
+      // Posição individual mantém valores em USD
+      expect(pos.currency).toBe('USD');
+      expect(pos.unrealizedPnL?.toString()).toBe('500'); // 500 USD
+      expect(pos.marketValue?.toString()).toBe('2000'); // 2000 USD
+      expect(pos.marketValueBrl?.toString()).toBe('11000'); // 2000 * 5.50 = 11000 BRL
+
+      // Total consolidado BRL: 2000 * 5.50 = 11000 VM, 500 * 5.50 = 2750 PnL
+      expect(summary.totalMarketValue.toString()).toBe('11000');
+      expect(summary.totalUnrealizedPnL.toString()).toBe('2750');
+      // Percentual consolidado retorna null pois a moeda não é puramente BRL
+      expect(summary.totalUnrealizedPnLPercent).toBeNull();
+    });
+
+    it('não deve incluir no total BRL a posição USD quando o câmbio estiver ausente', () => {
+      const usAssetId = 'us-asset-1';
+      const mockUsAsset: Asset = {
+        id: usAssetId,
+        ticker: 'AAPL',
+        name: 'Apple Inc.',
+        assetType: 'stock',
+        market: 'NASDAQ',
+        currency: 'USD',
+        isCustom: false,
+        userId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const events: TimelineEvent[] = [
+        {
+          id: 'ev-us-1',
+          portfolioId,
+          assetId: usAssetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-10T12:00:00Z'),
+          quantity: '10',
+          unitPrice: '150.00',
+          fees: '0.00',
+        },
+      ];
+
+      const assetsMap = new Map<string, Asset>([[usAssetId, mockUsAsset]]);
+      const quotesMap = new Map([
+        [
+          usAssetId,
+          {
+            id: 'quote-us-1',
+            assetId: usAssetId,
+            price: new Decimal('200.00'),
+            currency: 'USD',
+            quoteDate: new Date('2026-08-18T18:00:00Z'),
+            source: 'internal',
+            delayStatus: 'eod' as const,
+            notes: null,
+            createdBy: 'user-1',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ],
+      ]);
+
+      // Sem mapa de câmbio
+      const summary = calculatePortfolioPositionsSummary(
+        portfolioId,
+        events,
+        assetsMap,
+        quotesMap
+      );
+
+      const pos = summary.positions[0];
+      expect(pos.unrealizedPnL?.toString()).toBe('500'); // Em USD
+      expect(pos.marketValueBrl).toBeNull();
+
+      // Sem câmbio, totalMarketValue BRL e totalUnrealizedPnL BRL não recebem os valores em USD
+      expect(summary.totalMarketValue.toString()).toBe('0');
+      expect(summary.totalUnrealizedPnL.toString()).toBe('0');
+      expect(summary.totalUnrealizedPnLPercent).toBeNull();
+    });
+
+    it('em carteira mista BRL/USD, nunca deve somar PnL em USD diretamente ao total BRL', () => {
+      const usAssetId = 'us-asset-1';
+      const mockUsAsset: Asset = {
+        id: usAssetId,
+        ticker: 'MSFT',
+        name: 'Microsoft Corp.',
+        assetType: 'stock',
+        market: 'NASDAQ',
+        currency: 'USD',
+        isCustom: false,
+        userId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const events: TimelineEvent[] = [
+        // Ativo BRL: Compra 100 @ 10 = 1000 BRL. Cotação = 15 BRL -> PnL = +500 BRL
+        {
+          id: 'ev-brl',
+          portfolioId,
+          assetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-10T12:00:00Z'),
+          quantity: '100',
+          unitPrice: '10.00',
+          fees: '0.00',
+        },
+        // Ativo USD: Compra 10 @ 100 = 1000 USD. Cotação = 150 USD -> PnL = +500 USD
+        {
+          id: 'ev-usd',
+          portfolioId,
+          assetId: usAssetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-10T12:00:00Z'),
+          quantity: '10',
+          unitPrice: '100.00',
+          fees: '0.00',
+        },
+      ];
+
+      const assetsMap = new Map<string, Asset>([
+        [assetId, mockAsset],
+        [usAssetId, mockUsAsset],
+      ]);
+
+      const quotesMap = new Map([
+        [
+          assetId,
+          {
+            id: 'quote-brl',
+            assetId,
+            price: new Decimal('15.00'),
+            currency: 'BRL',
+            quoteDate: new Date('2026-08-18T18:00:00Z'),
+            source: 'internal',
+            delayStatus: 'eod' as const,
+            notes: null,
+            createdBy: 'user-1',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ],
+        [
+          usAssetId,
+          {
+            id: 'quote-usd',
+            assetId: usAssetId,
+            price: new Decimal('150.00'),
+            currency: 'USD',
+            quoteDate: new Date('2026-08-18T18:00:00Z'),
+            source: 'internal',
+            delayStatus: 'eod' as const,
+            notes: null,
+            createdBy: 'user-1',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ],
+      ]);
+
+      const fxMap = new Map([
+        [
+          'USD',
+          {
+            id: 'fx-usd',
+            fromCurrency: 'USD',
+            toCurrency: 'BRL',
+            rate: new Decimal('5.00'), // Taxa USD/BRL = 5.00
+            rateDate: new Date('2026-08-18T18:00:00Z'),
+            source: 'internal',
+            delayStatus: 'eod' as const,
+            createdBy: 'user-1',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ],
+      ]);
+
+      const summary = calculatePortfolioPositionsSummary(
+        portfolioId,
+        events,
+        assetsMap,
+        quotesMap,
+        fxMap
+      );
+
+      // PnL BRL = 500 BRL
+      // PnL USD convertido = 500 USD * 5.00 = 2500 BRL
+      // Total Unreallized PnL BRL = 500 + 2500 = 3000 BRL (NÃO 500 + 500 = 1000!)
+      expect(summary.totalUnrealizedPnL.toString()).toBe('3000');
+      // Total Market Value BRL = 1500 (BRL) + (1500 USD * 5.00 = 7500 BRL) = 9000 BRL
+      expect(summary.totalMarketValue.toString()).toBe('9000');
+      // Percentual total é null por se tratar de carteira multi-moeda
+      expect(summary.totalUnrealizedPnLPercent).toBeNull();
+    });
+  });
 });

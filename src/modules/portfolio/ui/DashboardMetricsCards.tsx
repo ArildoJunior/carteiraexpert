@@ -34,6 +34,9 @@ export function DashboardMetricsCards({
       totalInvestedCost: '0.00000000',
       totalFees: '0.00000000',
       totalRealizedPnL: '0.00000000',
+      totalIncomeReceived: '0.00000000',
+      totalMarketValue: '0.00000000',
+      totalUnrealizedPnL: '0.00000000',
       activePositionsCount: 0,
       portfoliosCount: 0,
     };
@@ -41,6 +44,10 @@ export function DashboardMetricsCards({
   const decRealizedPnL = new Decimal(activeGroup.totalRealizedPnL || '0');
   const isPositivePnL = decRealizedPnL.greaterThan(0);
   const isNegativePnL = decRealizedPnL.lessThan(0);
+
+  const decUnrealizedPnL = new Decimal(activeGroup.totalUnrealizedPnL || '0');
+  const isPositiveUnrealized = decUnrealizedPnL.greaterThan(0);
+  const isNegativeUnrealized = decUnrealizedPnL.lessThan(0);
 
   return (
     <div className="space-y-4" id="dashboard-consolidated-metrics">
@@ -69,7 +76,7 @@ export function DashboardMetricsCards({
       )}
 
       {/* Cards de Resumo */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3.5">
         {/* Total em Custódia */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg space-y-1">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
@@ -77,12 +84,53 @@ export function DashboardMetricsCards({
           </p>
           <p
             id="dashboard-total-custody"
-            className="text-xl sm:text-2xl font-bold text-white tracking-tight"
+            className="text-lg sm:text-xl font-bold text-white tracking-tight"
           >
             {formatMoney(activeGroup.totalInvestedCost, activeGroup.currency)}
           </p>
           <p className="text-[11px] text-slate-500">
             Custo total consolidado
+          </p>
+        </div>
+
+        {/* Valor de Mercado */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg space-y-1">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            Valor a Mercado
+          </p>
+          <p
+            id="dashboard-total-market-value"
+            className="text-lg sm:text-xl font-bold text-sky-400 tracking-tight"
+          >
+            {formatMoney(activeGroup.totalMarketValue || '0', activeGroup.currency)}
+          </p>
+          <p className="text-[11px] text-slate-500">
+            {new Decimal(activeGroup.totalMarketValue || '0').greaterThan(0)
+              ? 'Marcação a mercado'
+              : 'Sem cotações disponíveis'}
+          </p>
+        </div>
+
+        {/* PnL Não Realizado */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg space-y-1">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            PnL Não Realizado
+          </p>
+          <p
+            id="dashboard-unrealized-pnl"
+            className={`text-lg sm:text-xl font-bold tracking-tight ${
+              isPositiveUnrealized
+                ? 'text-emerald-400'
+                : isNegativeUnrealized
+                ? 'text-red-400'
+                : 'text-slate-300'
+            }`}
+          >
+            {isPositiveUnrealized ? '+' : ''}
+            {formatMoney(activeGroup.totalUnrealizedPnL || '0', activeGroup.currency)}
+          </p>
+          <p className="text-[11px] text-slate-500">
+            Variação patrimonial aberta
           </p>
         </div>
 
@@ -93,7 +141,7 @@ export function DashboardMetricsCards({
           </p>
           <p
             id="dashboard-realized-pnl"
-            className={`text-xl sm:text-2xl font-bold tracking-tight ${
+            className={`text-lg sm:text-xl font-bold tracking-tight ${
               isPositivePnL
                 ? 'text-emerald-400'
                 : isNegativePnL
@@ -116,7 +164,7 @@ export function DashboardMetricsCards({
           </p>
           <p
             id="dashboard-total-income"
-            className="text-xl sm:text-2xl font-bold text-amber-400 tracking-tight"
+            className="text-lg sm:text-xl font-bold text-amber-400 tracking-tight"
           >
             {formatMoney(activeGroup.totalIncomeReceived || '0', activeGroup.currency)}
           </p>
@@ -132,26 +180,26 @@ export function DashboardMetricsCards({
           </p>
           <p
             id="dashboard-total-fees"
-            className="text-xl sm:text-2xl font-bold text-slate-200 tracking-tight"
+            className="text-lg sm:text-xl font-bold text-slate-200 tracking-tight"
           >
             {formatMoney(activeGroup.totalFees, activeGroup.currency)}
           </p>
           <p className="text-[11px] text-slate-500">
-            Corretagens e emolumentos
+            Corretagens e taxas
           </p>
         </div>
 
-        {/* Ativos em Gestão */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg space-y-1 col-span-1 sm:col-span-2 lg:col-span-1">
+        {/* Ativos em Carteira */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg space-y-1">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
             Ativos em Carteira
           </p>
           <p
             id="dashboard-active-assets"
-            className="text-xl sm:text-2xl font-bold text-indigo-400 tracking-tight"
+            className="text-lg sm:text-xl font-bold text-indigo-400 tracking-tight"
           >
             {activeGroup.activePositionsCount}{' '}
-            <span className="text-xs sm:text-sm font-normal text-slate-400">
+            <span className="text-xs font-normal text-slate-400">
               {activeGroup.activePositionsCount === 1 ? 'ativo' : 'ativos'}
             </span>
           </p>

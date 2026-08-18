@@ -147,6 +147,7 @@ function createMockDb(overrides: {
           { id: 3, hash: 'hash_0002', created_at: 3000 },
           { id: 4, hash: 'hash_0003', created_at: 4000 },
           { id: 5, hash: 'hash_0004', created_at: 5000 },
+          { id: 6, hash: 'hash_0005', created_at: 6000 },
         ];
       }
 

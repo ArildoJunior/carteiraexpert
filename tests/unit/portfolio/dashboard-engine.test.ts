@@ -26,6 +26,19 @@ describe('Unitário: Motor de Consolidação do Dashboard Multi-Carteiras', () =
     totalIncomeReceived: new Decimal(income),
     lastTradeDate: new Date('2026-08-14T10:00:00.000Z'),
     hasFractionalShares: false,
+    hasQuote: false,
+    marketPrice: null,
+    marketValue: null,
+    unrealizedPnL: null,
+    unrealizedPnLPercent: null,
+    quoteCurrency: null,
+    quoteDate: null,
+    quoteSource: null,
+    delayStatus: null,
+    marketValueBrl: null,
+    fxRateUsed: null,
+    fxDateUsed: null,
+    assetPriceReturnPercent: null,
   });
 
   it('deve consolidar corretamente múltiplas carteiras na mesma moeda base (BRL)', () => {
@@ -37,6 +50,9 @@ describe('Unitário: Motor de Consolidação do Dashboard Multi-Carteiras', () =
       totalFees: new Decimal('10.00'),
       totalRealizedPnL: new Decimal('150.00'),
       totalIncomeReceived: new Decimal('50.00'),
+      totalMarketValue: new Decimal('3000.00'),
+      totalUnrealizedPnL: new Decimal('0'),
+      totalUnrealizedPnLPercent: new Decimal('0'),
       calculatedAt: new Date(),
     };
 
@@ -51,6 +67,9 @@ describe('Unitário: Motor de Consolidação do Dashboard Multi-Carteiras', () =
       totalFees: new Decimal('25.00'),
       totalRealizedPnL: new Decimal('250.00'),
       totalIncomeReceived: new Decimal('125.00'),
+      totalMarketValue: new Decimal('7000.00'),
+      totalUnrealizedPnL: new Decimal('0'),
+      totalUnrealizedPnLPercent: new Decimal('0'),
       calculatedAt: new Date(),
     };
 
@@ -94,6 +113,9 @@ describe('Unitário: Motor de Consolidação do Dashboard Multi-Carteiras', () =
       totalFees: new Decimal('12.00'),
       totalRealizedPnL: new Decimal('100.00'),
       totalIncomeReceived: new Decimal('40.00'),
+      totalMarketValue: new Decimal('4000.00'),
+      totalUnrealizedPnL: new Decimal('0'),
+      totalUnrealizedPnLPercent: new Decimal('0'),
       calculatedAt: new Date(),
     };
 
@@ -105,6 +127,9 @@ describe('Unitário: Motor de Consolidação do Dashboard Multi-Carteiras', () =
       totalFees: new Decimal('3.00'),
       totalRealizedPnL: new Decimal('50.00'),
       totalIncomeReceived: new Decimal('15.00'),
+      totalMarketValue: new Decimal('1500.00'),
+      totalUnrealizedPnL: new Decimal('0'),
+      totalUnrealizedPnLPercent: new Decimal('0'),
       calculatedAt: new Date(),
     };
 
@@ -165,6 +190,9 @@ describe('Unitário: Motor de Consolidação do Dashboard Multi-Carteiras', () =
       totalFees: new Decimal('4.75'),
       totalRealizedPnL: new Decimal('80.25'),
       totalIncomeReceived: new Decimal('20.00'),
+      totalMarketValue: new Decimal('1250.50'),
+      totalUnrealizedPnL: new Decimal('0'),
+      totalUnrealizedPnLPercent: new Decimal('0'),
       calculatedAt: new Date('2026-08-15T12:00:00.000Z'),
     };
 
@@ -179,16 +207,16 @@ describe('Unitário: Motor de Consolidação do Dashboard Multi-Carteiras', () =
       type: 'BUY',
       tradeDate: new Date('2026-08-15T10:00:00.000Z'),
       settlementDate: new Date('2026-08-17T10:00:00.000Z'),
-      quantity: '100.0000000000',
-      unitPrice: '12.50500000',
-      fees: '4.75000000',
+      quantity: '100',
+      unitPrice: '12.50',
+      fees: '4.75',
       currency: 'BRL',
-      notes: 'Compra regular',
       source: 'manual',
-      createdBy: crypto.randomUUID(),
-      createdAt: new Date('2026-08-15T10:00:00.000Z'),
-      deletedAt: null,
+      notes: 'Compra de teste',
       cancellationReason: null,
+      createdBy: crypto.randomUUID(),
+      deletedAt: null,
+      createdAt: new Date('2026-08-15T10:05:00.000Z'),
     };
 
     const dashboardSummary = calculateUserDashboardSummary(
@@ -207,41 +235,41 @@ describe('Unitário: Motor de Consolidação do Dashboard Multi-Carteiras', () =
 
     expect(serialized.totalActivePortfolios).toBe(1);
     expect(serialized.totalActivePositions).toBe(1);
+    expect(serialized.currencyGroups).toHaveLength(1);
     expect(serialized.currencyGroups[0].totalInvestedCost).toBe('1250.50000000');
+    expect(serialized.currencyGroups[0].totalFees).toBe('4.75000000');
     expect(serialized.currencyGroups[0].totalRealizedPnL).toBe('80.25000000');
-    expect(serialized.recentEvents[0].portfolioName).toBe('Carteira Principal');
+    expect(serialized.currencyGroups[0].totalIncomeReceived).toBe('20.00000000');
+
+    expect(serialized.portfolioSummaries).toHaveLength(1);
+    expect(serialized.portfolioSummaries[0].summary.totalInvestedCost).toBe('1250.50000000');
+    expect(serialized.portfolioSummaries[0].summary.positions[0].quantity).toBe('100.0000000000');
+    expect(serialized.portfolioSummaries[0].summary.positions[0].averagePrice).toBe('12.50500000');
+
+    expect(serialized.recentEvents).toHaveLength(1);
     expect(serialized.recentEvents[0].assetTicker).toBe('B3SA3');
-    expect(serialized.recentEvents[0].quantity).toBe('100.0000000000');
+    expect(serialized.recentEvents[0].tradeDate).toBe('2026-08-15T10:00:00.000Z');
+    expect(serialized.recentEvents[0].unitPrice).toBe('12.50');
   });
 
-  it('deve validar limites de paginação e filtros no schema listUserRecentEventsSchema', () => {
-    const valid = listUserRecentEventsSchema.parse({
-      limit: 25,
-      offset: 10,
-      type: 'BUY',
+  describe('Zod: Validação de Parâmetros de Consulta de Eventos Recentes', () => {
+    it('deve aceitar parâmetros válidos com defaults preenchidos', () => {
+      const valid1 = listUserRecentEventsSchema.parse({});
+      expect(valid1.limit).toBe(10);
+
+      const valid2 = listUserRecentEventsSchema.parse({ limit: 25, portfolioId: crypto.randomUUID() });
+      expect(valid2.limit).toBe(25);
+      expect(valid2.portfolioId).toBeDefined();
     });
 
-    expect(valid.limit).toBe(25);
-    expect(valid.offset).toBe(10);
-    expect(valid.type).toBe('BUY');
+    it('deve rejeitar limit menor que 1 ou maior que 50', () => {
+      expect(() => listUserRecentEventsSchema.parse({ limit: 0 })).toThrow();
+      expect(() => listUserRecentEventsSchema.parse({ limit: 51 })).toThrow();
+      expect(() => listUserRecentEventsSchema.parse({ limit: -5 })).toThrow();
+    });
 
-    // Default limit = 10, offset = 0
-    const defaults = listUserRecentEventsSchema.parse({});
-    expect(defaults.limit).toBe(10);
-    expect(defaults.offset).toBe(0);
-
-    // Rejeita limite acima de 50
-    expect(() =>
-      listUserRecentEventsSchema.parse({
-        limit: 100,
-      })
-    ).toThrow();
-
-    // Rejeita offset negativo
-    expect(() =>
-      listUserRecentEventsSchema.parse({
-        offset: -1,
-      })
-    ).toThrow();
+    it('deve rejeitar portfolioId que não seja UUID', () => {
+      expect(() => listUserRecentEventsSchema.parse({ portfolioId: 'invalid-uuid-format' })).toThrow();
+    });
   });
 });

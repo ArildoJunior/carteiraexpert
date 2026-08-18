@@ -40,6 +40,72 @@ function formatQuantity(quantity: string | Decimal): string {
   }
 }
 
+function renderDelayBadge(delayStatus: string | null, hasQuote: boolean, ticker: string) {
+  if (!hasQuote || !delayStatus) {
+    return (
+      <span
+        id={`delay-badge-${ticker}`}
+        title="Sem cotação cadastrada no banco interno"
+        className="text-[10px] font-sans font-medium text-slate-400 bg-slate-800/80 border border-slate-700/60 px-1.5 py-0.5 rounded"
+      >
+        S/ Cotação
+      </span>
+    );
+  }
+
+  switch (delayStatus) {
+    case 'realtime':
+      return (
+        <span
+          id={`delay-badge-${ticker}`}
+          title="Cotação em tempo real"
+          className="text-[10px] font-sans font-medium text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-1.5 py-0.5 rounded"
+        >
+          Tempo Real
+        </span>
+      );
+    case 'delayed_15m':
+      return (
+        <span
+          id={`delay-badge-${ticker}`}
+          title="Cotação com atraso de 15 minutos"
+          className="text-[10px] font-sans font-medium text-amber-400 bg-amber-950/60 border border-amber-800/60 px-1.5 py-0.5 rounded"
+        >
+          15m atraso
+        </span>
+      );
+    case 'eod':
+      return (
+        <span
+          id={`delay-badge-${ticker}`}
+          title="Cotação de fechamento diário (EOD)"
+          className="text-[10px] font-sans font-medium text-slate-300 bg-slate-800/80 border border-slate-700/60 px-1.5 py-0.5 rounded"
+        >
+          Fechamento
+        </span>
+      );
+    case 'manual':
+      return (
+        <span
+          id={`delay-badge-${ticker}`}
+          title="Cotação informada manualmente"
+          className="text-[10px] font-sans font-medium text-indigo-300 bg-indigo-950/60 border border-indigo-800/60 px-1.5 py-0.5 rounded"
+        >
+          Manual
+        </span>
+      );
+    default:
+      return (
+        <span
+          id={`delay-badge-${ticker}`}
+          className="text-[10px] font-sans font-medium text-slate-400 bg-slate-800/80 border border-slate-700/60 px-1.5 py-0.5 rounded"
+        >
+          {delayStatus}
+        </span>
+      );
+  }
+}
+
 export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTableProps) {
   const [showClosed, setShowClosed] = useState(false);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
@@ -47,6 +113,11 @@ export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTablePr
   const decRealizedPnL = new Decimal(summary.totalRealizedPnL || '0');
   const isTotalPnLPositive = decRealizedPnL.greaterThan(0);
   const isTotalPnLNegative = decRealizedPnL.lessThan(0);
+
+  const decUnrealizedPnL = new Decimal(summary.totalUnrealizedPnL || '0');
+  const isTotalUnrealizedPositive = decUnrealizedPnL.greaterThan(0);
+  const isTotalUnrealizedNegative = decUnrealizedPnL.lessThan(0);
+
   const activeCount = summary.positions.length;
 
   return (
@@ -61,7 +132,7 @@ export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTablePr
       )}
 
       {/* ─── Cards de Resumo Financeiro ────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5" id="position-metrics-cards">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3.5" id="position-metrics-cards">
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
             Total em Custódia
@@ -73,7 +144,54 @@ export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTablePr
             {formatMoney(summary.totalInvestedCost, baseCurrency)}
           </p>
           <p className="text-[11px] text-slate-500 mt-0.5">
-            Custo total de aquisição
+            Custo de aquisição
+          </p>
+        </div>
+
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            Valor a Mercado
+          </p>
+          <p
+            id="metric-total-market-value"
+            className="text-lg sm:text-xl font-bold text-sky-400 mt-1 tracking-tight"
+          >
+            {formatMoney(summary.totalMarketValue || '0', baseCurrency)}
+          </p>
+          <p className="text-[11px] text-slate-500 mt-0.5">
+            {summary.positions.length === 0
+              ? 'Marcação a mercado'
+              : summary.positions.every((p) => p.hasQuote)
+              ? 'Marcação a mercado'
+              : summary.positions.some((p) => p.hasQuote)
+              ? 'Marcação parcial (ativos cotados)'
+              : 'Sem cotações disponíveis'}
+          </p>
+        </div>
+
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            PnL Não Realizado
+          </p>
+          <p
+            id="metric-total-unrealized-pnl"
+            className={`text-lg sm:text-xl font-bold mt-1 tracking-tight ${
+              isTotalUnrealizedPositive
+                ? 'text-emerald-400'
+                : isTotalUnrealizedNegative
+                ? 'text-red-400'
+                : 'text-slate-300'
+            }`}
+          >
+            {isTotalUnrealizedPositive ? '+' : ''}
+            {formatMoney(summary.totalUnrealizedPnL || '0', baseCurrency)}
+          </p>
+          <p className="text-[11px] text-slate-500 mt-0.5">
+            {summary.totalUnrealizedPnLPercent
+              ? `${isTotalUnrealizedPositive ? '+' : ''}${new Decimal(summary.totalUnrealizedPnLPercent).toFixed(2)}% em aberto`
+              : summary.positions.some((p) => p.hasQuote)
+              ? 'Variação aberta'
+              : 'Sem cotações disponíveis'}
           </p>
         </div>
 
@@ -125,11 +243,11 @@ export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTablePr
             {formatMoney(summary.totalFees, baseCurrency)}
           </p>
           <p className="text-[11px] text-slate-500 mt-0.5">
-            Corretagens e emolumentos
+            Corretagens e taxas
           </p>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm col-span-1 sm:col-span-2 lg:col-span-1">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
             Ativos em Custódia
           </p>
@@ -139,7 +257,7 @@ export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTablePr
           >
             {activeCount}{' '}
             <span className="text-xs font-normal text-slate-400">
-              {activeCount === 1 ? 'posição ativa' : 'posições'}
+              {activeCount === 1 ? 'posição' : 'posições'}
             </span>
           </p>
           <p className="text-[11px] text-slate-500 mt-0.5">
@@ -161,7 +279,7 @@ export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTablePr
               </span>
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Quantidade acumulada e custo médio ponderado por ativo.
+              Quantidade acumulada, custo médio e marcação a mercado por ativo.
             </p>
           </div>
 
@@ -205,7 +323,10 @@ export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTablePr
                   <th className="px-6 py-3.5">Ativo</th>
                   <th className="px-4 py-3.5 text-right">Quantidade</th>
                   <th className="px-4 py-3.5 text-right">Custo Médio</th>
+                  <th className="px-4 py-3.5 text-right">Cotação Atual</th>
                   <th className="px-4 py-3.5 text-right">Total Investido</th>
+                  <th className="px-4 py-3.5 text-right">Valor a Mercado</th>
+                  <th className="px-4 py-3.5 text-right">PnL Não Realizado</th>
                   <th className="px-4 py-3.5 text-right">Taxas Totais</th>
                   <th className="px-6 py-3.5 text-right">PnL Realizado</th>
                   <th className="px-4 py-3.5 text-center">Histórico</th>
@@ -216,6 +337,10 @@ export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTablePr
                   const rowPnL = new Decimal(pos.totalRealizedPnL || '0');
                   const isRowPositive = rowPnL.greaterThan(0);
                   const isRowNegative = rowPnL.lessThan(0);
+
+                  const rowUnrealized = pos.unrealizedPnL ? new Decimal(pos.unrealizedPnL) : null;
+                  const isUnrealizedPositive = rowUnrealized?.greaterThan(0) ?? false;
+                  const isUnrealizedNegative = rowUnrealized?.lessThan(0) ?? false;
 
                   return (
                     <tr
@@ -242,7 +367,7 @@ export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTablePr
                             {pos.market}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-400 truncate max-w-[220px]">
+                        <p className="text-xs text-slate-400 truncate max-w-[200px]">
                           {pos.name}
                         </p>
                       </td>
@@ -272,11 +397,78 @@ export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTablePr
                         {formatMoney(pos.averagePrice, pos.currency)}
                       </td>
 
+                      {/* Cotação de Mercado com Badge de Defasagem */}
+                      <td
+                        id={`position-market-price-${pos.ticker}`}
+                        className="px-4 py-4 text-right font-mono"
+                      >
+                        {pos.hasQuote && pos.marketPrice ? (
+                          <div className="flex flex-col items-end gap-0.5">
+                            <span className="font-medium text-white">
+                              {formatMoney(pos.marketPrice, pos.quoteCurrency || pos.currency)}
+                            </span>
+                            {renderDelayBadge(pos.delayStatus, pos.hasQuote, pos.ticker)}
+                          </div>
+                        ) : (
+                          <div className="flex justify-end">
+                            {renderDelayBadge(null, false, pos.ticker)}
+                          </div>
+                        )}
+                      </td>
+
                       <td
                         id={`position-total-cost-${pos.ticker}`}
-                        className="px-4 py-4 text-right font-mono font-semibold text-emerald-400"
+                        className="px-4 py-4 text-right font-mono font-semibold text-slate-300"
                       >
                         {formatMoney(pos.totalCost, pos.currency)}
+                      </td>
+
+                      {/* Valor a Mercado com conversão cambial se aplicável */}
+                      <td
+                        id={`position-market-value-${pos.ticker}`}
+                        className="px-4 py-4 text-right font-mono font-semibold text-sky-400"
+                      >
+                        {pos.hasQuote && pos.marketValue ? (
+                          <div className="flex flex-col items-end gap-0.5">
+                            <span>{formatMoney(pos.marketValue, pos.quoteCurrency || pos.currency)}</span>
+                            {pos.marketValueBrl && pos.quoteCurrency !== 'BRL' && (
+                              <span className="text-[10px] text-slate-400">
+                                ≈ {formatMoney(pos.marketValueBrl, 'BRL')}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-slate-500">-</span>
+                        )}
+                      </td>
+
+                      {/* PnL Não Realizado */}
+                      <td
+                        id={`position-unrealized-pnl-${pos.ticker}`}
+                        className={`px-4 py-4 text-right font-mono font-semibold ${
+                          isUnrealizedPositive
+                            ? 'text-emerald-400'
+                            : isUnrealizedNegative
+                            ? 'text-red-400'
+                            : 'text-slate-400'
+                        }`}
+                      >
+                        {pos.hasQuote && pos.unrealizedPnL ? (
+                          <div className="flex flex-col items-end gap-0.5">
+                            <span>
+                              {isUnrealizedPositive ? '+' : ''}
+                              {formatMoney(pos.unrealizedPnL, pos.quoteCurrency || pos.currency)}
+                            </span>
+                            {pos.unrealizedPnLPercent && (
+                              <span className="text-[10px]">
+                                {isUnrealizedPositive ? '+' : ''}
+                                {new Decimal(pos.unrealizedPnLPercent).toFixed(2)}%
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-slate-500">-</span>
+                        )}
                       </td>
 
                       <td
@@ -318,104 +510,6 @@ export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTablePr
           </div>
         )}
       </div>
-
-      {/* ─── Tabela de Posições Encerradas (Zeradas com PnL) ──────────────── */}
-      {showClosed && summary.closedPositions.length > 0 && (
-        <div
-          id="closed-positions-section"
-          className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-lg animate-in fade-in duration-200"
-        >
-          <div className="px-6 py-4 border-b border-slate-800/80">
-            <h3 className="text-md font-bold text-slate-300 flex items-center gap-2">
-              <span>Posições Encerradas (Quantidade Zerada)</span>
-              <span className="text-xs font-normal bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">
-                {summary.closedPositions.length}
-              </span>
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Ativos com posição totalmente liquidada e histórico de resultado financeiro.
-            </p>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table
-              id="closed-positions-table"
-              className="w-full text-left border-collapse text-sm"
-            >
-              <thead>
-                <tr className="border-b border-slate-800/80 bg-slate-950/40 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                  <th className="px-6 py-3">Ativo</th>
-                  <th className="px-4 py-3 text-right">Taxas Totais</th>
-                  <th className="px-4 py-3 text-right">Proventos Recebidos</th>
-                  <th className="px-6 py-3 text-right">Resultado Realizado Final</th>
-                  <th className="px-4 py-3 text-center">Histórico</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/40 text-slate-400">
-                {summary.closedPositions.map((pos) => {
-                  const rowClosedPnL = new Decimal(pos.totalRealizedPnL || '0');
-                  const isClosedPositive = rowClosedPnL.greaterThan(0);
-                  const isClosedNegative = rowClosedPnL.lessThan(0);
-
-                  return (
-                    <tr
-                      key={pos.assetId}
-                      id={`closed-position-row-${pos.ticker}`}
-                      className="hover:bg-slate-800/30 transition-colors"
-                    >
-                      <td className="px-6 py-3.5">
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedAssetId(pos.assetId)}
-                            className="font-bold text-slate-200 text-sm hover:text-emerald-400 hover:underline text-left transition-colors"
-                          >
-                            {pos.ticker}
-                          </button>
-                          <span className="text-[11px] text-slate-500 font-mono">
-                            {pos.market}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-500 truncate max-w-[200px]">
-                          {pos.name}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3.5 text-right font-mono text-xs text-slate-400">
-                        {formatMoney(pos.totalFees, pos.currency)}
-                      </td>
-                      <td className="px-4 py-3.5 text-right font-mono text-xs text-amber-400">
-                        {formatMoney(pos.totalIncomeReceived || '0', pos.currency)}
-                      </td>
-                      <td
-                        className={`px-6 py-3.5 text-right font-mono font-semibold text-sm ${
-                          isClosedPositive
-                            ? 'text-emerald-400'
-                            : isClosedNegative
-                            ? 'text-red-400'
-                            : 'text-slate-400'
-                        }`}
-                      >
-                        {isClosedPositive ? '+' : ''}
-                        {formatMoney(pos.totalRealizedPnL, pos.currency)}
-                      </td>
-                      <td className="px-4 py-3.5 text-center">
-                        <button
-                          id={`btn-detail-closed-asset-${pos.ticker}`}
-                          type="button"
-                          onClick={() => setSelectedAssetId(pos.assetId)}
-                          className="px-2.5 py-1 text-xs font-semibold text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors border border-slate-700/60"
-                        >
-                          Ver Trades
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

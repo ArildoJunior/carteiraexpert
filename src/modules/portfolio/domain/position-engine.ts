@@ -29,6 +29,11 @@ import {
   calculateDividend,
   calculateJcp,
 } from '@/modules/corporate-actions/domain';
+import {
+  calculateAssetValuation,
+  type MarketQuote,
+  type ExchangeRate,
+} from '@/modules/market-data';
 
 export interface TimelineEvent {
   id: string;
@@ -73,7 +78,9 @@ export function sortEventsChronologically<T extends { tradeDate: Date; createdAt
 export function calculateAssetPosition(
   assetId: string,
   events: TimelineEvent[],
-  assetMetadata?: Asset
+  assetMetadata?: Asset,
+  quote?: MarketQuote | null,
+  fxRate?: ExchangeRate | null
 ): {
   position: AssetPosition;
   realizedTrades: RealizedTradePnL[];
@@ -239,6 +246,12 @@ export function calculateAssetPosition(
       if (price.lessThanOrEqualTo(0)) {
         throw new Error('Valor bruto por ação do JCP deve ser maior que zero.');
       }
+      const grossAmount = qty.times(price);
+      if (fees.greaterThanOrEqualTo(grossAmount)) {
+        throw new Error(
+          'O valor do IRRF retido no JCP não pode ser igual ou superior ao valor bruto total.'
+        );
+      }
       if (runningQuantity.lessThanOrEqualTo(0)) {
         throw new InsufficientPositionError(
           `Posição insuficiente para recebimento de JCP na data de corte ${lastTradeDate.toISOString().slice(0, 10)}. Posição disponível: ${runningQuantity.toString()}.`,
@@ -261,10 +274,6 @@ export function calculateAssetPosition(
           }
         );
       }
-      const grossAmount = qty.times(price);
-      if (fees.greaterThanOrEqualTo(grossAmount)) {
-        throw new Error('O valor do IRRF retido no JCP não pode ser igual ou superior ao valor bruto total.');
-      }
       const jcpResult = calculateJcp(qty, price, fees);
       runningIncome = runningIncome.plus(jcpResult.netIncomeAmount);
     }
@@ -277,7 +286,7 @@ export function calculateAssetPosition(
   const hasFractionalShares =
     runningQuantity.greaterThan(0) && !runningQuantity.mod(1).isZero();
 
-  const position: AssetPosition = {
+  const rawPosition: AssetPosition = {
     assetId,
     ticker: assetMetadata?.ticker ?? 'N/A',
     name: assetMetadata?.name ?? 'Ativo',
@@ -293,6 +302,26 @@ export function calculateAssetPosition(
     totalIncomeReceived: runningIncome,
     lastTradeDate,
     hasFractionalShares,
+    hasQuote: false,
+    marketPrice: null,
+    marketValue: null,
+    unrealizedPnL: null,
+    unrealizedPnLPercent: null,
+    quoteCurrency: null,
+    quoteDate: null,
+    quoteSource: null,
+    delayStatus: null,
+    marketValueBrl: null,
+    fxRateUsed: null,
+    fxDateUsed: null,
+    assetPriceReturnPercent: null,
+  };
+
+  const valuation = calculateAssetValuation(rawPosition, quote, fxRate);
+
+  const position: AssetPosition = {
+    ...rawPosition,
+    ...valuation,
   };
 
   return { position, realizedTrades };
@@ -479,7 +508,9 @@ export function validateTimelineConsistency(
 export function calculatePortfolioPositionsSummary(
   portfolioId: string,
   events: TimelineEvent[],
-  assetsMap?: Map<string, Asset>
+  assetsMap?: Map<string, Asset>,
+  quotesMap?: Map<string, MarketQuote>,
+  fxMap?: Map<string, ExchangeRate>
 ): PortfolioPositionsSummary {
   const activeEvents = events.filter((e) => !e.deletedAt);
   const assetIds = Array.from(new Set(activeEvents.map((e) => e.assetId)));
@@ -490,11 +521,21 @@ export function calculatePortfolioPositionsSummary(
   let totalFees = new Decimal(0);
   let totalRealizedPnL = new Decimal(0);
   let totalIncomeReceived = new Decimal(0);
+  let totalMarketValue = new Decimal(0);
+  let totalUnrealizedPnL = new Decimal(0);
 
   for (const assetId of assetIds) {
     const assetEvents = activeEvents.filter((e) => e.assetId === assetId);
     const assetMeta = assetsMap?.get(assetId);
-    const { position } = calculateAssetPosition(assetId, assetEvents, assetMeta);
+    const quote = quotesMap?.get(assetId);
+    const fxRate = fxMap?.get(assetMeta?.currency ?? 'BRL');
+    const { position } = calculateAssetPosition(
+      assetId,
+      assetEvents,
+      assetMeta,
+      quote,
+      fxRate
+    );
 
     totalFees = totalFees.plus(position.totalFees);
     totalRealizedPnL = totalRealizedPnL.plus(position.totalRealizedPnL);
@@ -503,6 +544,26 @@ export function calculatePortfolioPositionsSummary(
     if (position.quantity.greaterThan(0)) {
       activePositions.push(position);
       totalInvestedCost = totalInvestedCost.plus(position.totalCost);
+
+      if (position.hasQuote && position.marketValue !== null) {
+        // Para ativos em BRL usa marketValue; para estrangeiros usa marketValueBrl se disponível
+        const isBrl = (assetMeta?.currency ?? position.currency ?? 'BRL') === 'BRL';
+        const effectiveMarketValue = isBrl ? position.marketValue : position.marketValueBrl;
+
+        if (effectiveMarketValue !== null) {
+          totalMarketValue = totalMarketValue.plus(effectiveMarketValue);
+          if (position.unrealizedPnL !== null) {
+            // Para ativos BRL, usa o PnL original. Para estrangeiros, converte para BRL via fxRateUsed.
+            if (isBrl) {
+              totalUnrealizedPnL = totalUnrealizedPnL.plus(position.unrealizedPnL);
+            } else if (position.fxRateUsed && position.fxRateUsed.greaterThan(0)) {
+              const unrealizedPnLBrl = position.unrealizedPnL.times(position.fxRateUsed);
+              totalUnrealizedPnL = totalUnrealizedPnL.plus(unrealizedPnLBrl);
+            }
+          }
+        }
+      }
+      // Posições sem cotação não contribuem para totalMarketValue nem totalUnrealizedPnL
     } else if (
       position.totalRealizedPnL.abs().greaterThan(0) ||
       position.totalFees.greaterThan(0) ||
@@ -511,6 +572,27 @@ export function calculatePortfolioPositionsSummary(
       // Posição zerada com histórico (vendas com lucro/prejuízo, taxas ou proventos recebidos)
       closedPositions.push(position);
     }
+  }
+
+  // Identifica se a carteira é homogênea em BRL
+  const distinctCurrencies = new Set(
+    activePositions.map((p) => p.currency || 'BRL')
+  );
+  const isSingleCurrencyBrl =
+    distinctCurrencies.size === 1 && distinctCurrencies.has('BRL');
+
+  // Verifica se TODAS as posições ativas possuem valuation completo
+  const allPositionsHaveQuote =
+    activePositions.length > 0 &&
+    activePositions.every((p) => p.hasQuote && p.marketValue !== null);
+
+  let totalUnrealizedPnLPercent: Decimal | null = null;
+
+  // Calcula percentual consolidado somente se a carteira for 100% BRL e TODAS as posições tiverem cotação válida
+  if (isSingleCurrencyBrl && allPositionsHaveQuote && totalInvestedCost.greaterThan(0)) {
+    totalUnrealizedPnLPercent = totalUnrealizedPnL
+      .dividedBy(totalInvestedCost)
+      .times(100);
   }
 
   // Ordena posições ativas pelo ticker alfabético
@@ -525,6 +607,9 @@ export function calculatePortfolioPositionsSummary(
     totalFees,
     totalRealizedPnL,
     totalIncomeReceived,
+    totalMarketValue,
+    totalUnrealizedPnL,
+    totalUnrealizedPnLPercent,
     calculatedAt: new Date(),
   };
 }
@@ -549,6 +634,23 @@ export function serializeAssetPosition(pos: AssetPosition): SerializedAssetPosit
     totalIncomeReceived: pos.totalIncomeReceived.toFixed(8),
     lastTradeDate: pos.lastTradeDate ? pos.lastTradeDate.toISOString() : null,
     hasFractionalShares: pos.hasFractionalShares,
+    hasQuote: pos.hasQuote,
+    marketPrice: pos.marketPrice ? pos.marketPrice.toFixed(8) : null,
+    marketValue: pos.marketValue ? pos.marketValue.toFixed(8) : null,
+    unrealizedPnL: pos.unrealizedPnL ? pos.unrealizedPnL.toFixed(8) : null,
+    unrealizedPnLPercent: pos.unrealizedPnLPercent
+      ? pos.unrealizedPnLPercent.toFixed(4)
+      : null,
+    quoteCurrency: pos.quoteCurrency,
+    quoteDate: pos.quoteDate ? pos.quoteDate.toISOString() : null,
+    quoteSource: pos.quoteSource,
+    delayStatus: pos.delayStatus,
+    marketValueBrl: pos.marketValueBrl ? pos.marketValueBrl.toFixed(8) : null,
+    fxRateUsed: pos.fxRateUsed ? pos.fxRateUsed.toFixed(8) : null,
+    fxDateUsed: pos.fxDateUsed ? pos.fxDateUsed.toISOString() : null,
+    assetPriceReturnPercent: pos.assetPriceReturnPercent
+      ? pos.assetPriceReturnPercent.toFixed(4)
+      : null,
   };
 }
 
@@ -578,13 +680,18 @@ export function serializePositionsSummary(
     totalFees: summary.totalFees.toFixed(8),
     totalRealizedPnL: summary.totalRealizedPnL.toFixed(8),
     totalIncomeReceived: summary.totalIncomeReceived.toFixed(8),
+    totalMarketValue: summary.totalMarketValue.toFixed(8),
+    totalUnrealizedPnL: summary.totalUnrealizedPnL.toFixed(8),
+    totalUnrealizedPnLPercent: summary.totalUnrealizedPnLPercent
+      ? summary.totalUnrealizedPnLPercent.toFixed(4)
+      : null,
     calculatedAt: summary.calculatedAt.toISOString(),
   };
 }
 
 /**
  * Consolida os resumos de múltiplas carteiras agrupando por moeda base.
- * Totaliza investimento em custódia, PnL realizado, taxas, proventos recebidos e contagem de ativos ativos.
+ * Totaliza investimento em custódia, valor de mercado, PnL não realizado, PnL realizado, taxas e proventos recebidos.
  */
 export function calculateUserDashboardSummary(
   portfolioData: {
@@ -602,6 +709,8 @@ export function calculateUserDashboardSummary(
       totalFees: Decimal;
       totalRealizedPnL: Decimal;
       totalIncomeReceived: Decimal;
+      totalMarketValue: Decimal;
+      totalUnrealizedPnL: Decimal;
       activePositionsCount: number;
       portfoliosCount: number;
     }
@@ -618,6 +727,8 @@ export function calculateUserDashboardSummary(
         totalFees: new Decimal(0),
         totalRealizedPnL: new Decimal(0),
         totalIncomeReceived: new Decimal(0),
+        totalMarketValue: new Decimal(0),
+        totalUnrealizedPnL: new Decimal(0),
         activePositionsCount: 0,
         portfoliosCount: 0,
       });
@@ -628,6 +739,8 @@ export function calculateUserDashboardSummary(
     group.totalFees = group.totalFees.plus(item.summary.totalFees);
     group.totalRealizedPnL = group.totalRealizedPnL.plus(item.summary.totalRealizedPnL);
     group.totalIncomeReceived = group.totalIncomeReceived.plus(item.summary.totalIncomeReceived);
+    group.totalMarketValue = group.totalMarketValue.plus(item.summary.totalMarketValue);
+    group.totalUnrealizedPnL = group.totalUnrealizedPnL.plus(item.summary.totalUnrealizedPnL);
     group.activePositionsCount += item.summary.positions.length;
     group.portfoliosCount += 1;
 
@@ -642,6 +755,8 @@ export function calculateUserDashboardSummary(
       totalFees: data.totalFees,
       totalRealizedPnL: data.totalRealizedPnL,
       totalIncomeReceived: data.totalIncomeReceived,
+      totalMarketValue: data.totalMarketValue,
+      totalUnrealizedPnL: data.totalUnrealizedPnL,
       activePositionsCount: data.activePositionsCount,
       portfoliosCount: data.portfoliosCount,
     }))
@@ -659,6 +774,8 @@ export function calculateUserDashboardSummary(
       totalFees: new Decimal(0),
       totalRealizedPnL: new Decimal(0),
       totalIncomeReceived: new Decimal(0),
+      totalMarketValue: new Decimal(0),
+      totalUnrealizedPnL: new Decimal(0),
       activePositionsCount: 0,
       portfoliosCount: 0,
     });
@@ -717,6 +834,8 @@ export function serializeCurrencyGroupSummary(
     totalFees: group.totalFees.toFixed(8),
     totalRealizedPnL: group.totalRealizedPnL.toFixed(8),
     totalIncomeReceived: group.totalIncomeReceived.toFixed(8),
+    totalMarketValue: group.totalMarketValue.toFixed(8),
+    totalUnrealizedPnL: group.totalUnrealizedPnL.toFixed(8),
     activePositionsCount: group.activePositionsCount,
     portfoliosCount: group.portfoliosCount,
   };

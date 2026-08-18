@@ -375,6 +375,63 @@ export const EXPECTED_SCHEMA_MATRIX: Record<string, ExpectedTable> = {
       { name: 'created_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: false, hasDefault: true },
     ],
   },
+  market_quotes: {
+    name: 'market_quotes',
+    primaryKey: 'id',
+    uniqueConstraints: ['uq_market_quotes_asset_date'],
+    foreignKeys: [
+      {
+        column: 'asset_id',
+        foreignTable: 'assets',
+        foreignColumn: 'id',
+        deleteRule: 'RESTRICT',
+      },
+      {
+        column: 'created_by',
+        foreignTable: 'users',
+        foreignColumn: 'id',
+        deleteRule: 'RESTRICT',
+      },
+    ],
+    columns: [
+      { name: 'id', type: 'uuid', isNullable: false },
+      { name: 'asset_id', type: 'uuid', isNullable: false },
+      { name: 'price', type: 'numeric', isNullable: false },
+      { name: 'currency', type: 'text', isNullable: false, hasDefault: true },
+      { name: 'quote_date', type: ['timestamp with time zone', 'timestamptz'], isNullable: false },
+      { name: 'source', type: 'text', isNullable: false, hasDefault: true },
+      { name: 'delay_status', type: 'text', isNullable: false, hasDefault: true },
+      { name: 'notes', type: 'text', isNullable: true },
+      { name: 'created_by', type: 'uuid', isNullable: false },
+      { name: 'created_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: false, hasDefault: true },
+      { name: 'updated_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: false, hasDefault: true },
+    ],
+  },
+  exchange_rates: {
+    name: 'exchange_rates',
+    primaryKey: 'id',
+    uniqueConstraints: ['uq_exchange_rates_pair_date'],
+    foreignKeys: [
+      {
+        column: 'created_by',
+        foreignTable: 'users',
+        foreignColumn: 'id',
+        deleteRule: 'RESTRICT',
+      },
+    ],
+    columns: [
+      { name: 'id', type: 'uuid', isNullable: false },
+      { name: 'from_currency', type: 'text', isNullable: false },
+      { name: 'to_currency', type: 'text', isNullable: false, hasDefault: true },
+      { name: 'rate', type: 'numeric', isNullable: false },
+      { name: 'rate_date', type: ['timestamp with time zone', 'timestamptz'], isNullable: false },
+      { name: 'source', type: 'text', isNullable: false, hasDefault: true },
+      { name: 'delay_status', type: 'text', isNullable: false, hasDefault: true },
+      { name: 'created_by', type: 'uuid', isNullable: false },
+      { name: 'created_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: false, hasDefault: true },
+      { name: 'updated_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: false, hasDefault: true },
+    ],
+  },
 };
 
 /**

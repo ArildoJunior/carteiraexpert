@@ -16,6 +16,21 @@ export interface AssetPosition {
   totalIncomeReceived: Decimal;
   lastTradeDate: Date | null;
   hasFractionalShares: boolean;
+
+  // Campos de Valuation e Marcação a Mercado
+  hasQuote: boolean;
+  marketPrice: Decimal | null;
+  marketValue: Decimal | null;
+  unrealizedPnL: Decimal | null;
+  unrealizedPnLPercent: Decimal | null;
+  quoteCurrency: string | null;
+  quoteDate: Date | null;
+  quoteSource: string | null;
+  delayStatus: string | null;
+  marketValueBrl: Decimal | null;
+  fxRateUsed: Decimal | null;
+  fxDateUsed: Date | null;
+  assetPriceReturnPercent: Decimal | null;
 }
 
 export interface SerializedAssetPosition {
@@ -34,6 +49,21 @@ export interface SerializedAssetPosition {
   totalIncomeReceived: string;
   lastTradeDate: string | null;
   hasFractionalShares: boolean;
+
+  // Campos Serializados de Valuation
+  hasQuote: boolean;
+  marketPrice: string | null;
+  marketValue: string | null;
+  unrealizedPnL: string | null;
+  unrealizedPnLPercent: string | null;
+  quoteCurrency: string | null;
+  quoteDate: string | null;
+  quoteSource: string | null;
+  delayStatus: string | null;
+  marketValueBrl: string | null;
+  fxRateUsed: string | null;
+  fxDateUsed: string | null;
+  assetPriceReturnPercent: string | null;
 }
 
 export interface RealizedTradePnL {
@@ -70,6 +100,9 @@ export interface PortfolioPositionsSummary {
   totalFees: Decimal;
   totalRealizedPnL: Decimal;
   totalIncomeReceived: Decimal;
+  totalMarketValue: Decimal;
+  totalUnrealizedPnL: Decimal;
+  totalUnrealizedPnLPercent: Decimal | null;
   calculatedAt: Date;
 }
 
@@ -81,6 +114,9 @@ export interface SerializedPortfolioPositionsSummary {
   totalFees: string;
   totalRealizedPnL: string;
   totalIncomeReceived: string;
+  totalMarketValue: string;
+  totalUnrealizedPnL: string;
+  totalUnrealizedPnLPercent: string | null;
   calculatedAt: string;
 }
 

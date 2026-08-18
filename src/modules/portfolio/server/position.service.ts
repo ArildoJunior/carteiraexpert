@@ -1,5 +1,5 @@
 import { eq, and, isNull, inArray } from 'drizzle-orm';
-import { db, type Database, type DatabaseTransaction, type DbExecutor } from '../../../lib/db';
+import { db, type DbExecutor } from '../../../lib/db';
 import { portfolioEvents, assets } from '../../../lib/db/schema/portfolio';
 import type { SafeUser } from '../../identity/domain/user.types';
 import type { Asset } from '../domain/asset.types';
@@ -20,9 +20,16 @@ import type {
 } from '../domain/position.types';
 import { getPortfolioById } from './portfolio.service';
 import { getAssetById } from './asset.service';
+import {
+  getLatestQuotesForAssets,
+  getLatestExchangeRates,
+  getLatestQuoteForAsset,
+  getLatestExchangeRate,
+} from '@/modules/market-data';
 
 /**
  * Retorna o resumo consolidado de posições de uma carteira para o usuário autenticado.
+ * Injeta cotações e taxas cambiais do banco interno para valuation a mercado e conversão cambial.
  */
 export async function getPortfolioPositions(
   portfolioId: string,
@@ -55,6 +62,8 @@ export async function getPortfolioPositions(
     .where(inArray(assets.id, distinctAssetIds));
 
   const assetsMap = new Map<string, Asset>();
+  const distinctCurrencies = new Set<string>();
+
   for (const a of assetRows) {
     assetsMap.set(a.id, {
       id: a.id,
@@ -68,10 +77,23 @@ export async function getPortfolioPositions(
       createdAt: a.createdAt,
       updatedAt: a.updatedAt,
     });
+    if (a.currency) {
+      distinctCurrencies.add(a.currency);
+    }
   }
 
-  // 4. Executa cálculo no motor de domínio
-  return calculatePortfolioPositionsSummary(portfolioId, rawEvents, assetsMap);
+  // 4. Busca cotações de mercado e taxas cambiais internas
+  const quotesMap = await getLatestQuotesForAssets(distinctAssetIds, user, executor);
+  const fxMap = await getLatestExchangeRates(Array.from(distinctCurrencies), 'BRL', executor);
+
+  // 5. Executa cálculo no motor de domínio
+  return calculatePortfolioPositionsSummary(
+    portfolioId,
+    rawEvents,
+    assetsMap,
+    quotesMap,
+    fxMap
+  );
 }
 
 /**
@@ -113,7 +135,13 @@ export async function getAssetPositionInPortfolio(
       )
     );
 
-  return calculateAssetPosition(assetId, rawEvents, asset);
+  // 4. Busca cotação e taxa de câmbio
+  const quote = await getLatestQuoteForAsset(assetId, user, executor);
+  const fxRate = asset.currency
+    ? await getLatestExchangeRate(asset.currency, 'BRL', executor)
+    : null;
+
+  return calculateAssetPosition(assetId, rawEvents, asset, quote, fxRate);
 }
 
 /**
