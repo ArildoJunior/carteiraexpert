@@ -314,12 +314,49 @@ describe('Portfolio Event Domain Schemas (Unit Tests)', () => {
       expect(eventDateSchema.safeParse('invalid-date').success).toBe(false);
     });
 
-    it('deve rejeitar tradeDate no futuro (ex: 2099-01-01T00:00:00Z)', () => {
+    it('deve rejeitar tradeDate no ano futuro (ex: 2099-01-01T10:00:00Z)', () => {
       const futureIsoZ = '2099-01-01T10:00:00Z';
       expect(tradeDateSchema.safeParse(futureIsoZ).success).toBe(false);
 
-      const futureDateObj = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30);
+      const futureDateObj = new Date(Date.now() + 1000 * 60 * 60 * 24 * 365);
       expect(tradeDateSchema.safeParse(futureDateObj).success).toBe(false);
+    });
+
+    it('deve rejeitar tradeDate em mês futuro do mesmo ano', () => {
+      const now = new Date();
+      const futureMonthDate = new Date(Date.UTC(now.getUTCFullYear() + (now.getUTCMonth() === 11 ? 1 : 0), (now.getUTCMonth() + 1) % 12, 15, 12, 0, 0, 0));
+      expect(tradeDateSchema.safeParse(futureMonthDate).success).toBe(false);
+      expect(tradeDateSchema.safeParse(futureMonthDate.toISOString()).success).toBe(false);
+    });
+
+    it('deve rejeitar tradeDate no dia seguinte (amanhã)', () => {
+      const now = new Date();
+      const tomorrowMidnight = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0));
+      const tomorrowNoon = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 12, 0, 0, 0));
+
+      expect(tradeDateSchema.safeParse(tomorrowMidnight).success).toBe(false);
+      expect(tradeDateSchema.safeParse(tomorrowNoon).success).toBe(false);
+      expect(tradeDateSchema.safeParse(tomorrowNoon.toISOString()).success).toBe(false);
+    });
+
+    it('deve aceitar tradeDate na data corrente (hoje) normalizada com T12:00:00.000Z', () => {
+      const today = new Date().toISOString().split('T')[0];
+      const todayIso = `${today}T12:00:00.000Z`;
+      expect(tradeDateSchema.safeParse(todayIso).success).toBe(true);
+
+      const todayDateObj = new Date();
+      expect(tradeDateSchema.safeParse(todayDateObj).success).toBe(true);
+    });
+
+    it('deve aceitar tradeDate em qualquer horário limite do dia corrente (00:00:00, 12:00:00 e 23:59:59)', () => {
+      const now = new Date();
+      const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+      const todayNoon = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12, 0, 0, 0));
+      const todayEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+
+      expect(tradeDateSchema.safeParse(todayStart.toISOString()).success).toBe(true);
+      expect(tradeDateSchema.safeParse(todayNoon.toISOString()).success).toBe(true);
+      expect(tradeDateSchema.safeParse(todayEnd.toISOString()).success).toBe(true);
     });
 
     it('deve aceitar tradeDate determinística no passado de forma confiável e sem race condition', () => {
@@ -469,6 +506,34 @@ describe('Portfolio Event Domain Schemas (Unit Tests)', () => {
       });
 
       expect(result.success).toBe(false);
+    });
+
+    it('deve aceitar payload exato de compra (BUY) do fluxo E2E na data corrente com campos opcionais', () => {
+      const today = new Date().toISOString().split('T')[0];
+      const todayIso = `${today}T12:00:00.000Z`;
+
+      const result = createPortfolioEventSchema.safeParse({
+        portfolioId: validPortfolioId,
+        assetId: validAssetId,
+        type: 'BUY',
+        tradeDate: todayIso,
+        settlementDate: null,
+        quantity: '100',
+        unitPrice: '25.00',
+        fees: '0.00',
+        currency: 'BRL',
+        notes: 'Primeira compra E2E',
+        source: 'manual',
+      });
+
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+
+      expect(result.data.type).toBe('BUY');
+      expect(result.data.quantity).toBe('100');
+      expect(result.data.unitPrice).toBe('25');
+      expect(result.data.fees).toBe('0');
+      expect(result.data.notes).toBe('Primeira compra E2E');
     });
   });
 });

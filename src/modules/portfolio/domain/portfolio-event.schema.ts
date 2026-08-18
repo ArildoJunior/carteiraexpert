@@ -125,10 +125,26 @@ export const eventDateSchema = z
     return d;
   });
 
-// tradeDate: deve ser válida e não pode ser uma data futura
-export const tradeDateSchema = eventDateSchema.refine((d) => d.getTime() <= Date.now(), {
-  message: 'A data de negociação (tradeDate) não pode ser uma data futura.',
-});
+// tradeDate: deve ser válida e não pode ser uma data de calendário futura
+export const tradeDateSchema = eventDateSchema.refine(
+  (d) => {
+    const now = new Date();
+    const tradeDateMidnightUtc = Date.UTC(
+      d.getUTCFullYear(),
+      d.getUTCMonth(),
+      d.getUTCDate()
+    );
+    const todayMidnightUtc = Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate()
+    );
+    return tradeDateMidnightUtc <= todayMidnightUtc;
+  },
+  {
+    message: 'A data de negociação (tradeDate) não pode ser uma data futura.',
+  }
+);
 
 // settlementDate: data válida opcional
 export const settlementDateSchema = eventDateSchema;
