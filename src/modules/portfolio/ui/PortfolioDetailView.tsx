@@ -11,6 +11,7 @@ import type {
 } from '@/modules/corporate-actions/server/subscription.service';
 import { PortfolioHeader } from './PortfolioHeader';
 import { PositionTable } from './PositionTable';
+import { PortfolioAllocationCharts } from './PortfolioAllocationCharts';
 import { PortfolioEventTable } from './PortfolioEventTable';
 import { SubscriptionPanel } from '@/modules/corporate-actions/ui/SubscriptionPanel';
 import { TransactionModal } from './TransactionModal';
@@ -53,7 +54,15 @@ export function PortfolioDetailView({
         baseCurrency={portfolio.baseCurrency}
       />
 
-      {/* 3. Bloco de Direitos de Subscrição Segregados */}
+      {/* 3. Bloco de Gráficos de Alocação e Composição Patrimonial */}
+      {positionsSummary.positions.length > 0 && (
+        <PortfolioAllocationCharts
+          positions={positionsSummary.positions}
+          baseCurrency={portfolio.baseCurrency}
+        />
+      )}
+
+      {/* 4. Bloco de Direitos de Subscrição Segregados */}
       <SubscriptionPanel
         portfolioId={portfolio.id}
         subscriptions={subscriptions}

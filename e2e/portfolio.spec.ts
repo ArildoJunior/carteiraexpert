@@ -92,6 +92,22 @@ test.describe('E2E: Carteiras, Posições e Operações Manuais (Pacote 03.02)',
     ).toContainText('100');
     await expect(page.locator('#metric-total-invested')).toContainText('2.500,00');
 
+    // 6.1. Valida a presença e alternância dos Gráficos de Alocação
+    await expect(page.locator('#portfolio-allocation-charts-container')).toBeVisible();
+    // Ativo customizado sem cotação: exibe aviso de ausência de cotações em modo mercado
+    await expect(page.locator('#chart-only-unquoted-state')).toBeVisible();
+    // Alterna para visualização por Custo de Aquisição
+    await page.click('#chart-switch-to-cost-btn');
+    await expect(page.locator('#portfolio-allocation-charts-container')).toContainText(
+      customTicker.toUpperCase()
+    );
+    await expect(page.locator('#portfolio-allocation-charts-container')).toContainText(
+      '2.500,00'
+    );
+    await expect(page.locator('#portfolio-allocation-charts-container')).toContainText(
+      '100,00%'
+    );
+
     // 7. Valida que o Extrato de Operações exibe a compra
     await expect(page.locator('#portfolio-events-table')).toBeVisible();
     await expect(

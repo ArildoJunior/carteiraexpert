@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { getCurrentUser } from '@/modules/identity/server/current-user';
 import { getSerializedUserDashboardData } from '@/modules/portfolio/server/dashboard.service';
 import { DashboardMetricsCards } from '@/modules/portfolio/ui/DashboardMetricsCards';
+import { DashboardAllocationCharts } from '@/modules/portfolio/ui/DashboardAllocationCharts';
 import { RecentActivityFeed } from '@/modules/portfolio/ui/RecentActivityFeed';
 import { Decimal } from '@/lib/decimal';
 
@@ -57,6 +58,13 @@ export default async function DashboardPage() {
         currencyGroups={data.currencyGroups}
         totalActivePortfolios={data.totalActivePortfolios}
       />
+
+      {/* ─── Gráficos de Alocação Consolidada ──────────────────────────────── */}
+      {data.totalActivePositions > 0 && (
+        <DashboardAllocationCharts
+          portfolioSummaries={data.portfolioSummaries}
+        />
+      )}
 
       {/* ─── Seção Minhas Carteiras ────────────────────────────────────────── */}
       <div className="space-y-4" id="dashboard-portfolios-section">
