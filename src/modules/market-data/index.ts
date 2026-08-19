@@ -5,4 +5,5 @@ export * from './server/market-data.service';
 export * from './server/market-data-provider.types';
 export * from './server/adapters/manual-payload.adapter';
 export * from './server/adapters/mock-provider.adapter';
+export * from './server/adapters/brapi.adapter';
 export * from './server/market-data-ingestion.service';

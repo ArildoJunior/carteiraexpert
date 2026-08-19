@@ -31,37 +31,15 @@ import type { ManualMarketDataPayload } from '../src/modules/market-data/server/
 
 function printHelp() {
   console.log(`
-Uso: pnpm run market:ingest --file=<caminho-arquivo-json> [opções]
+Uso: pnpm run market:ingest [--file=<caminho-json> | --provider=brapi --tickers=<TICKERS>] [opções]
 
 Opções:
-  --file=<caminho>       Caminho para o arquivo JSON contendo cotações e/ou taxas de câmbio (obrigatório).
-  --dry-run              Simulação segura: executa validação de schema, resolução de ativos no catálogo, checagem de ownership e verificação de políticas de qualidade sem gravar no banco de dados e sem registrar auditoria. Requer acesso ao banco de dados e usuário operador.
-  --user-email=<email>   E-mail do operador/usuário responsável pela validação, checagem de permissões e auditoria. Se omitido, utiliza o primeiro usuário ativo disponível.
-  --help                 Exibe esta mensagem de ajuda.
-
-Exemplo de payload JSON:
-{
-  "quotes": [
-    {
-      "ticker": "PETR4",
-      "price": "38.50",
-      "currency": "BRL",
-      "quoteDate": "2026-08-18T00:00:00.000Z",
-      "source": "manual",
-      "delayStatus": "manual"
-    }
-  ],
-  "exchangeRates": [
-    {
-      "fromCurrency": "USD",
-      "toCurrency": "BRL",
-      "rate": "5.42",
-      "rateDate": "2026-08-18T00:00:00.000Z",
-      "source": "manual",
-      "delayStatus": "manual"
-    }
-  ]
-}
+  --file=<caminho>          Caminho para arquivo JSON de payload manual (fallback).
+  --provider=<brapi>        Identificador do provedor externo a consultar (ex: brapi).
+  --tickers=<TICKER,LIST>   Lista de tickers separados por vírgula ao usar --provider.
+  --dry-run                 Simulação: valida schema e checa permissões sem gravar no banco.
+  --user-email=<email>      E-mail do operador responsável pela auditoria.
+  --help                    Exibe esta mensagem de ajuda.
 `);
 }
 
@@ -74,12 +52,19 @@ async function main() {
   }
 
   let filePath: string | null = null;
+  let providerName: string | null = null;
+  let tickersList: string[] = [];
   let isDryRun = false;
   let userEmail: string | null = null;
 
   for (const arg of args) {
     if (arg.startsWith('--file=')) {
       filePath = arg.substring('--file='.length).trim();
+    } else if (arg.startsWith('--provider=')) {
+      providerName = arg.substring('--provider='.length).trim().toLowerCase();
+    } else if (arg.startsWith('--tickers=')) {
+      const raw = arg.substring('--tickers='.length).trim();
+      tickersList = raw.split(',').map((t) => t.trim().toUpperCase()).filter(Boolean);
     } else if (arg === '--dry-run') {
       isDryRun = true;
     } else if (arg.startsWith('--user-email=')) {
@@ -87,27 +72,22 @@ async function main() {
     }
   }
 
-  if (!filePath) {
-    console.error('❌ ERRO: O argumento --file=<caminho> é obrigatório.');
+  if (filePath && providerName) {
+    console.error(
+      '❌ ERRO: Argumentos conflitantes. Forneça --file=<caminho> OU --provider=<provedor>, nunca ambos simultaneamente.'
+    );
     printHelp();
     process.exit(1);
   }
 
-  const resolvedPath = path.isAbsolute(filePath)
-    ? filePath
-    : path.resolve(process.cwd(), filePath);
-
-  if (!fs.existsSync(resolvedPath)) {
-    console.error(`❌ ERRO: Arquivo não encontrado: "${resolvedPath}"`);
+  if (!filePath && !providerName) {
+    console.error('❌ ERRO: Forneça --file=<caminho> OU --provider=<provedor> --tickers=<lista>.');
+    printHelp();
     process.exit(1);
   }
 
-  let rawJson: unknown;
-  try {
-    const fileContent = fs.readFileSync(resolvedPath, 'utf-8');
-    rawJson = JSON.parse(fileContent);
-  } catch (err: any) {
-    console.error(`❌ ERRO: Falha ao ler ou interpretar arquivo JSON: ${err.message}`);
+  if (providerName && tickersList.length === 0) {
+    console.error('❌ ERRO: Ao utilizar --provider, forneça pelo menos um ticker via --tickers=PETR4,VALE3.');
     process.exit(1);
   }
 
@@ -179,21 +159,72 @@ async function main() {
       }
     }
 
-    console.log('\n======================================================');
-    console.log('📊 CARTEIRAEXPERT — INGESTÃO MANUAL DE MARKET DATA');
-    console.log('======================================================');
-    console.log(`📁 Arquivo:  ${resolvedPath}`);
-    console.log(`👤 Operador: ${operatorUser.name} (${operatorUser.email})`);
-    console.log(`⚙️ Modo:     ${isDryRun ? '🔍 DRY-RUN (Sem gravação no banco)' : '💾 PERSISTÊNCIA REAL'}\n`);
+    let report;
 
-    const report = await ingestMarketDataPayload(
-      rawJson as ManualMarketDataPayload,
-      operatorUser,
-      {
-        dryRun: isDryRun,
-        executor: db as any,
+    if (providerName) {
+      console.log('\n======================================================');
+      console.log(`📊 CARTEIRAEXPERT — INGESTÃO VIA PROVEDOR (${providerName.toUpperCase()})`);
+      console.log('======================================================');
+      console.log(`🎯 Tickers:  ${tickersList.join(', ')}`);
+      console.log(`👤 Operador: ${operatorUser.name} (${operatorUser.email})`);
+      console.log(`⚙️ Modo:     ${isDryRun ? '🔍 DRY-RUN (Sem gravação no banco)' : '💾 PERSISTÊNCIA REAL'}\n`);
+
+      if (providerName === 'brapi') {
+        const { BrapiMarketDataProviderAdapter } = await import(
+          '../src/modules/market-data/server/adapters/brapi.adapter'
+        );
+        const { ingestFromProvider } = await import(
+          '../src/modules/market-data/server/market-data-ingestion.service'
+        );
+        const brapiAdapter = new BrapiMarketDataProviderAdapter();
+        report = await ingestFromProvider(
+          brapiAdapter,
+          { tickers: tickersList },
+          operatorUser,
+          {
+            dryRun: isDryRun,
+            executor: db as any,
+          }
+        );
+      } else {
+        console.error(`❌ ERRO: Provedor "${providerName}" não é suportado. Opções válidas: brapi.`);
+        process.exit(1);
       }
-    );
+    } else {
+      const resolvedPath = path.isAbsolute(filePath!)
+        ? filePath!
+        : path.resolve(process.cwd(), filePath!);
+
+      if (!fs.existsSync(resolvedPath)) {
+        console.error(`❌ ERRO: Arquivo não encontrado: "${resolvedPath}"`);
+        process.exit(1);
+      }
+
+      let rawJson: unknown;
+      try {
+        const fileContent = fs.readFileSync(resolvedPath, 'utf-8');
+        rawJson = JSON.parse(fileContent);
+      } catch (err: any) {
+        console.error(`❌ ERRO: Falha ao ler ou interpretar arquivo JSON: ${err.message}`);
+        process.exit(1);
+      }
+
+      console.log('\n======================================================');
+      console.log('📊 CARTEIRAEXPERT — INGESTÃO MANUAL DE MARKET DATA');
+      console.log('======================================================');
+      console.log(`📁 Arquivo:  ${resolvedPath}`);
+      console.log(`👤 Operador: ${operatorUser.name} (${operatorUser.email})`);
+      console.log(`⚙️ Modo:     ${isDryRun ? '🔍 DRY-RUN (Sem gravação no banco)' : '💾 PERSISTÊNCIA REAL'}\n`);
+
+      report = await ingestMarketDataPayload(
+        rawJson as ManualMarketDataPayload,
+        operatorUser,
+        {
+          dryRun: isDryRun,
+          executor: db as any,
+        }
+      );
+    }
 
     // ─── Relatório de Cotações ────────────────────────────────────────────────
     console.log(
