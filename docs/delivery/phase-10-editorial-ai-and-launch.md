@@ -2,75 +2,52 @@
 
 ## Objetivo
 
-Implementar conteúdo editorial interno revisado por humanos e preparar o produto para lançamento controlado.
+Implementar o fluxo interno de apoio à produção editorial baseado em IA com revisão humana mandatória, e executar os procedimentos de governança e infraestrutura para o lançamento do produto.
 
-## Pacote 10.01 — Fluxo editorial com IA
+## Estado Atual da Fase
 
-### Incluído
+> **Classificação:** **Planejada, não implementada.**  
+> O diretório `src/modules/editorial-ai/` encontra-se vazio. Não existem integrações com provedores de IA, filas de processamento editorial ou modelos configurados. As diretrizes de governança ética e segurança estão formalmente aprovadas.
 
-- Upload de documento público;
-- Classificação do documento;
-- Associação com empresa, setor e tipo;
-- Prompts versionados;
-- Nova requisição por análise;
-- Geração de rascunho;
-- Revisão humana;
-- Aprovação;
-- Reprovação;
-- Publicação;
-- Vínculo com documento original;
-- Logs e auditoria.
+## Pacote 10.01 — Fluxo Editorial Interno com IA
 
-### Fora do escopo
+### Planejado
 
-- Chat público com IA;
-- Publicação automática;
-- Recomendação de investimento;
-- IA calculando indicadores;
-- Análise sem documento-fonte.
+- Upload de documentos públicos de empresas (fatos relevantes, demonstrações financeiras, ITR/DFP);
+- Classificação automática de empresa, setor e tipo documental;
+- Aplicação de prompts versionados e mantidos pela equipe de engenharia/conteúdo;
+- Requisição independente por documento para geração de rascunhos;
+- Interface interna para revisão humana obrigatória (aprovação, edição ou reprovação por analista);
+- Publicação restrita a conteúdos formalmente aprovados com vínculo permanente ao documento original;
+- Trilha de auditoria registrando o revisor humano responsável e timestamp UTC.
 
-### Critérios de aceite
+### Fora do Escopo Permanente
 
-- [ ] Usuário final não acessa IA;
-- [ ] Rascunho não publica automaticamente;
-- [ ] Publicação exige aprovação humana;
-- [ ] Documento original é vinculado;
-- [ ] Prompt possui versão;
-- [ ] Auditoria registra responsáveis e datas;
-- [ ] Conteúdo possui disclaimer editorial.
+- Publicação autônoma de conteúdos gerados por IA sem revisão humana prévia;
+- Chat interativo de IA para análise de investimentos oferecido ao usuário final;
+- Uso de IA para realização de cálculos financeiros oficiais, projeções ou apuração fiscal;
+- Recomendações de compra, venda ou alocação de ativos geradas por IA.
 
-## Pacote 10.02 — Preparação de lançamento
+### Critérios de Aceite (Não Concluídos)
 
-### Incluído
+- [ ] Usuário final não possui acesso a interface de chat com IA;
+- [ ] Rascunhos gerados por IA não são publicados sem aprovação humana expressa;
+- [ ] Conteúdo publicado mantém vínculo rastreável com o documento-fonte público;
+- [ ] Prompts e revisões possuem registro de auditoria completo.
 
-- Revisão de segurança;
-- Revisão de LGPD;
-- Revisão de avisos;
-- Monitoramento de erros;
-- Backups;
-- Política de retenção;
-- Política de incidentes;
-- Dados de demonstração;
-- Testes de fluxo crítico;
-- Checklist de lançamento;
-- Limites iniciais de uso;
-- Processo de suporte operacional.
+## Pacote 10.02 — Governança e Preparação de Lançamento
 
-### Fora do escopo
+### Planejado
 
-- Escala global;
-- Microserviços;
-- Aplicativo mobile nativo;
-- Integrações pagas não contratadas;
-- Cobertura total de todos os mercados.
+- Auditoria final de segurança e conformidade LGPD;
+- Validação de isolamento multiusuário em todos os endpoints e Server Actions;
+- Verificação de políticas de retenção, backup e planos de contingência/rollback;
+- Validação de rotinas de monitoramento e alertas operacionais;
+- Revisão completa de todos os disclaimers legais e avisos de finalidade informativa/educacional;
+- Carga de dados de demonstração sintéticos e higienizados para onboarding.
 
-### Critérios de aceite
+### Critérios de Aceite (Não Concluídos)
 
-- [ ] Fluxos críticos possuem testes ponta a ponta;
-- [ ] Dados privados não estão públicos;
-- [ ] Documentos usam acesso protegido;
-- [ ] Disclaimers estão presentes;
-- [ ] Backup está validado;
-- [ ] Existe plano de rollback;
-- [ ] Existe checklist de incidente;
-- [ ] Existe ambiente de demonstração sem dados reais.
+- [ ] Fluxos críticos validados por testes ponta a ponta em ambiente controlado;
+- [ ] Disclaimers institucionais visíveis em todos os módulos analíticos e tributários;
+- [ ] Procedimentos de backup e recuperação de desastres validados no PostgreSQL.

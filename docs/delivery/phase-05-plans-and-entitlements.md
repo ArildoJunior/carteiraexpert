@@ -2,58 +2,50 @@
 
 ## Objetivo
 
-Implementar controle técnico de recursos sem misturar pagamento com dados financeiros.
+Implementar o modelo comercial de planos (Free e superiores), catálogo de entitlements técnicos e gestão de grupos compartilhados com preservação do isolamento estrito de dados financeiros.
 
-## Pacote 05.01 — Entitlements Free e Premium
+## Estado Atual da Fase
 
-### Incluído
+> **Classificação:** **Planejada, não implementada.**  
+> O diretório `src/modules/subscriptions/` encontra-se atualmente vazio. Não existem no banco de dados tabelas de planos comerciais, assinaturas SaaS, entitlements ou gateways de pagamento integrados.
 
-- Catálogo de recursos;
-- Entitlements;
-- Plano Free;
-- Plano Premium;
-- Middleware de checagem de recurso;
-- Bloqueio de funcionalidades Premium;
-- Preservação de dados em downgrade.
+*Nota de Desambiguação:* As tabelas existentes `subscription_offers`, `subscription_rights` e `subscription_exercises` tratam exclusivamente de direitos societários de renda variável (subscrição de ações) e **não possuem relação com planos comerciais SaaS**.
 
-### Fora do escopo
+## Pacote 05.01 — Entitlements e Quotas por Plano
 
-- Gateway de pagamento;
-- Grupo compartilhado;
-- Cobrança automática.
+### Planejado
 
-### Critérios de aceite
+- Catálogo de recursos e entitlements técnicos;
+- Plano Free (limite de 2 carteiras ativas) e planos superiores (até 10 carteiras);
+- Middleware no servidor para validação de entitlements e limites;
+- Regras de downgrade com preservação de dados e congelamento de carteiras excedentes (`status = 'frozen'`).
 
-- [ ] Usuário Free acessa somente recursos Free;
-- [ ] Usuário Premium acessa recursos habilitados;
-- [ ] Downgrade preserva dados;
-- [ ] Recurso Premium bloqueado não apaga informação;
-- [ ] Testes de permissão existem.
+### Critérios de Aceite (Não Concluídos)
 
-## Pacote 05.02 — Grupo compartilhado e privacidade
+- [ ] Usuário Free acessa exclusivamente recursos autorizados para seu plano;
+- [ ] Usuário de plano superior tem acesso aos recursos expandidos;
+- [ ] Downgrade preserva integralmente os dados financeiros do usuário, sem exclusões automáticas;
+- [ ] Carteiras excedentes em downgrade entram no estado `frozen` (apenas leitura);
+- [ ] Testes de validação de permissões e quotas por plano implementados.
 
-### Incluído
+## Pacote 05.02 — Grupo Compartilhado e Isolamento (ADR-004)
 
-- Grupo de assinatura;
-- Titular pagante;
-- Convites;
-- Aceite de convite;
-- Limite configurável de 3 a 5 membros;
-- Remoção de membro;
-- Rebaixamento coletivo para Free;
-- Isolamento total de dados.
+### Planejado
 
-### Fora do escopo
+- Gestão de grupo de assinatura com titular pagante;
+- Envio e aceite de convites para membros (limite de 3 a 5 participantes);
+- Desvinculação ou cancelamento de membros com rebaixamento para o plano Free;
+- **Isolamento de Dados Obrigatório:** O pagamento compartilhado não concede ao titular nem aos membros acesso para visualizar, editar ou inferir dados de carteiras, ativos ou relatórios financeiros uns dos outros.
 
-- Visualização compartilhada de carteira;
-- Gestão patrimonial familiar;
-- Pagamento real, caso gateway não esteja pronto.
+### Fora do Escopo Permanente
 
-### Critérios de aceite
+- Carteira compartilhada ou cotitularidade de patrimônio;
+- Consolidação automática de investimentos entre membros familiares.
 
-- [ ] Titular convida membro;
-- [ ] Membro recebe entitlement Premium;
-- [ ] Titular não vê dados financeiros do membro;
-- [ ] Membro não vê dados do titular;
-- [ ] Cancelamento remove entitlement, não dados;
-- [ ] Há testes explícitos para ADR-004.
+### Critérios de Aceite (Não Concluídos)
+
+- [ ] Titular gerencia convites e composição do grupo;
+- [ ] Membros recebem entitlements sem acesso aos dados financeiros do titular;
+- [ ] Titular não visualiza dados financeiros dos membros convidados;
+- [ ] Cancelamento remove os benefícios de plano sem apagar dados das carteiras;
+- [ ] Testes automatizados cobrindo explicitamente o isolamento do ADR-004 implementados.

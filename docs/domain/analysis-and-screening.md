@@ -1,36 +1,36 @@
-# Análise técnica, fundamentalista e filtros
+# Análise Técnica, Fundamentalista e Filtros (Screening)
 
-## Análise fundamentalista
+Este documento estabelece as diretrizes de domínio, princípios de neutralidade e estado de implementação para ferramentas de análise de mercado.
 
-Indicadores devem ser armazenados como observações datadas, não como atributos imutáveis do ativo. O sistema deve preservar valor original, unidade, período contábil, tipo de demonstração, fonte e data de publicação quando disponíveis.
+## 1. Princípios de Neutralidade e Não Recomendação
 
-### Ações — exemplos de filtros configuráveis
+1. **Linguagem Estritamente Descritiva:** Todas as ferramentas analíticas operam com finalidade exclusivamente informativa e educacional. É vedado o uso de rótulos que sugiram orientação de investimento (ex: “oportunidades”, “melhores ativos”, “sinais de compra/venda”).
+2. **Ausência de Recomendações e Execução:** A plataforma não recomenda estratégias, não emite alertas de compra/venda, não realiza consultoria de valores mobiliários e não executa ordens.
+3. **Transparência na Natureza dos Dados:** As interfaces analíticas devem distinguir categoricamente:
+   - Fatos históricos e cotações observadas;
+   - Cálculos matemáticos determinísticos;
+   - Premissas e filtros parametrizados pelo usuário;
+   - Cenários simulados ou hipóteses.
 
-- Dividend Yield mínimo e máximo;
-- P/L mínimo e máximo;
-- Dívida Líquida/EBITDA máximo;
-- ROE mínimo;
-- liquidez mínima;
-- margem líquida mínima;
-- setor, subsetor e segmento.
+## 2. Estado de Implementação dos Subdomínios Analíticos
 
-### FIIs — exemplos de filtros configuráveis
+### 2.1. Gráficos de Carteira Implementados
+- **Implementado e validado:** Gráficos de alocação patrimonial por classe de ativo e gráficos de evolução temporal "Mercado vs. Custo" gerados pelo motor `src/modules/portfolio/domain/chart-engine.ts` para a carteira selecionada.
+- *Ressalva:* A existência desses gráficos patrimoniais não constitui implementação de análise técnica ou de indicadores fundamentalistas avançados.
 
-- Dividend Yield mínimo e máximo;
-- P/VP mínimo e máximo;
-- patrimônio líquido mínimo;
-- tipo de fundo;
-- vacância mínima e máxima, quando aplicável;
-- liquidez mínima;
-- alavancagem bruta máxima;
-- segmento.
+### 2.2. Subdomínios Planejados (Sem Implementação no Código)
+- **Filtros e Screening de Mercado (`screening`):** Mecanismo de busca e filtragem parametrizada de ativos (Ações, FIIs, etc.) segundo critérios de múltiplos, liquidez e setores definidos pelo usuário (*Planejado, não implementado*).
+- **Indicadores Fundamentalistas (`market-fundamentals`):** Ingestão e cálculo de múltiplos contábeis datados (P/L, P/VP, ROE, ROIC, Dívida Líquida/EBITDA, Margens, Dividend Yield) a partir de demonstrações financeiras (*Planejado, não implementado*).
+- **Análise Técnica Descritiva (`technical-analysis`):** Séries históricas de preço e volume com indicadores matemáticos (médias móveis, volatilidade, drawdown) (*Planejado, não implementado*).
+- **Métricas Personalizadas (`user-metrics`):** Criação de fórmulas e pesos customizados pelo usuário (*Planejado, não implementado*).
 
-Filtros não podem ocultar silenciosamente dados ausentes. O usuário deve escolher entre excluir ausentes, tratar como desconhecidos ou revisar individualmente.
+## 3. Matriz de Estado das Capacidades
 
-## Análise técnica
-
-Pode incluir séries, retornos, médias, volatilidade, volume, drawdown e gráficos. Todo indicador precisa de período, janela, fonte, ajuste de preço e fórmula documentada. O produto deve evitar linguagem de sinal e deixar claro que análise técnica não prevê resultado.
-
-## Dados fictícios e demonstração
-
-Dados de demonstração devem ser marcados visualmente como fictícios ou exemplificativos. Nunca misturar dados fictícios com a carteira real ou exibi-los como cotação atual.
+| Capacidade | Estado Real no Código | Classificação |
+|---|---|---|
+| Gráficos de alocação e evolução patrimonial da carteira | Implementado | **Implementado e validado** |
+| Filtros de mercado e screening de ativos | Não implementado | **Planejado, não implementado** |
+| Indicadores e múltiplos fundamentalistas (P/L, P/VP, ROE, etc.) | Não implementado | **Planejado, não implementado** |
+| Indicadores de análise técnica (médias móveis, bandas, etc.) | Não implementado | **Planejado, não implementado** |
+| Métricas e fórmulas customizadas pelo usuário | Não implementado | **Planejado, não implementado** |
+| Emissão de sinais de compra/venda ou recomendações | Não suportado | **Fora do escopo permanente** |

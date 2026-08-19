@@ -2,68 +2,55 @@
 
 ## Objetivo
 
-Expandir a carteira para patrimônio global sem perder moeda de origem, precisão ou rastreabilidade.
+Permitir o acompanhamento de ativos globais e criptoativos com preservação da moeda de negociação, conversão cambial determinística e alta precisão decimal.
 
-## Pacote 08.01 — Ativos globais e câmbio
+## Estado Atual da Fase
 
-### Incluído
+> **Classificação:** **Parcialmente implementada.**  
+> O suporte a moedas estrangeiras no catálogo de ativos, taxas de conversão em `exchange_rates`, conversão cambial determinística no valuation e suporte a criptoativos com precisão de 10 casas decimais (`NUMERIC(28, 10)`) estão implementados e testados. Integrações automáticas com exchanges, swaps e custódia Web3 permanecem planejadas.
 
-- Ativos em USD inicialmente;
-- Bolsa estrangeira;
-- Moeda de negociação;
-- Câmbio USD/BRL;
-- Posição em moeda original;
-- Consolidação em BRL;
-- Separação visual entre retorno do ativo e efeito cambial;
-- Histórico de câmbio;
-- Taxas de operação.
+## Pacote 08.01 — Ativos Globais e Conversão Cambial
 
-### Fora do escopo
+### Incluído e Comprovado
 
-- Todas as bolsas globais;
-- Tributação internacional completa;
-- Integração com corretoras estrangeiras;
-- Câmbio em tempo real.
+- Cadastro de ativos com moeda original (`currency`: USD, EUR, BRL, etc.) e bolsa de negociação;
+- Registro de taxas de conversão cambial na tabela `exchange_rates`;
+- Conversão monetária determinística para BRL no motor de valuation e evolução patrimonial;
+- Tratamento de ausência de taxa cambial na data ou divergência monetária (`CURRENCY_MISMATCH`);
+- Lançamentos de eventos operacionais preservando a moeda nativa da operação.
 
-### Critérios de aceite
+### Planejado / Não Implementado neste Pacote
 
-- [ ] Operação preserva moeda original;
-- [ ] Carteira pode ser vista em USD e BRL;
-- [ ] Conversão possui fonte e data;
-- [ ] Retorno do ativo e efeito cambial não são confundidos;
-- [ ] Testes cobrem conversão e precisão.
+- Provedores externos de câmbio automatizados em tempo real;
+- Decomposição analítica segregada entre retorno do ativo e efeito de variação cambial;
+- Integração direta com corretoras internacionais.
 
-## Pacote 08.02 — Criptoativos iniciais
+### Critérios de Aceite
 
-### Incluído
+- [x] Lançamentos preservam a moeda original de negociação;
+- [x] Conversão para BRL utiliza taxa de câmbio correspondente com rastreabilidade;
+- [x] Suítes de testes cobrindo câmbio e multi-moeda aprovadas;
+- [ ] Decomposição analítica de efeito cambial implementada (*Planejado*).
 
-- BTC;
-- ETH;
-- Estrutura extensível para outros ativos;
-- Compra;
-- Venda;
-- Transferência interna;
-- Taxa de rede;
-- Exchange;
-- Carteira de autocustódia;
-- Alta precisão;
-- Posição consolidada;
-- Cotação de referência.
+## Pacote 08.02 — Criptoativos e Alta Precisão
 
-### Fora do escopo
+### Incluído e Comprovado
 
-- DeFi complexo;
-- Staking completo;
-- NFT;
-- Integração automática com exchanges;
-- Trading;
-- Recomendação de cripto.
+- Suporte a criptoativos no catálogo (`assetType = 'crypto'`);
+- Suporte a quantidades com alta precisão decimal no banco (`NUMERIC(28, 10)`) e em memória via `Decimal`;
+- Operações de compra (`BUY`), venda (`SELL`), entrada (`TRANSFER_IN`) e saída (`TRANSFER_OUT`);
+- Armazenamento de taxas operacionais no campo numérico `fees` de cada evento.
 
-### Critérios de aceite
+### Planejado / Fora do Escopo
 
-- [ ] Transferência interna não é tratada como venda;
-- [ ] Taxa de rede é registrada;
-- [ ] Quantidade suporta alta precisão;
-- [ ] Usuário separa exchange e autocustódia;
-- [ ] Custo médio é calculado corretamente;
-- [ ] Testes cobrem compra, venda e transferência.
+- Evento dedicado de permuta direta entre criptoativos (`CRYPTO_SWAP`) (*Planejado*);
+- Integração automática com APIs de exchanges (Binance, Coinbase, Mercado Bitcoin, etc.) (*Planejado*);
+- Rastreamento on-chain de carteiras Web3 / autocustódia (*Planejado*);
+- Recomendação de compra, venda ou staking de criptoativos (*Fora do escopo permanente*).
+
+### Critérios de Aceite
+
+- [x] Quantidades de criptoativos mantêm precisão de até 10 casas decimais sem arredondamento indevido;
+- [x] Taxas são registradas no campo `fees` de cada evento;
+- [x] Custo médio ponderado é calculado deterministicamente com `Decimal`;
+- [ ] Conectores automáticos com exchanges e Web3 (*Planejado*).

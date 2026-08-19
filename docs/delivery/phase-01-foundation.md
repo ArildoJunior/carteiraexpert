@@ -2,67 +2,60 @@
 
 ## Objetivo
 
-Criar uma base segura, padronizada e testável antes de desenvolver regras de negócio.
+Criar uma base segura, padronizada, determinística e testável antes de desenvolver regras de negócio financeiras.
 
-## Pacote 01.01 — Estrutura e qualidade
+## Pacote 01.01 — Estrutura e Qualidade
 
-### Incluído
+### Incluído e Comprovado
 
-- Estrutura inicial de módulos;
-- TypeScript strict;
-- Biome;
-- Vitest;
-- Playwright;
-- Variáveis de ambiente;
-- Convenções de erros;
-- Convenções de logs;
-- Alias de imports;
-- CI básico, se aplicável;
-- Documentação inicial.
+- Estrutura de monólito modular em `src/modules/`;
+- TypeScript estrito (`strict: true`, sem `any` implícito);
+- Biome para linting e formatação automatizada de código;
+- Vitest para testes unitários e de integração;
+- Playwright para testes ponta a ponta (E2E) cross-browser;
+- Validação de variáveis de ambiente com schemas tipados;
+- Hierarquia padronizada de tratamento de erros de domínio;
+- Alias de imports padronizados (`@/`);
+- Documentação inicial de arquitetura e produto.
 
-### Fora do escopo
+### Fora do Escopo deste Pacote
 
-- Banco de dados funcional;
-- Autenticação;
-- Interface de produto;
-- Carteira;
-- Planos;
-- Dados financeiros.
+- Regras de negócio de carteira;
+- Autenticação de usuários;
+- Interface de usuário final;
+- Operações financeiras.
 
-### Critérios de aceite
+### Critérios de Aceite
 
-- [ ] `pnpm lint` funciona;
-- [ ] `pnpm typecheck` funciona;
-- [ ] `pnpm test` funciona;
-- [ ] `pnpm test:e2e` possui ao menos teste de saúde;
-- [ ] `pnpm build` funciona;
-- [ ] Estrutura de módulos criada;
-- [ ] Documentos de projeto presentes.
+- [x] `pnpm lint` / `biome check` executa com zero violações;
+- [x] `pnpm typecheck` / `tsc --noEmit` executa sem erros estáticos;
+- [x] `pnpm test` executa suítes de testes automatizados com sucesso;
+- [x] `pnpm test:e2e` possui testes de saúde e validação funcional;
+- [x] `pnpm build` / `next build` compila com sucesso;
+- [x] Estrutura modular isolada criada;
+- [x] Documentos e diretrizes do projeto configurados.
 
-## Pacote 01.02 — Banco, Decimal e auditoria base
+## Pacote 01.02 — Banco, Decimal e Auditoria Base
 
-### Incluído
+### Incluído e Comprovado
 
-- PostgreSQL configurado;
-- Drizzle configurado;
-- Migrações;
-- Biblioteca Decimal;
-- Convenções de colunas financeiras;
-- Estrutura inicial de audit logs;
-- Estratégia de timestamps;
-- Teste de conexão e migração.
+- Banco de dados relacional PostgreSQL configurado;
+- Drizzle ORM configurado com migrações versionadas;
+- Biblioteca `Decimal` padronizada e centralizada em todos os cálculos matemáticos financeiros;
+- Convenção obrigatória de persistência de valores financeiros via tipo `NUMERIC`;
+- Tabela `audit_logs` para registro de alterações e eventos nos fluxos que utilizam o mecanismo de auditoria;
+- Estratégia de timestamps UTC padronizada (`TIMESTAMPTZ`);
+- Testes de persistência e validação de precisão matemática com `Decimal`.
 
-### Fora do escopo
+### Fora do Escopo deste Pacote
 
-- Entidades de carteira;
-- Usuários finais;
-- Operações financeiras;
-- Cobrança.
+- Entidades de carteira e ativos;
+- Autenticação e sessão de usuários;
+- Cobrança e planos comerciais.
 
-### Critérios de aceite
+### Critérios de Aceite
 
-- [ ] Migração inicial executa;
-- [ ] Tabela de auditoria existe;
-- [ ] Decimal está centralizado;
-- [ ] Não há `number` usado para valor financeiro;
-- [ ] Há testes de serialização e persistência Decimal.
+- [x] Migrações iniciais executam no PostgreSQL real de forma reprodutível;
+- [x] Tabela `audit_logs` criada e integrada aos serviços auditados;
+- [x] Uso da biblioteca `Decimal` centralizado e sem uso de `number` para valores monetários;
+- [x] Testes unitários e de integração cobrindo precisão e serialização de `Decimal` aprovados.

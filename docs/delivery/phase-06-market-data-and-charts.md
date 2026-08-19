@@ -2,65 +2,61 @@
 
 ## Objetivo
 
-Exibir dados internos de mercado com transparência e permitir gráficos configuráveis.
+Prover infraestrutura local para ingestão, persistência e consulta de cotações e taxas de câmbio, cálculo de valuation de mercado, evolução temporal de patrimônio e renderização de gráficos descritivos.
 
-## Pacote 06.01 — Ativos, cotações e ingestão interna
+## Estado Atual da Fase
 
-### Incluído
+> **Classificação:** **Parcialmente implementada.**  
+> A infraestrutura interna de ingestão manual/mock, persistência local de cotações e câmbio, motores de valuation e evolução diária, e gráficos Recharts estão implementados e testados. Conexões a provedores externos reais, sincronização automática e WebSockets permanecem planejados.
 
-- Cadastro normalizado de ativos;
-- Bolsa;
-- Moeda;
-- Cotações;
-- Dados históricos;
-- Fonte do dado;
-- Data/hora de referência;
-- Adaptador de provedor;
-- Job de ingestão;
-- Aviso de atraso.
+## Pacote 06.01 — Ingestão Interna, Cotações e Câmbio
 
-### Fora do escopo
+### Incluído e Comprovado
 
-- Tempo real;
-- Fonte paga;
-- Candlestick;
-- Indicadores técnicos avançados;
-- Exterior completo.
+- Contrato de adaptadores de ingestão (`MarketDataProviderAdapter`);
+- Adaptador manual estruturado (`ManualPayloadAdapter`) e adaptador mock para testes (`MockProviderAdapter`);
+- Serviço de ingestão e normalização (`MarketDataIngestionService`) com validação Zod e `Decimal`;
+- Persistência relacional local nas tabelas `market_quotes` e `exchange_rates`;
+- Mecanismo de desempate e ranking de qualidade de cotações (`DELAY_STATUS_QUALITY_RANK`);
+- Tratamento de ativos sem cotação (`unquotedPositionsCount`) e cotações obsoletas (`stalePositionsCount`, com tolerância de até 7 dias civis UTC);
+- Tratamento de divergência cambial (`CURRENCY_MISMATCH`);
+- Motor de valuation de posições (`valuation-engine.ts`);
+- Motor de evolução temporal diária (`portfolio-evolution-engine.ts`).
 
-### Critérios de aceite
+### Planejado / Não Implementado neste Pacote
 
-- [ ] Cotação vem do banco interno;
-- [ ] Usuário não chama diretamente provedor externo;
-- [ ] Data/hora e atraso são exibidos;
-- [ ] Job é idempotente;
-- [ ] Fonte é rastreável;
-- [ ] Adaptador pode ser substituído.
+- Integração direta e síncrona com provedores externos reais de cotações de mercado;
+- Sincronização automática em background via cron jobs;
+- Feeds em tempo real via WebSocket.
 
-## Pacote 06.02 — Gráficos e preferências
+### Critérios de Aceite
 
-### Incluído
+- [x] Contrato de adaptadores e implementações manual/mock operacionais;
+- [x] Ingestão valida tipos, moedas e valores numéricos com `Decimal`;
+- [x] Cotações e taxas cambiais são persistidas no PostgreSQL com rastreabilidade;
+- [x] Motor de valuation e evolução trata cotações ausentes, obsoletas e divergência cambial;
+- [x] Testes unitários e de integração de market data e evolução aprovados;
+- [ ] Provedores externos reais integrados em background (*Planejado*);
+- [ ] Jobs assíncronos periódicos de atualização (*Planejado*).
 
-- Linha;
-- Área;
-- Barras;
-- Rosca;
-- Preferência por usuário e contexto;
-- Dashboard;
-- Gráficos de alocação;
-- Gráficos de evolução;
-- Paginação/limite de dados históricos.
+## Pacote 06.02 — Gráficos e Visualizações
 
-### Fora do escopo
+### Incluído e Comprovado
 
-- Candlestick;
-- Heatmap;
-- Indicadores técnicos;
-- Editor visual livre de dashboards.
+- Motor de agregação de séries e gráficos (`src/modules/portfolio/domain/chart-engine.ts`);
+- Gráfico de evolução temporal "Mercado vs. Custo" com Recharts;
+- Gráficos de alocação por classe de ativos e por ativo individual;
+- Formatação monetária e percentual precisa baseada em `Decimal`.
 
-### Critérios de aceite
+### Planejado / Fora do Escopo
 
-- [ ] Usuário escolhe gráfico por área;
-- [ ] Preferência é persistida;
-- [ ] Um usuário não altera preferência de outro;
-- [ ] Gráfico não carrega histórico ilimitado;
-- [ ] Dados financeiros exibidos mantêm precisão adequada.
+- Gráficos avançados de candlestick, gráficos de dispersão e heatmaps;
+- Livro de ofertas e profundidade de mercado (*Fora do escopo permanente*);
+- Persistência customizada de preferências de visualização por usuário (*Planejado*).
+
+### Critérios de Aceite
+
+- [x] Gráficos de alocação e evolução patrimonial integrados e funcionais;
+- [x] Séries temporais utilizam dados do banco local sem sobrecarga do cliente;
+- [x] Testes unitários do motor de gráficos aprovados;
+- [ ] Preferências de exibição persistidas por usuário (*Planejado*).

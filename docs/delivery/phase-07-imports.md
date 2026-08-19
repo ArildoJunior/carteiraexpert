@@ -2,64 +2,50 @@
 
 ## Objetivo
 
-Permitir importação progressiva sem depender de integração com corretoras.
+Permitir a importação progressiva de dados de operações via arquivos (planilhas e documentos), sempre com revisão humana prévia e sem dependência de conexões automáticas com corretoras.
 
-## Pacote 07.01 — CSV e XLSX
+## Estado Atual da Fase
 
-### Incluído
+> **Classificação:** **Planejada, não implementada.**  
+> O diretório `src/modules/imports/` encontra-se vazio. Não existem rotas de upload, filas assíncronas, infraestrutura de armazenamento privado (buckets) ou parsers de planilhas/documentos implementados.
 
-- Upload de CSV;
-- Upload de XLSX;
-- Modelo de planilha;
-- Mapeamento de colunas;
-- Validação;
-- Candidatos de importação;
-- Tela de revisão;
-- Edição;
-- Confirmação;
-- Geração de eventos.
+## Pacote 07.01 — Importação de CSV e XLSX
 
-### Fora do escopo
+### Planejado
 
-- PDF;
-- OCR;
-- Integração com corretora;
-- Importação automática sem revisão.
+- Upload de planilhas nos formatos CSV e XLSX;
+- Mapeamento e normalização de colunas para o modelo de eventos de carteira;
+- Validação estrutural de tipos de dados, datas e valores numéricos;
+- Geração de candidatos de importação em tabela temporária ou memória;
+- Tela de conferência prévia e edição manual de quantidades, preços e taxas antes da gravação;
+- Confirmação explícita do usuário gerando eventos na tabela `portfolio_events`.
 
-### Critérios de aceite
+### Critérios de Aceite (Não Concluídos)
 
-- [ ] Arquivo inválido é rejeitado;
-- [ ] Dados válidos viram candidatos;
-- [ ] Usuário edita quantidade, valor, data e taxas;
-- [ ] Confirmação cria eventos auditáveis;
-- [ ] Reenvio do mesmo arquivo não duplica eventos sem confirmação;
-- [ ] Arquivo e origem ficam rastreáveis.
+- [ ] Arquivos inválidos ou corrompidos são rejeitados com mensagens claras;
+- [ ] Usuário revisa e corrige dados antes da criação dos lançamentos;
+- [ ] Confirmação cria eventos com origem (`source`) identificada;
+- [ ] Reimportação do mesmo arquivo previne duplicações indevidas;
+- [ ] Testes de validação e ingestão de planilhas implementados.
 
-## Pacote 07.02 — PDF assistido
+## Pacote 07.02 — Importação Assistida de Notas de Corretagem (PDF)
 
-### Incluído
+### Planejado
 
-- Upload de PDF;
-- Armazenamento privado;
-- Job assíncrono;
-- Extração inicial;
-- Candidatos de lançamento;
-- Revisão humana obrigatória;
-- Tratamento de falha;
-- Status de processamento.
+- Upload seguro de notas de corretagem em PDF;
+- Armazenamento em bucket privado com acesso exclusivo por URLs temporárias assinadas;
+- Extração assíncrona de texto estruturado via jobs em background;
+- Apresentação de lançamentos candidatos para revisão obrigatória pelo usuário;
+- Tratamento explícito de falhas de leitura ou layouts não reconhecidos.
 
-### Fora do escopo
+### Fora do Escopo Permanente
 
-- Cobertura universal de todos os layouts;
-- Lançamento automático;
-- Integração direta com corretoras;
-- Análise por IA sem controle.
+- Leitura automática com lançamento direto sem conferência humana;
+- Integração por Open Finance ou credenciais bancárias (fora do escopo).
 
-### Critérios de aceite
+### Critérios de Aceite (Não Concluídos)
 
-- [ ] PDF fica privado;
-- [ ] Processamento não bloqueia requisição web;
-- [ ] Falhas são registradas;
-- [ ] Usuário revisa e edita antes de confirmar;
-- [ ] Mesma importação não gera duplicidade;
-- [ ] Há aviso de que dados exigem conferência.
+- [ ] Arquivos PDF permanecem em armazenamento estritamente privado;
+- [ ] Processamento pesado é executado de forma assíncrona;
+- [ ] Falhas parciais ou totais de extração são registradas e informadas;
+- [ ] Usuário é alertado de que os dados exigem conferência manual obrigatória.

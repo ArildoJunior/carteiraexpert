@@ -1,31 +1,53 @@
-# Valuation e projeções
+# Valuation, Evolução Patrimonial e Projeções
 
-## Metodologias
+Este documento define os limites de domínio e o estado de implementação dos motores de valuation, evolução patrimonial e modelos teóricos de projeção.
 
-### Bazin
+## 1. Capacidades Implementadas e Validadas
 
-Usar dividendos por ação e yield definido pelo usuário ou pela configuração do cenário. Exibir fórmula, período do dividendo, tratamento de dividendos extraordinários, fonte e limitações. “Preço teto” é nome da metodologia, não orientação.
+As seguintes funcionalidades de valuation e análise patrimonial estão efetivamente implementadas e cobertas por testes no código:
 
-### Graham
+### 1.1. Valuation de Mercado Atual de uma Carteira
+- **Motor:** `src/modules/portfolio/domain/valuation-engine.ts` e `position-engine.ts`.
+- **Cálculo:** Confronta a quantidade líquida em custódia com a cotação mais recente válida em `market_quotes`.
+- **Conversão Cambial:** Aplica a taxa de conversão direta da tabela `exchange_rates` para ativos denominados em moeda diferente da moeda-base da carteira.
+- **Tratamento de Inconsistências:** Posições sem cotação histórica válida permanecem como não cotadas (`unquotedPositionsCount`), cotações com mais de 7 dias civis UTC são marcadas como obsoletas (`stalePositionsCount`), e divergências de moeda incrementam `currencyMismatchPositionsCount` sem invalidar cotações compatíveis anteriores.
 
-Exibir entradas usadas, fórmula adotada, moeda, período e limitações. Não aplicar fórmula universalmente a setores ou ativos incompatíveis sem sinalização.
+### 1.2. Evolução Patrimonial Temporal
+- **Motor:** `src/modules/portfolio/domain/portfolio-evolution-engine.ts`.
+- **Cálculo:** Executa o replay cronológico diário de todos os eventos operacionais e societários da carteira até a data avaliada, reconstruindo o valor de mercado diário (`totalMarketValue`) e o custo investido correspondente às posições cotadas (`quotedInvestedCost`).
 
-### Peter Lynch
+### 1.3. Comparação Visual "Mercado vs. Custo"
+- **Motor:** `src/modules/portfolio/domain/chart-engine.ts`.
+- **Exibição:** Gera a série comparativa interna que confronta a curva de valor de mercado com a curva de custo investido da mesma carteira ao longo do tempo.
 
-Exibir crescimento usado, P/L, dividend yield e fórmula/versionamento. O resultado deve ser descrito como métrica metodológica, não como aprovação do ativo.
+## 2. Capacidades Planejadas (Não Implementadas)
 
-### Fluxo de caixa descontado
+Os seguintes modelos conceituais representam diretrizes no roadmap analítico da plataforma e **não possuem código ou endpoints implementados**:
 
-Permitir histórico e projeções futuras com premissas explícitas: crescimento, taxa de desconto, horizonte, valor terminal, número de ações, moeda e tratamento de caixa/dívida. Não assumir que lucro líquido é fluxo de caixa livre; se for usado como proxy, marcar expressamente a limitação.
+### 2.1. Modelos Teóricos de Valuation Parametrizado
+- **Método de Bazin (Preço Teto):** Projeção teórica baseada em dividend yield médio histórico e yield desejado pelo usuário (*Planejado, não implementado*).
+- **Fórmula de Graham:** Modelo de valor intrínseco baseado em Lucro por Ação (LPA) e Valor Patrimonial por Ação (VPA) (*Planejado, não implementado*).
+- **Modelo de Peter Lynch:** Métrica teórica confrontando índice P/L com taxa de crescimento e dividend yield (PEG Ratio) (*Planejado, não implementado*).
+- **Fluxo de Caixa Descontado (DCF):** Modelo de projeção plurianual com premissas de taxa de desconto, crescimento na perpetuidade e valor terminal (*Planejado, não implementado*).
 
-## Projeção de ativo e carteira
+### 2.2. Simulações e Projeções Hipotéticas
+- Simulações de aportes futuros recorrentes (*Planejado, não implementado*);
+- Projeção de reinvestimento automático de proventos em cenários hipotéticos (*Planejado, não implementado*);
+- Métricas avançadas de rentabilidade ponderada pelo tempo (TWR) e ponderada pelo dinheiro (MWR) (*Planejado, não implementado*);
+- Criação de métricas ou taxas personalizadas pelo usuário (*Planejado, não implementado*).
 
-O usuário pode simular quantidade, aportes, crescimento, dividendos, reinvestimento, câmbio, inflação, taxas e cenários. O cenário deve ser imutável após execução ou versionado quando editado. Nunca alterar a carteira real.
+### 2.3. Comparação Analítica entre Carteiras Distintas
+- **Distinção Conceitual Obrigatória:** A comparação analítica entre carteiras distintas (`REAL`, `ESTUDO` ou `ANALISE`) é uma ferramenta analítica sob demanda *Planejada*. Ela não deve ser confundida com o valuation da carteira individual nem com a consolidação agregada do dashboard atual.
 
-## Premissas inferidas
+## 3. Matriz de Estado das Capacidades
 
-Premissa inferida deve mostrar: método de inferência, dados usados, período, data, confiança/limitação e opção para o usuário substituir ou aceitar. “Inferido” não significa “provável” nem “garantido”.
-
-## Métrica/taxa personalizada
-
-O usuário pode criar uma taxa própria com nome, fórmula dentro do conjunto suportado, campos de entrada, pesos, limites e versão. Deve haver validação contra divisão por zero, unidade incompatível e resultado fora da escala. O sistema não deve endossar a taxa como método oficial.
+| Capacidade | Estado Real no Código | Classificação |
+|---|---|---|
+| Valuation de mercado atual de uma carteira | Implementado | **Implementado e validado** |
+| Evolução patrimonial temporal com replay de eventos | Implementado | **Implementado e validado** |
+| Gráfico comparativo "Mercado vs. Custo" na carteira | Implementado | **Implementado e validado** |
+| Tratamento de cotações obsoletas, ausentes e câmbio | Implementado | **Implementado e validado** |
+| Modelos teóricos de valuation (Bazin, Graham, Lynch, DCF) | Não implementado | **Planejado, não implementado** |
+| Projeções e simulações de aportes futuros | Não implementado | **Planejado, não implementado** |
+| Rentabilidade por cotização (TWR / MWR) | Não implementado | **Planejado, não implementado** |
+| Comparação analítica entre carteiras distintas | Não implementado | **Planejado, não implementado** |

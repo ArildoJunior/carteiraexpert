@@ -1,61 +1,55 @@
-# Fase 02 — Identidade, Acesso e Isolamento
+# Fase 02 — Identidade, Acesso e Segurança
 
 ## Objetivo
 
-Garantir que usuários tenham acesso apenas aos próprios dados antes da criação de carteiras.
+Garantir autenticação robusta, gestão segura de credenciais, controle de sessões e governança LGPD antes da criação de carteiras financeiras.
 
-## Pacote 02.01 — Cadastro, login e sessão
+## Pacote 02.01 — Cadastro, Login e Sessões
 
-### Incluído
+### Incluído e Comprovado
 
-- Cadastro;
-- Login;
-- Logout;
-- Hash de senha com Argon2;
-- Sessões;
-- Recuperação de senha, se definida tecnicamente;
-- Perfil básico;
-- Rate limiting inicial;
-- Validação com Zod.
+- Cadastro de usuários com e-mail único e validação Zod;
+- Hash de senhas via **Argon2id** com parâmetros alinhados às recomendações OWASP;
+- Login e autenticação com validação estrita no servidor;
+- Sessões persistidas no banco (`sessions`) com identificador armazenado em hash **SHA-256** e cookies seguros (`HttpOnly`, `SameSite=Lax`, `Secure`);
+- Logout com encerramento de sessão no banco e auditoria;
+- Redefinição atômica de senha via tokens temporários de uso único em `password_reset_tokens`;
+- Rate limiting stateless em `auth_rate_limits` utilizando HMAC-SHA256 para prevenção de ataques de força bruta.
 
-### Fora do escopo
+### Fora do Escopo deste Pacote
 
-- Planos;
-- Convites;
-- Carteiras;
-- MFA completo;
-- Cobrança.
+- Autenticação multifator (MFA/2FA) por aplicativo ou SMS (planejada para o roadmap futuro);
+- Planos comerciais e assinaturas;
+- Gestão de carteiras financeiras.
 
-### Critérios de aceite
+### Critérios de Aceite
 
-- [x] Usuário consegue criar conta;
-- [x] Senha não é armazenada em texto puro (Argon2id com parâmetros OWASP);
-- [x] Sessão inválida não acessa área privada;
-- [x] Entradas inválidas são rejeitadas (validação Zod Unicode-aware);
-- [x] Há testes de autenticação (unitários, integração e E2E).
+- [x] Usuário cria conta com validação de dados no servidor;
+- [x] Senha não é trafegada nem armazenada em texto puro (Argon2id);
+- [x] Sessões utilizam cookies protegidos e tokens em hash SHA-256 no banco;
+- [x] Tentativas excessivas de login são mitigadas por controle de taxa;
+- [x] Redefinição de senha opera de forma segura e atômica;
+- [x] Suítes de testes unitários, integração e E2E aprovadas para autenticação.
 
-## Pacote 02.02 — Consentimentos, autorização e isolamento
+## Pacote 02.02 — Consentimentos LGPD, Autorização e Isolamento
 
-### Incluído
+### Incluído e Comprovado
 
-- Aceite de termos;
-- Aceite de política de privacidade;
-- Registro de consentimentos;
-- Middleware de autorização;
-- Estrutura de papéis internos;
-- Auditoria de ações sensíveis;
-- Testes de acesso horizontal indevido.
+- Tabela `user_consents` para registro formal de aceite de Termos de Uso e Política de Privacidade;
+- Trigger PostgreSQL *append-only* que impede atualização ou exclusão física de registros de consentimento;
+- Middleware e validação de autenticação em Server Actions e Server Components;
+- As rotas e operações analisadas utilizam o identificador autenticado do usuário para restringir o acesso aos dados. A cobertura completa de todas as rotas e serviços permanece sujeita à validação contínua;
+- Registro de auditoria em `audit_logs` para eventos de segurança relevantes.
 
-### Fora do escopo
+### Fora do Escopo deste Pacote
 
-- Plano compartilhado;
-- Entitlements Premium;
-- Dados de carteira.
+- Planos compartilhados e gestão de grupos familiares (Fase 05);
+- Entitlements comerciais;
+- Compartilhamento de dados entre usuários (vedado pelas regras de produto e arquitetura).
 
-### Critérios de aceite
+### Critérios de Aceite
 
-- [ ] Consentimentos são persistidos com versão e data;
-- [ ] Usuário A não acessa recurso privado do usuário B;
-- [ ] Rotas privadas exigem autenticação;
-- [ ] Tentativas indevidas são tratadas;
-- [ ] Há testes de autorização.
+- [x] Consentimentos LGPD são persistidos com versão, timestamp UTC e trigger *append-only*;
+- [x] As rotas e operações analisadas validam `userId` autenticado no servidor para restringir o acesso aos dados;
+- [x] Rotas privadas e Server Actions rejeitam requisições não autenticadas;
+- [x] Testes de consentimento e probes de isolamento horizontal aprovados nas suítes analisadas.

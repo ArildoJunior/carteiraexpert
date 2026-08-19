@@ -1,44 +1,86 @@
-# Eventos de Carteira
+# Eventos Operacionais de Carteira
 
-## Tipos iniciais
+Este documento descreve os eventos operacionais patrimoniais persistidos na tabela `portfolio_events` do CarteiraExpert.
 
-- BUY;
-- SELL;
-- DIVIDEND;
-- JCP;
-- SPLIT;
-- REVERSE_SPLIT;
-- BONUS;
-- TRANSFER_IN;
-- TRANSFER_OUT;
-- MANUAL_ADJUSTMENT;
-- REVERSAL.
+## 1. Tipos de Eventos Operacionais Implementados
 
-## Campos mínimos esperados
+A tabela `portfolio_events` (`src/lib/db/schema/portfolio.ts`) suporta exatamente seis tipos de eventos operacionais:
 
-- id;
-- portfolioId;
-- assetId;
-- type;
-- tradeDate;
-- settlementDate, quando aplicável;
-- quantity;
-- unitPrice;
-- fees;
-- currency;
-- source;
-- importJobId, quando aplicável;
-- createdBy;
-- createdAt;
-- metadata;
-- version.
+- **`BUY`:** Compra ou aquisição de ativos (ações, FIIs, ETFs, BDRs, criptoativos, etc., incluindo novos lotes originados por exercício de subscrição).
+- **`SELL`:** Venda ou alienação de ativos, com baixa proporcional de quantidade e custo investido, e apuração determinística de PnL realizado.
+- **`TRANSFER_IN`:** Transferência de custódia de entrada para a carteira selecionada, incorporando a quantidade e o custo unitário informado.
+- **`TRANSFER_OUT`:** Transferência de custódia de saída da carteira, reduzindo a quantidade e o custo investido proporcionalmente (sem apuração de lucro/prejuízo mercantil).
+- **`MANUAL_ADJUSTMENT`:** Tipo presente no schema e no enum para ajustes manuais corretivos de posição ou quantidade com trilha de auditoria (*Tratamento contábil no motor: Não verificado / Pendente de detalhamento*).
+- **`REVERSAL`:** Tipo presente no schema e no enum para estorno de eventos anteriores (*Tratamento contábil no motor: Não verificado / Pendente de detalhamento*).
 
-## Regras
+### 1.1. Delegação de Ações Corporativas e Subscrições
+- **Ações Corporativas:** Eventos societários como desdobramentos (`SPLIT`), grupamentos (`GROUPING`), bonificações (`BONUS_SHARE`), dividendos (`DIVIDEND`) e juros sobre capital próprio (`JCP`) são processados pelo domínio do módulo `corporate-actions` e **não pertencem** aos seis tipos físicos da tabela `portfolio_events`.
+- **Subscrições:** Possuem modelo relacional próprio composto por três tabelas (`subscription_offers`, `subscription_rights`, `subscription_exercises`), no qual o exercício gera atomicamente um evento operacional do tipo `BUY`.
 
-- Evento deve possuir proprietário indireto via carteira;
-- Evento não pode ser acessado por outro usuário;
-- Correções precisam de auditoria;
-- Eventos importados devem indicar origem;
-- Valores devem usar Decimal;
-- Projeções são derivadas dos eventos;
-- Eventos não devem ser apagados silenciosamente.
+### 1.2. Eventos Inexistentes no Banco Físico
+Não existem eventos formais ou tabelas no banco de dados para:
+- Depósito monetário;
+- Retirada monetária;
+- Aporte em dinheiro;
+- Resgate em dinheiro;
+- Transferência bancária;
+- Liquidação financeira de caixa;
+- Custódia institucional ou vinculação formal de corretoras.
+
+## 2. Campos Físicos do Schema (`portfolio_events`)
+
+Os campos comprovados na tabela `portfolio_events` são:
+
+- `id`: Identificador único do evento (UUID, chave primária);
+- `portfolioId`: Identificador da carteira associada (UUID, chave estrangeira para `portfolios.id`);
+- `assetId`: Identificador do ativo negociado (UUID, chave estrangeira para `assets.id`);
+- `type`: Tipo operacional (`BUY`, `SELL`, `TRANSFER_IN`, `TRANSFER_OUT`, `MANUAL_ADJUSTMENT`, `REVERSAL`);
+- `tradeDate`: Data e hora da operação em UTC (`TIMESTAMPTZ`, obrigatório);
+- `settlementDate`: Data e hora de liquidação em UTC (`TIMESTAMPTZ`, opcional);
+- `quantity`: Quantidade movimentada (`NUMERIC(28, 10)`, obrigatório, estritamente positiva `> 0`);
+- `unitPrice`: Preço unitário de negociação (`NUMERIC(20, 8)`, obrigatório, não-negativo `>= 0`);
+- `fees`: Taxas, emolumentos e corretagens (`NUMERIC(20, 8)`, obrigatório, não-negativo `>= 0`, padrão `0`);
+- `currency`: Moeda original da transação (`TEXT`, padrão `'BRL'`);
+- `notes`: Observações e anotações do usuário (`TEXT`, opcional);
+- `source`: Origem do lançamento (`TEXT`, padrão `'manual'`, preenchimento textual livre);
+- `createdBy`: Identificador do usuário que realizou o lançamento (UUID, chave estrangeira para `users.id`);
+- `createdAt`: Data e hora de criação do registro em UTC (`TIMESTAMPTZ`);
+- `deletedAt`: Data e hora de cancelamento lógico / soft-delete em UTC (`TIMESTAMPTZ`, opcional);
+- `cancellationReason`: Justificativa auditável do cancelamento lógico (`TEXT`, opcional).
+
+*Nota:* Campos como `importJobId`, `metadata` ou `version` não existem na tabela física do banco de dados.
+
+## 3. Regras de Negócio e Cálculo no Motor de Posições
+
+O motor de posições (`src/modules/portfolio/domain/position-engine.ts`) aplica as seguintes regras determinísticas comprovadas no código e testes:
+
+### 3.1. Posição em Custódia e Custo Médio Ponderado
+- **Cálculo da Quantidade:** Acumulada sequencialmente a partir da ordenação cronológica crescente dos eventos por `tradeDate`. Eventos cancelados (`deletedAt IS NOT NULL`) são estritamente desconsiderados pelo filtro inicial do motor.
+- **Custo Médio Ponderado em Compras e Entradas:** Em operações `BUY` e `TRANSFER_IN`, as taxas são incorporadas ao custo total:
+  $$\text{Custo Total Novo} = \text{Custo Total Anterior} + (\text{quantity} \times \text{unitPrice} + \text{fees})$$
+  $$\text{Custo Médio Unitário} = \frac{\text{Custo Total Novo}}{\text{Quantidade Total Nova}}$$
+- **Redução Proporcional em Saídas (`TRANSFER_OUT`):** Reduz a quantidade e baixa o custo investido proporcionalmente ao custo médio ponderado vigente, sem apurar PnL de venda mercantil.
+- **Venda Descoberta Proibida:** Tentativas de lançar vendas (`SELL`) com quantidade superior à posição em custódia na data lançam o erro `InsufficientPositionError`.
+
+### 3.2. PnL Realizado em Vendas (`SELL`)
+- Apurado deterministicamente no momento de cada venda:
+  $$\text{Valor Líquido da Venda} = (\text{quantity} \times \text{unitPrice}) - \text{fees}$$
+  $$\text{Custo de Aquisição Baixado} = \text{quantity} \times \text{Custo Médio Unitário}$$
+  $$\text{PnL Realizado} = \text{Valor Líquido da Venda} - \text{Custo de Aquisição Baixado}$$
+
+### 3.3. Cancelamento Lógico e Reversão
+- **Cancelamento Lógico (Soft Delete):** Marcação de `deletedAt` e `cancellationReason`. O evento permanece no banco para auditoria e é ignorado nos cálculos subsequentes.
+- **Reversão (`REVERSAL`):** Presente no enum e nas ações de auditoria (`audit_logs`); sua implementação no motor de posições permanece como regra de domínio pendente de detalhamento.
+
+## 4. Limitações e Estado das Capacidades
+
+| Capacidade | Estado Real no Código | Classificação |
+|---|---|---|
+| Lançamentos operacionais (`BUY`, `SELL`, `TRANSFER_IN`, `TRANSFER_OUT`) | Implementado | **Implementado e validado** |
+| Tipos cadastrais e de auditoria (`MANUAL_ADJUSTMENT`, `REVERSAL`) | Implementado no schema | **Não verificado no motor de posições** |
+| Cálculo determinístico de posições e custo médio ponderado | Implementado | **Implementado e validado** |
+| Apuração de PnL realizado por venda | Implementado | **Implementado e validado** |
+| Cancelamento lógico com justificativa | Implementado | **Implementado e validado** |
+| Subscrições via modelo relacional de 3 entidades gerando `BUY` | Implementado | **Implementado e validado** |
+| Gestão de saldos de caixa e contas correntes | Não implementado | **Regra aprovada, implementação pendente** |
+| Contas de custódia institucional e corretoras | Não implementado | **Regra aprovada, implementação pendente** |

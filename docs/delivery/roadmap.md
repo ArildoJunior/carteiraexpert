@@ -1,20 +1,24 @@
-# Roadmap — visão ampla sem construção desordenada
+# Roadmap — Sequência Estrutural de Desenvolvimento
 
-A visão completa permanece preservada. A alteração é estrutural: análise, screening, valuation e projeções passam a ser uma trilha própria, construída sobre dados confiáveis, sem contaminar a carteira real.
+A visão de produto e engenharia do CarteiraExpert organiza a evolução do monólito modular em fases sucessivas e ordenadas, garantindo que módulos analíticos e comerciais dependam de uma base determinística e testável.
 
-| Ordem | Linha | Pré-requisito | Resultado demonstrável |
-|---:|---|---|---|
-| 01 | Fundação, Decimal, auditoria e jobs | Nenhum | Base determinística e observável |
-| 02 | Identity, authorization e isolamento | Fundação | Usuários e recursos protegidos |
-| 03 | Portfolio e motor de eventos | 01–02 | Compra, venda, posição e custo médio |
-| 04 | Cadastro de ativos, séries e fontes | 01–03 | Ativo, listagem, moeda e histórico identificados |
-| 05 | Análise fundamentalista e filtros | 04 | Indicadores e screening reproduzíveis |
-| 06 | Análise técnica e gráficos | 04 | Séries e indicadores descritivos |
-| 07 | Valuations | 03–05 | Bazin, Graham, Lynch e DCF versionados |
-| 08 | Projeções de ativo e carteira | 03, 05, 07 | Cenários isolados da carteira real |
-| 09 | Eventos corporativos e importações | 03–04 | Dados reais revisáveis e rastreáveis |
-| 10 | Mercado ampliado, Premium e compartilhamento | 02–09 | Evolução comercial com privacidade |
-| 11 | Exterior, cripto, opções e apoio tributário | Núcleo estável + validação | Linhas condicionais por demanda |
-| 12 | IA editorial e lançamento | Governança e operação | Conteúdo interno revisado, nunca automático |
+## Sequência de Fases e Estado Real
 
-A ordem não impede desenvolver protótipos visuais antes; impede que protótipos sejam tratados como resultado financeiro confiável.
+| Ordem | Fase | Pré-requisito | Estado no Repositório | Resultado Demonstrável |
+|---:|---|---|---|---|
+| **01** | **Fundação Técnica** | Nenhum | **Implementada e validada** | TypeScript estrito, Biome, Vitest, Playwright, `Decimal` e persistência `NUMERIC`. |
+| **02** | **Identidade, Acesso e Segurança** | Fase 01 | **Implementada nos fluxos comprovados** | Cadastro, Argon2id, sessões em banco (SHA-256), rate limit e consentimentos LGPD. |
+| **03** | **Núcleo de Carteiras e Posições** | Fases 01–02 | **Implementada nos fluxos comprovados** | Gestão de carteiras, lançamentos operacionais comprovados, motor de custo médio e PnL. |
+| **04** | **Ações Corporativas e Subscrições** | Fases 01–03 | **Implementada nos fluxos comprovados** | Split, grupamento, bonificação, proventos (dividendos/JCP) e subscrições em 3 entidades. |
+| **05** | **Planos, Entitlements e Compartilhamento** | Fases 02–04 | **Planejada, não implementada** | Regras aprovadas (ADR-004); sem tabelas comerciais ou gateways ativos. |
+| **06** | **Dados de Mercado e Gráficos** | Fases 03–04 | **Parcialmente implementada** | Banco local (`market_quotes`, `exchange_rates`), adaptadores, valuation, evolução e gráficos. |
+| **07** | **Importações Revisáveis** | Fases 03–04 | **Planejada, não implementada** | Upload e parsing de planilhas e PDFs com revisão humana obrigatória. |
+| **08** | **Ativos Globais e Criptoativos** | Fases 03, 06 | **Parcialmente implementada** | Multi-moeda, conversão cambial determinística e precisão `NUMERIC(28, 10)` no banco. |
+| **09** | **Projeções, Opções e Apoio Tributário** | Fases 03, 06, 08 | **Parcialmente implementada apenas nas bases comprovadas** | PnL realizado e IRRF sobre JCP entregues; módulos de opções e fiscal dedicados planejados. |
+| **10** | **IA Editorial e Preparação de Lançamento** | Governança e Operação | **Planejada, não implementada** | Diretrizes de governança editorial aprovadas; pipeline técnico planejado. |
+
+## Diretrizes de Sequenciamento
+
+1. **Separação entre Dados Reais e Modelos Teóricos:** Ferramentas de screening, valuation teórico (Bazin, Graham, DCF) e simulações operam sobre dados históricos e não contaminam o cálculo patrimonial da carteira real.
+2. **Proibições Regulatórias e Operacionais Permanentes:** A plataforma não faz recomendações de investimento, não envia nem executa ordens, não emite DARF e não oferece chat de IA para o usuário final.
+3. **Evolução Factual:** Nenhuma fase é considerada entregue sem a existência comprovada de código, schema e suítes de testes automatizados correspondentes.
