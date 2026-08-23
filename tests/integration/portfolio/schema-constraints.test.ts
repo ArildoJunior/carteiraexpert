@@ -359,5 +359,103 @@ describe('Integração: Constraints Físicas e Índices de Portfolio Core', () =
       // Limpeza
       await db.delete(portfolioEvents).where(eq(portfolioEvents.id, eventId));
     });
+
+    it('deve rejeitar BUY com direction não nula (chk_portfolio_events_direction)', async () => {
+      await expectDbError(
+        db.insert(portfolioEvents).values({
+          id: crypto.randomUUID(),
+          portfolioId: portfolio1Id,
+          assetId: globalAssetId,
+          type: 'BUY',
+          direction: 'IN',
+          tradeDate: new Date(),
+          quantity: '100.0000000000',
+          unitPrice: '35.50000000',
+          fees: '0.00000000',
+          createdBy: user1Id,
+        }),
+        /chk_portfolio_events_direction/
+      );
+    });
+
+    it('deve rejeitar MANUAL_ADJUSTMENT com direction nula (chk_portfolio_events_direction)', async () => {
+      await expectDbError(
+        db.insert(portfolioEvents).values({
+          id: crypto.randomUUID(),
+          portfolioId: portfolio1Id,
+          assetId: globalAssetId,
+          type: 'MANUAL_ADJUSTMENT',
+          direction: null,
+          tradeDate: new Date(),
+          quantity: '100.0000000000',
+          unitPrice: '35.50000000',
+          fees: '0.00000000',
+          createdBy: user1Id,
+        }),
+        /chk_portfolio_events_direction/
+      );
+    });
+
+    it('deve rejeitar MANUAL_ADJUSTMENT com direction inválida (chk_portfolio_events_direction)', async () => {
+      await expectDbError(
+        db.insert(portfolioEvents).values({
+          id: crypto.randomUUID(),
+          portfolioId: portfolio1Id,
+          assetId: globalAssetId,
+          type: 'MANUAL_ADJUSTMENT',
+          direction: 'INVALID',
+          tradeDate: new Date(),
+          quantity: '100.0000000000',
+          unitPrice: '35.50000000',
+          fees: '0.00000000',
+          createdBy: user1Id,
+        }),
+        /chk_portfolio_events_direction/
+      );
+    });
+
+    it('deve aceitar MANUAL_ADJUSTMENT com direction IN ou OUT válida', async () => {
+      const eventInId = crypto.randomUUID();
+      const eventOutId = crypto.randomUUID();
+
+      await db.insert(portfolioEvents).values([
+        {
+          id: eventInId,
+          portfolioId: portfolio1Id,
+          assetId: globalAssetId,
+          type: 'MANUAL_ADJUSTMENT',
+          direction: 'IN',
+          tradeDate: new Date('2026-08-14T10:00:00Z'),
+          quantity: '50.0000000000',
+          unitPrice: '10.00000000',
+          fees: '0.00000000',
+          currency: 'BRL',
+          createdBy: user1Id,
+        },
+        {
+          id: eventOutId,
+          portfolioId: portfolio1Id,
+          assetId: globalAssetId,
+          type: 'MANUAL_ADJUSTMENT',
+          direction: 'OUT',
+          tradeDate: new Date('2026-08-14T11:00:00Z'),
+          quantity: '20.0000000000',
+          unitPrice: '0.00000000',
+          fees: '0.00000000',
+          currency: 'BRL',
+          createdBy: user1Id,
+        },
+      ]);
+
+      const rows = await db
+        .select()
+        .from(portfolioEvents)
+        .where(inArray(portfolioEvents.id, [eventInId, eventOutId]));
+
+      expect(rows).toHaveLength(2);
+
+      // Limpeza
+      await db.delete(portfolioEvents).where(inArray(portfolioEvents.id, [eventInId, eventOutId]));
+    });
   });
 });

@@ -39,7 +39,8 @@ export interface TimelineEvent {
   id: string;
   portfolioId: string;
   assetId: string;
-  type: string; // 'BUY' | 'SELL' | 'TRANSFER_IN' | 'TRANSFER_OUT' | string
+  type: string; // 'BUY' | 'SELL' | 'TRANSFER_IN' | 'TRANSFER_OUT' | 'MANUAL_ADJUSTMENT' | 'REVERSAL' | string
+  direction?: 'IN' | 'OUT' | string | null;
   tradeDate: Date;
   settlementDate?: Date | null;
   quantity: Decimal | string;
@@ -276,6 +277,45 @@ export function calculateAssetPosition(
       }
       const jcpResult = calculateJcp(qty, price, fees);
       runningIncome = runningIncome.plus(jcpResult.netIncomeAmount);
+    } else if (event.type === 'MANUAL_ADJUSTMENT') {
+      const direction = (event.direction || '').toUpperCase().trim();
+      if (direction === 'IN') {
+        const costDelta = qty.times(price).plus(fees);
+        runningQuantity = runningQuantity.plus(qty);
+        runningCost = runningCost.plus(costDelta);
+      } else if (direction === 'OUT') {
+        if (runningQuantity.lessThan(qty)) {
+          throw new InsufficientPositionError(
+            `Posição insuficiente para ajuste de saída (MANUAL_ADJUSTMENT OUT) na data ${lastTradeDate.toISOString().slice(0, 10)}. Posição disponível: ${runningQuantity.toString()}, Solicitado: ${qty.toString()}.`,
+            {
+              availableQuantity: runningQuantity.toString(),
+              requestedQuantity: qty.toString(),
+              assetId,
+              tradeDate: lastTradeDate,
+            }
+          );
+        }
+
+        const priorAveragePrice = runningQuantity.isZero()
+          ? new Decimal(0)
+          : runningCost.dividedBy(runningQuantity);
+
+        const costRemoved = qty.times(priorAveragePrice);
+        runningQuantity = runningQuantity.minus(qty);
+
+        if (runningQuantity.isZero()) {
+          runningCost = new Decimal(0);
+        } else {
+          runningCost = runningCost.minus(costRemoved);
+        }
+        // Nota de domínio: Ajuste manual de saída não gera PnL mercantil.
+      } else {
+        throw new Error(
+          `Evento MANUAL_ADJUSTMENT inválido: direção deve ser "IN" ou "OUT", recebido "${event.direction}".`
+        );
+      }
+    } else if (event.type === 'REVERSAL') {
+      // REVERSAL não é um evento contábil de carteira e não altera quantidade, custo, PnL ou taxas operacionais.
     }
   }
 
@@ -498,6 +538,40 @@ export function validateTimelineConsistency(
           );
         }
       }
+    } else if (event.type === 'MANUAL_ADJUSTMENT') {
+      const direction = (event.direction || '').toUpperCase().trim();
+      if (direction === 'IN') {
+        runningQuantity = runningQuantity.plus(qty);
+      } else if (direction === 'OUT') {
+        if (runningQuantity.lessThan(qty)) {
+          if (prospectiveEvent && event.id === prospectiveEvent.id) {
+            throw new InsufficientPositionError(
+              `Posição insuficiente para ajuste de saída (MANUAL_ADJUSTMENT OUT). Disponível: ${runningQuantity.toString()}, Solicitado: ${qty.toString()}.`,
+              {
+                availableQuantity: runningQuantity.toString(),
+                requestedQuantity: qty.toString(),
+                assetId: event.assetId,
+                tradeDate: eventDate,
+              }
+            );
+          } else {
+            throw new RetroactiveInconsistencyError(
+              `O ajuste manual de saída não pode ser concluído pois geraria inconsistência na data ${eventDate.toISOString().slice(0, 10)}.`,
+              {
+                assetId: event.assetId,
+                conflictingDate: eventDate,
+              }
+            );
+          }
+        }
+        runningQuantity = runningQuantity.minus(qty);
+      } else {
+        throw new Error(
+          `Evento MANUAL_ADJUSTMENT inválido: direção deve ser "IN" ou "OUT", recebido "${event.direction}".`
+        );
+      }
+    } else if (event.type === 'REVERSAL') {
+      // REVERSAL não afeta quantidade em custódia.
     }
   }
 }
@@ -803,6 +877,7 @@ export function serializeUserRecentEvent(
     assetName: event.assetName,
     assetMarket: event.assetMarket,
     type: event.type,
+    direction: event.direction ?? null,
     tradeDate:
       event.tradeDate instanceof Date
         ? event.tradeDate.toISOString()

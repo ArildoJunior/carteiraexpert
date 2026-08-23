@@ -21,6 +21,7 @@ import { evolutionPeriodSchema } from './portfolio-evolution.schema';
 import {
   FutureDateNotAllowedError,
   InvalidEvolutionPeriodError,
+  InsufficientPositionError,
 } from './errors';
 
 export const MAX_QUOTE_AGE_DAYS = 7;
@@ -312,6 +313,44 @@ export function calculatePortfolioEvolutionTimeline(
           pos.quantity = bonusRes.quantity;
           pos.totalCost = bonusRes.totalCost;
         }
+      } else if (e.type === 'MANUAL_ADJUSTMENT') {
+        const direction = (e.direction || '').toUpperCase().trim();
+        if (direction === 'IN') {
+          const costDelta = qty.times(price).plus(fees);
+          pos.quantity = pos.quantity.plus(qty);
+          pos.totalCost = pos.totalCost.plus(costDelta);
+        } else if (direction === 'OUT') {
+          if (pos.quantity.lessThan(qty)) {
+            const eventDate = new Date(e.tradeDate);
+            throw new InsufficientPositionError(
+              `Posição insuficiente para ajuste de saída (MANUAL_ADJUSTMENT OUT) na data ${eventDate.toISOString().slice(0, 10)}. Posição disponível: ${pos.quantity.toString()}, Solicitado: ${qty.toString()}.`,
+              {
+                availableQuantity: pos.quantity.toString(),
+                requestedQuantity: qty.toString(),
+                assetId,
+                tradeDate: eventDate,
+              }
+            );
+          }
+
+          const priorAvgPrice = pos.quantity.isZero()
+            ? new Decimal(0)
+            : pos.totalCost.dividedBy(pos.quantity);
+
+          const costRemoved = qty.times(priorAvgPrice);
+          pos.quantity = pos.quantity.minus(qty);
+          if (pos.quantity.isZero()) {
+            pos.totalCost = new Decimal(0);
+          } else {
+            pos.totalCost = pos.totalCost.minus(costRemoved);
+          }
+        } else {
+          throw new Error(
+            `Evento MANUAL_ADJUSTMENT inválido: direção deve ser "IN" ou "OUT", recebido "${e.direction}".`
+          );
+        }
+      } else if (e.type === 'REVERSAL') {
+        // REVERSAL não é um evento contábil de carteira e não altera quantidade ou custo.
       }
 
       eventIndex++;

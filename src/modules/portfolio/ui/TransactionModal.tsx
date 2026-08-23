@@ -26,7 +26,8 @@ export function TransactionModal({
   onSuccess,
 }: TransactionModalProps) {
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
-  const [transactionType, setTransactionType] = useState<'BUY' | 'SELL'>('BUY');
+  const [transactionType, setTransactionType] = useState<'BUY' | 'SELL' | 'MANUAL_ADJUSTMENT'>('BUY');
+  const [direction, setDirection] = useState<'IN' | 'OUT'>('IN');
   const [availableQty, setAvailableQty] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [state, setState] = useState<ActionResult<PortfolioEvent>>({ success: false });
@@ -38,7 +39,7 @@ export function TransactionModal({
   // Formata a data atual para YYYY-MM-DD (padrão do input date)
   const todayStr = new Date().toISOString().split('T')[0];
 
-  // Busca posição disponível quando seleciona ativo em modo VENDA com proteção contra estado obsoleto
+  // Busca posição disponível quando seleciona ativo em modo VENDA ou AJUSTE DE SAÍDA com proteção contra estado obsoleto
   useEffect(() => {
     // 1. Limpa imediatamente a posição disponível para não exibir dados do ativo anterior
     setAvailableQty(null);
@@ -46,7 +47,10 @@ export function TransactionModal({
     let active = true;
 
     async function fetchAvailable() {
-      if (selectedAsset && transactionType === 'SELL') {
+      if (
+        selectedAsset &&
+        (transactionType === 'SELL' || (transactionType === 'MANUAL_ADJUSTMENT' && direction === 'OUT'))
+      ) {
         try {
           const res = await getAssetPositionAction(portfolioId, selectedAsset.id);
           if (active) {
@@ -69,7 +73,7 @@ export function TransactionModal({
     return () => {
       active = false;
     };
-  }, [selectedAsset, transactionType, portfolioId]);
+  }, [selectedAsset, transactionType, direction, portfolioId]);
 
   if (!isOpen) return null;
 
@@ -83,6 +87,11 @@ export function TransactionModal({
       const formData = new FormData(e.currentTarget);
       formData.set('portfolioId', portfolioId);
       formData.set('type', transactionType);
+      if (transactionType === 'MANUAL_ADJUSTMENT') {
+        formData.set('direction', direction);
+      } else {
+        formData.delete('direction');
+      }
       if (selectedAsset) {
         formData.set('assetId', selectedAsset.id);
       }
@@ -156,17 +165,17 @@ export function TransactionModal({
               </div>
             )}
 
-            {/* Seletor Tipo: Compra / Venda */}
+            {/* Seletor Tipo: Compra / Venda / Ajuste Manual */}
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1.5">
                 Tipo de Operação <span className="text-negative-text">*</span>
               </label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-2">
                 <button
                   id="transaction-type-buy"
                   type="button"
                   onClick={() => setTransactionType('BUY')}
-                  className={`py-2.5 px-4 rounded-xl text-sm font-semibold border transition-all flex items-center justify-center gap-2 ${
+                  className={`py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold border transition-all flex items-center justify-center gap-1.5 ${
                     transactionType === 'BUY'
                       ? 'bg-positive-text/10 border-positive-text text-positive-text ring-2 ring-positive-text/20'
                       : 'bg-background border-border-theme text-text-secondary hover:bg-surface'
@@ -178,7 +187,7 @@ export function TransactionModal({
                   id="transaction-type-sell"
                   type="button"
                   onClick={() => setTransactionType('SELL')}
-                  className={`py-2.5 px-4 rounded-xl text-sm font-semibold border transition-all flex items-center justify-center gap-2 ${
+                  className={`py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold border transition-all flex items-center justify-center gap-1.5 ${
                     transactionType === 'SELL'
                       ? 'bg-action-primary/10 border-action-primary text-action-primary ring-2 ring-action-primary/20'
                       : 'bg-background border-border-theme text-text-secondary hover:bg-surface'
@@ -186,8 +195,63 @@ export function TransactionModal({
                 >
                   <span>🔵</span> Venda (SELL)
                 </button>
+                <button
+                  id="transaction-type-adjustment"
+                  type="button"
+                  onClick={() => setTransactionType('MANUAL_ADJUSTMENT')}
+                  className={`py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold border transition-all flex items-center justify-center gap-1.5 ${
+                    transactionType === 'MANUAL_ADJUSTMENT'
+                      ? 'bg-action-primary/10 border-action-primary text-action-primary ring-2 ring-action-primary/20'
+                      : 'bg-background border-border-theme text-text-secondary hover:bg-surface'
+                  }`}
+                >
+                  <span>⚙️</span> Ajuste Manual
+                </button>
               </div>
             </div>
+
+            {/* Seletor de Direção: Exibido APENAS para MANUAL_ADJUSTMENT */}
+            {transactionType === 'MANUAL_ADJUSTMENT' && (
+              <div id="transaction-direction-container">
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                  Direção do Ajuste <span className="text-negative-text">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    id="transaction-direction-in"
+                    type="button"
+                    onClick={() => setDirection('IN')}
+                    className={`py-2.5 px-4 rounded-xl text-sm font-semibold border transition-all flex items-center justify-center gap-2 ${
+                      direction === 'IN'
+                        ? 'bg-positive-text/10 border-positive-text text-positive-text ring-2 ring-positive-text/20'
+                        : 'bg-background border-border-theme text-text-secondary hover:bg-surface'
+                    }`}
+                  >
+                    <span>📥</span> Entrada (IN)
+                  </button>
+                  <button
+                    id="transaction-direction-out"
+                    type="button"
+                    onClick={() => setDirection('OUT')}
+                    className={`py-2.5 px-4 rounded-xl text-sm font-semibold border transition-all flex items-center justify-center gap-2 ${
+                      direction === 'OUT'
+                        ? 'bg-negative-text/10 border-negative-text text-negative-text ring-2 ring-negative-text/20'
+                        : 'bg-background border-border-theme text-text-secondary hover:bg-surface'
+                    }`}
+                  >
+                    <span>📤</span> Saída (OUT)
+                  </button>
+                </div>
+                {state.fieldErrors?.direction && (
+                  <p
+                    id="transaction-direction-error"
+                    className="text-negative-text text-xs mt-1"
+                  >
+                    {state.fieldErrors.direction[0]}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Seletor de Ativo */}
             <AssetSearchSelect
@@ -200,8 +264,8 @@ export function TransactionModal({
               error={state.fieldErrors?.assetId?.[0]}
             />
 
-            {/* Indicação de Posição Disponível para Venda */}
-            {transactionType === 'SELL' && availableQty !== null && (
+            {/* Indicação de Posição Disponível para Venda ou Ajuste de Saída */}
+            {(transactionType === 'SELL' || (transactionType === 'MANUAL_ADJUSTMENT' && direction === 'OUT')) && availableQty !== null && (
               <div
                 id="available-position-badge"
                 className="bg-action-primary/10 border border-action-primary/30 rounded-lg px-3 py-2 flex items-center justify-between text-xs"

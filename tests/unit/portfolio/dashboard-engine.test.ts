@@ -205,6 +205,7 @@ describe('Unitário: Motor de Consolidação do Dashboard Multi-Carteiras', () =
       assetName: 'B3 S.A.',
       assetMarket: 'B3',
       type: 'BUY',
+      direction: null,
       tradeDate: new Date('2026-08-15T10:00:00.000Z'),
       settlementDate: new Date('2026-08-17T10:00:00.000Z'),
       quantity: '100',

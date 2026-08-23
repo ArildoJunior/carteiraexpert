@@ -605,5 +605,107 @@ describe('Integração: PortfolioEventService (PostgreSQL Real)', () => {
         )
       ).rejects.toThrow(AuthorizationError);
     });
+
+    // ─── 5. Testes de MANUAL_ADJUSTMENT e REVERSAL no Banco Real ─────────────
+    it('deve persistir MANUAL_ADJUSTMENT IN no banco real com direction gravada e auditoria correta', async () => {
+      const created = await createPortfolioEvent(
+        {
+          portfolioId: portfolio1Id,
+          assetId: globalAssetId,
+          type: 'MANUAL_ADJUSTMENT',
+          direction: 'IN',
+          tradeDate: new Date('2026-08-20T10:00:00Z'),
+          quantity: '50.0000000000',
+          unitPrice: '12.50000000',
+          fees: '1.00000000',
+        },
+        user1
+      );
+      createdEventIds.push(created.id);
+
+      const [row] = await db
+        .select()
+        .from(portfolioEvents)
+        .where(eq(portfolioEvents.id, created.id))
+        .limit(1);
+
+      expect(row.type).toBe('MANUAL_ADJUSTMENT');
+      expect(row.direction).toBe('IN');
+      expect(row.quantity).toBe('50.0000000000');
+      expect(row.unitPrice).toBe('12.50000000');
+
+      const [audit] = await db
+        .select()
+        .from(auditLogs)
+        .where(
+          and(
+            eq(auditLogs.tableName, 'portfolio_events'),
+            eq(auditLogs.recordId, created.id),
+            eq(auditLogs.action, 'INSERT')
+          )
+        )
+        .limit(1);
+
+      expect(audit).toBeDefined();
+      expect((audit?.newValue as any)?.direction).toBe('IN');
+    });
+
+    it('deve persistir MANUAL_ADJUSTMENT OUT no banco real após saldo suficiente', async () => {
+      // Cria primeiro uma compra para ter saldo
+      const buy = await createPortfolioEvent(
+        {
+          portfolioId: portfolio2Id,
+          assetId: globalAssetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-08-21T09:00:00Z'),
+          quantity: '100.0000000000',
+          unitPrice: '20.00000000',
+        },
+        user2
+      );
+      createdEventIds.push(buy.id);
+
+      // Executa ajuste manual de saída
+      const adjOut = await createPortfolioEvent(
+        {
+          portfolioId: portfolio2Id,
+          assetId: globalAssetId,
+          type: 'MANUAL_ADJUSTMENT',
+          direction: 'OUT',
+          tradeDate: new Date('2026-08-21T15:00:00Z'),
+          quantity: '40.0000000000',
+          unitPrice: '0.00000000',
+          fees: '0.00000000',
+        },
+        user2
+      );
+      createdEventIds.push(adjOut.id);
+
+      const [row] = await db
+        .select()
+        .from(portfolioEvents)
+        .where(eq(portfolioEvents.id, adjOut.id))
+        .limit(1);
+
+      expect(row.type).toBe('MANUAL_ADJUSTMENT');
+      expect(row.direction).toBe('OUT');
+      expect(row.quantity).toBe('40.0000000000');
+    });
+
+    it('deve rejeitar criação de REVERSAL via service', async () => {
+      await expect(
+        createPortfolioEvent(
+          {
+            portfolioId: portfolio1Id,
+            assetId: globalAssetId,
+            type: 'REVERSAL' as any,
+            tradeDate: new Date('2026-08-22T10:00:00Z'),
+            quantity: '10.0000000000',
+            unitPrice: '10.00000000',
+          },
+          user1
+        )
+      ).rejects.toThrow();
+    });
   });
 });

@@ -6,6 +6,7 @@ import {
   getUtcCalendarDaysDiff,
   MAX_QUOTE_AGE_DAYS,
 } from '@/modules/portfolio/domain/portfolio-evolution-engine';
+import { InsufficientPositionError } from '@/modules/portfolio/domain/errors';
 import type { TimelineEvent } from '@/modules/portfolio/domain/position-engine';
 import type { Asset } from '@/modules/portfolio/domain/asset.types';
 import type { MarketQuote, ExchangeRate } from '@/modules/market-data';
@@ -1321,6 +1322,249 @@ describe('Unitário: Motor Temporal de Evolução Patrimonial (portfolio-evoluti
     expect(p15.quotedPositionsCount).toBe(1);
     expect(p15.marketValue?.toString()).toBe('3800');
     expect(p15.currencyMismatchPositionsCount).toBe(1);
+  });
+
+  it('21. MANUAL_ADJUSTMENT OUT: deve lançar InsufficientPositionError quando quantidade excede saldo disponível (não mascara com Decimal.min)', () => {
+    // 10 unidades em carteira
+    const events: TimelineEvent[] = [
+      {
+        id: 'e1',
+        portfolioId: dummyPortfolioId,
+        assetId: petr4Id,
+        type: 'BUY',
+        tradeDate: new Date('2026-08-01T12:00:00.000Z'),
+        quantity: '10',
+        unitPrice: '30.00',
+        fees: '0.00',
+        currency: 'BRL',
+      },
+      // Ajuste OUT de 20 unidades (saldo disponível é apenas 10!)
+      {
+        id: 'e2',
+        portfolioId: dummyPortfolioId,
+        assetId: petr4Id,
+        type: 'MANUAL_ADJUSTMENT',
+        direction: 'OUT',
+        tradeDate: new Date('2026-08-05T12:00:00.000Z'),
+        quantity: '20',
+        unitPrice: '0.00',
+        fees: '0.00',
+        currency: 'BRL',
+      },
+    ];
+
+    let thrownError: unknown;
+    try {
+      calculatePortfolioEvolutionTimeline({
+        portfolioId: dummyPortfolioId,
+        baseCurrency: 'BRL',
+        period: '1M',
+        referenceDate: new Date('2026-08-15T18:00:00.000Z'),
+        events,
+        assetsMap,
+        quotes: [],
+      });
+    } catch (err) {
+      thrownError = err;
+    }
+
+    // 1. Verifica que a exceção é especificamente InsufficientPositionError
+    expect(thrownError).toBeInstanceOf(InsufficientPositionError);
+    const err = thrownError as InsufficientPositionError;
+    // 2. Verifica que availableQuantity e requestedQuantity estão perfeitamente corretos
+    expect(err.availableQuantity).toBe('10');
+    expect(err.requestedQuantity).toBe('20');
+    expect(err.assetId).toBe(petr4Id);
+    expect(err.message).toContain('Posição insuficiente para ajuste de saída');
+  });
+
+  it('22. MANUAL_ADJUSTMENT OUT válido: deve reduzir quantidade e custo proporcionalmente no replay temporal', () => {
+    const events: TimelineEvent[] = [
+      // 100 ações a R$ 10.00 = R$ 1000.00
+      {
+        id: 'e1',
+        portfolioId: dummyPortfolioId,
+        assetId: petr4Id,
+        type: 'BUY',
+        tradeDate: new Date('2026-08-01T12:00:00.000Z'),
+        quantity: '100',
+        unitPrice: '10.00',
+        fees: '0.00',
+        currency: 'BRL',
+      },
+      // Ajuste OUT de 30 ações
+      {
+        id: 'e2',
+        portfolioId: dummyPortfolioId,
+        assetId: petr4Id,
+        type: 'MANUAL_ADJUSTMENT',
+        direction: 'OUT',
+        tradeDate: new Date('2026-08-05T12:00:00.000Z'),
+        quantity: '30',
+        unitPrice: '0.00',
+        fees: '0.00',
+        currency: 'BRL',
+      },
+    ];
+
+    const quote: MarketQuote = {
+      id: 'q1',
+      assetId: petr4Id,
+      price: new Decimal('15.00'),
+      currency: 'BRL',
+      quoteDate: new Date('2026-08-10T12:00:00.000Z'),
+      source: 'manual',
+      delayStatus: 'eod',
+      createdBy: '00000000-0000-0000-0000-000000000000',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const summary = calculatePortfolioEvolutionTimeline({
+      portfolioId: dummyPortfolioId,
+      baseCurrency: 'BRL',
+      period: '1M',
+      referenceDate: new Date('2026-08-15T18:00:00.000Z'),
+      events,
+      assetsMap,
+      quotes: [quote],
+    });
+
+    const p10 = summary.points.find((p) => p.dateKey === '2026-08-10')!;
+
+    // 70 cotas restantes * R$ 10 (CM) = R$ 700 de custo investido
+    expect(p10.investedCost.toString()).toBe('700');
+    // 70 cotas * R$ 15 (cotação) = R$ 1050 de valor de mercado
+    expect(p10.marketValue?.toString()).toBe('1050');
+    // PnL não realizado = 1050 - 700 = +350
+    expect(p10.unrealizedPnL?.toString()).toBe('350');
+  });
+
+  it('23. Consistência entre position-engine e portfolio-evolution-engine com ajustes intermediários na linha do tempo', () => {
+    const events: TimelineEvent[] = [
+      // 01/08: Compra de 100 a R$ 10 (custo 1000)
+      {
+        id: 'e1',
+        portfolioId: dummyPortfolioId,
+        assetId: petr4Id,
+        type: 'BUY',
+        tradeDate: new Date('2026-08-01T12:00:00.000Z'),
+        quantity: '100',
+        unitPrice: '10.00',
+        fees: '0.00',
+        currency: 'BRL',
+      },
+      // 05/08: Ajuste IN de 50 a R$ 20 + taxas 10 (custo delta = 1010 -> total 2010, CM = 13.40)
+      {
+        id: 'e2',
+        portfolioId: dummyPortfolioId,
+        assetId: petr4Id,
+        type: 'MANUAL_ADJUSTMENT',
+        direction: 'IN',
+        tradeDate: new Date('2026-08-05T12:00:00.000Z'),
+        quantity: '50',
+        unitPrice: '20.00',
+        fees: '10.00',
+        currency: 'BRL',
+      },
+      // 08/08: Ajuste OUT de 30 cotas (custo removido = 30 * 13.40 = 402 -> custo restante 1608, 120 cotas)
+      {
+        id: 'e3',
+        portfolioId: dummyPortfolioId,
+        assetId: petr4Id,
+        type: 'MANUAL_ADJUSTMENT',
+        direction: 'OUT',
+        tradeDate: new Date('2026-08-08T12:00:00.000Z'),
+        quantity: '30',
+        unitPrice: '0.00',
+        fees: '0.00',
+        currency: 'BRL',
+      },
+      // 12/08: Venda de 20 cotas
+      {
+        id: 'e4',
+        portfolioId: dummyPortfolioId,
+        assetId: petr4Id,
+        type: 'SELL',
+        tradeDate: new Date('2026-08-12T12:00:00.000Z'),
+        quantity: '20',
+        unitPrice: '25.00',
+        fees: '0.00',
+        currency: 'BRL',
+      },
+    ];
+
+    const summary = calculatePortfolioEvolutionTimeline({
+      portfolioId: dummyPortfolioId,
+      baseCurrency: 'BRL',
+      period: '1M',
+      referenceDate: new Date('2026-08-15T18:00:00.000Z'),
+      events,
+      assetsMap,
+      quotes: [],
+    });
+
+    const p15 = summary.points.find((p) => p.dateKey === '2026-08-15')!;
+
+    // Quantidade final esperada: 100 + 50 - 30 - 20 = 100 cotas
+    // Custo médio = 13.40 -> Custo total final = 100 * 13.40 = 1340
+    expect(p15.investedCost.toString()).toBe('1340');
+  });
+
+  it('24. MANUAL_ADJUSTMENT com direction ausente ou inválida: deve falhar explicitamente no replay temporal', () => {
+    const invalidEventsNull: TimelineEvent[] = [
+      {
+        id: 'e1',
+        portfolioId: dummyPortfolioId,
+        assetId: petr4Id,
+        type: 'MANUAL_ADJUSTMENT',
+        direction: null as any,
+        tradeDate: new Date('2026-08-05T12:00:00.000Z'),
+        quantity: '10',
+        unitPrice: '10.00',
+        fees: '0.00',
+        currency: 'BRL',
+      },
+    ];
+
+    expect(() =>
+      calculatePortfolioEvolutionTimeline({
+        portfolioId: dummyPortfolioId,
+        baseCurrency: 'BRL',
+        period: '1M',
+        referenceDate: new Date('2026-08-15T18:00:00.000Z'),
+        events: invalidEventsNull,
+        assetsMap,
+        quotes: [],
+      })
+    ).toThrowError(/direção deve ser "IN" ou "OUT"/);
+
+    const invalidEventsInvalid: TimelineEvent[] = [
+      {
+        id: 'e2',
+        portfolioId: dummyPortfolioId,
+        assetId: petr4Id,
+        type: 'MANUAL_ADJUSTMENT',
+        direction: 'INVALID' as any,
+        tradeDate: new Date('2026-08-05T12:00:00.000Z'),
+        quantity: '10',
+        unitPrice: '10.00',
+        fees: '0.00',
+        currency: 'BRL',
+      },
+    ];
+
+    expect(() =>
+      calculatePortfolioEvolutionTimeline({
+        portfolioId: dummyPortfolioId,
+        baseCurrency: 'BRL',
+        period: '1M',
+        referenceDate: new Date('2026-08-15T18:00:00.000Z'),
+        events: invalidEventsInvalid,
+        assetsMap,
+        quotes: [],
+      })
+    ).toThrowError(/direção deve ser "IN" ou "OUT"/);
   });
 });
 

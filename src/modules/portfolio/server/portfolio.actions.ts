@@ -369,6 +369,7 @@ export async function createPortfolioEventAction(
       portfolioId,
       assetId: formData.get('assetId'),
       type: formData.get('type'),
+      direction: formData.get('direction') || null,
       tradeDate: normalizeFormDate(rawTradeDate),
       settlementDate: normalizeFormDate(rawSettlementDate),
       quantity: formData.get('quantity'),

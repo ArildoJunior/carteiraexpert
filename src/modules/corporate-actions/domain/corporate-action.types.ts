@@ -9,6 +9,7 @@ export interface PortfolioEvent {
   portfolioId: string;
   assetId: string;
   type: string;
+  direction: string | null;
   tradeDate: Date;
   settlementDate: Date | null;
   quantity: string;

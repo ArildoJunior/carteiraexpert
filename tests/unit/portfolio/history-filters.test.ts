@@ -83,6 +83,7 @@ describe('serializeUserHistoryPaginatedResult (Unit)', () => {
           assetName: 'Petrobras PN',
           assetMarket: 'B3',
           type: 'BUY',
+          direction: null,
           tradeDate: new Date('2026-01-10T10:00:00.000Z'),
           settlementDate: new Date('2026-01-12T10:00:00.000Z'),
           quantity: '100.00000000',

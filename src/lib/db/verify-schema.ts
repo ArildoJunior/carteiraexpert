@@ -241,6 +241,7 @@ export const EXPECTED_SCHEMA_MATRIX: Record<string, ExpectedTable> = {
       { name: 'portfolio_id', type: 'uuid', isNullable: false },
       { name: 'asset_id', type: 'uuid', isNullable: false },
       { name: 'type', type: 'text', isNullable: false },
+      { name: 'direction', type: 'text', isNullable: true },
       { name: 'trade_date', type: ['timestamp with time zone', 'timestamptz'], isNullable: false },
       { name: 'settlement_date', type: ['timestamp with time zone', 'timestamptz'], isNullable: true },
       { name: 'quantity', type: 'numeric', isNullable: false },

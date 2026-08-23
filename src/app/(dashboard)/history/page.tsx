@@ -220,6 +220,7 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
                   const isBonus = event.type === 'BONUS_SHARE';
                   const isDividend = event.type === 'DIVIDEND';
                   const isJcp = event.type === 'JCP';
+                  const isAdjustment = event.type === 'MANUAL_ADJUSTMENT';
 
                   const tradeDateFormatted = new Date(event.tradeDate).toLocaleDateString(
                     'pt-BR',
@@ -277,6 +278,11 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
                         {isJcp && (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-500/10 text-teal-600 dark:text-teal-300 border border-teal-500/30">
                             🏛️ JCP
+                          </span>
+                        )}
+                        {isAdjustment && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30">
+                            ⚖️ {event.direction === 'OUT' ? 'Ajuste (Saída)' : 'Ajuste (Entrada)'}
                           </span>
                         )}
                       </td>

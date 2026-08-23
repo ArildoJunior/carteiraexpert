@@ -71,6 +71,7 @@ export interface SerializedUserRecentEventItem {
   assetName: string;
   assetMarket: string;
   type: string;
+  direction?: string | null;
   tradeDate: string;
   settlementDate: string | null;
   quantity: string;

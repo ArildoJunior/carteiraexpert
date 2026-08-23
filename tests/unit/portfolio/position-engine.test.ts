@@ -925,4 +925,469 @@ describe('Unidade: Motor de Posição, Custo Médio e PnL (Domain Engine)', () =
       expect(summary.totalUnrealizedPnLPercent).toBeNull();
     });
   });
+
+  // ─── 4. MANUAL_ADJUSTMENT e REVERSAL no Motor Contábil ───────────────────────
+  describe('MANUAL_ADJUSTMENT e REVERSAL no position-engine', () => {
+    it('deve processar MANUAL_ADJUSTMENT IN como incremento de custódia e incorporação de custo e taxas', () => {
+      const events: TimelineEvent[] = [
+        {
+          id: 'adj-in-1',
+          portfolioId,
+          assetId,
+          type: 'MANUAL_ADJUSTMENT',
+          direction: 'IN',
+          tradeDate: new Date('2026-01-10T12:00:00Z'),
+          quantity: '100',
+          unitPrice: '20.00',
+          fees: '5.00',
+        },
+      ];
+
+      const { position: pos } = calculateAssetPosition(assetId, events);
+
+      expect(pos.quantity.toString()).toBe('100');
+      // Custo = 100 * 20 + 5 = 2005.00
+      expect(pos.totalCost.toString()).toBe('2005');
+      expect(pos.averagePrice.toString()).toBe('20.05');
+      expect(pos.totalRealizedPnL.toString()).toBe('0');
+      expect(pos.totalFees.toString()).toBe('5');
+    });
+
+    it('deve recalcular custo médio ponderado com compra prévia e MANUAL_ADJUSTMENT IN', () => {
+      const events: TimelineEvent[] = [
+        {
+          id: 'buy-1',
+          portfolioId,
+          assetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-10T12:00:00Z'),
+          quantity: '100',
+          unitPrice: '10.00',
+          fees: '0.00',
+        },
+        {
+          id: 'adj-in-2',
+          portfolioId,
+          assetId,
+          type: 'MANUAL_ADJUSTMENT',
+          direction: 'IN',
+          tradeDate: new Date('2026-01-15T12:00:00Z'),
+          quantity: '50',
+          unitPrice: '15.00',
+          fees: '2.00',
+        },
+      ];
+
+      const { position: pos } = calculateAssetPosition(assetId, events);
+
+      // Quantidade = 100 + 50 = 150
+      expect(pos.quantity.toString()).toBe('150');
+      // Custo = 1000 + (50 * 15 + 2) = 1000 + 752 = 1752
+      expect(pos.totalCost.toString()).toBe('1752');
+      // Custo médio = 1752 / 150 = 11.68
+      expect(pos.averagePrice.toString()).toBe('11.68');
+      expect(pos.totalRealizedPnL.toString()).toBe('0');
+    });
+
+    it('deve processar MANUAL_ADJUSTMENT OUT com redução proporcional de custo sem gerar PnL mercantil', () => {
+      const events: TimelineEvent[] = [
+        {
+          id: 'buy-1',
+          portfolioId,
+          assetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-10T12:00:00Z'),
+          quantity: '100',
+          unitPrice: '10.00',
+          fees: '0.00',
+        },
+        {
+          id: 'adj-out-1',
+          portfolioId,
+          assetId,
+          type: 'MANUAL_ADJUSTMENT',
+          direction: 'OUT',
+          tradeDate: new Date('2026-01-15T12:00:00Z'),
+          quantity: '30',
+          unitPrice: '0.00',
+          fees: '0.00',
+        },
+      ];
+
+      const { position: pos, realizedTrades } = calculateAssetPosition(assetId, events);
+
+      // Quantidade = 100 - 30 = 70
+      expect(pos.quantity.toString()).toBe('70');
+      // Custo médio preservado = 10.00
+      expect(pos.averagePrice.toString()).toBe('10');
+      // Custo restante = 70 * 10 = 700.00
+      expect(pos.totalCost.toString()).toBe('700');
+      // Não gera PnL realizado
+      expect(pos.totalRealizedPnL.toString()).toBe('0');
+      expect(realizedTrades).toHaveLength(0);
+    });
+
+    it('deve zerar a posição e o custo quando MANUAL_ADJUSTMENT OUT consome 100% da posição', () => {
+      const events: TimelineEvent[] = [
+        {
+          id: 'buy-1',
+          portfolioId,
+          assetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-10T12:00:00Z'),
+          quantity: '100',
+          unitPrice: '10.00',
+          fees: '0.00',
+        },
+        {
+          id: 'adj-out-all',
+          portfolioId,
+          assetId,
+          type: 'MANUAL_ADJUSTMENT',
+          direction: 'OUT',
+          tradeDate: new Date('2026-01-15T12:00:00Z'),
+          quantity: '100',
+          unitPrice: '0.00',
+          fees: '0.00',
+        },
+      ];
+
+      const { position: pos } = calculateAssetPosition(assetId, events);
+
+      expect(pos.quantity.toString()).toBe('0');
+      expect(pos.totalCost.toString()).toBe('0');
+      expect(pos.averagePrice.toString()).toBe('0');
+      expect(pos.totalRealizedPnL.toString()).toBe('0');
+    });
+
+    it('deve rejeitar MANUAL_ADJUSTMENT OUT com saldo insuficiente no calculateAssetPosition', () => {
+      const events: TimelineEvent[] = [
+        {
+          id: 'buy-1',
+          portfolioId,
+          assetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-10T12:00:00Z'),
+          quantity: '50',
+          unitPrice: '10.00',
+          fees: '0.00',
+        },
+        {
+          id: 'adj-out-excess',
+          portfolioId,
+          assetId,
+          type: 'MANUAL_ADJUSTMENT',
+          direction: 'OUT',
+          tradeDate: new Date('2026-01-15T12:00:00Z'),
+          quantity: '60',
+          unitPrice: '0.00',
+          fees: '0.00',
+        },
+      ];
+
+      expect(() => calculateAssetPosition(assetId, events)).toThrow(InsufficientPositionError);
+    });
+
+    it('deve rejeitar MANUAL_ADJUSTMENT sem direção no calculateAssetPosition', () => {
+      const events: TimelineEvent[] = [
+        {
+          id: 'adj-no-dir',
+          portfolioId,
+          assetId,
+          type: 'MANUAL_ADJUSTMENT',
+          tradeDate: new Date('2026-01-10T12:00:00Z'),
+          quantity: '50',
+          unitPrice: '10.00',
+          fees: '0.00',
+        },
+      ];
+
+      expect(() => calculateAssetPosition(assetId, events)).toThrow(
+        /Evento MANUAL_ADJUSTMENT inválido/
+      );
+    });
+
+    it('deve validar consistência temporal no validateTimelineConsistency para MANUAL_ADJUSTMENT OUT', () => {
+      const existingEvents: TimelineEvent[] = [
+        {
+          id: 'buy-1',
+          portfolioId,
+          assetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-10T12:00:00Z'),
+          quantity: '100',
+          unitPrice: '10.00',
+          fees: '0.00',
+        },
+        {
+          id: 'sell-1',
+          portfolioId,
+          assetId,
+          type: 'SELL',
+          tradeDate: new Date('2026-01-20T12:00:00Z'),
+          quantity: '80',
+          unitPrice: '12.00',
+          fees: '0.00',
+        },
+      ];
+
+      // Tenta inserir retroativamente em 15/01 um ajuste de saída de 30 cotas
+      // 10/01: +100 -> saldo 100
+      // 15/01: -30 (ajuste prospective) -> saldo 70
+      // 20/01: -80 (venda existente) -> geraria saldo negativo (-10)! Deve lançar RetroactiveInconsistencyError
+      const prospectiveEvent: TimelineEvent = {
+        id: 'adj-retroactive-conflict',
+        portfolioId,
+        assetId,
+        type: 'MANUAL_ADJUSTMENT',
+        direction: 'OUT',
+        tradeDate: new Date('2026-01-15T12:00:00Z'),
+        quantity: '30',
+        unitPrice: '0.00',
+        fees: '0.00',
+      };
+
+      expect(() =>
+        validateTimelineConsistency(existingEvents, prospectiveEvent)
+      ).toThrow(RetroactiveInconsistencyError);
+    });
+
+    describe('validateTimelineConsistency - validações específicas de MANUAL_ADJUSTMENT e normalização de direction', () => {
+      const existingEvents: TimelineEvent[] = [
+        {
+          id: 'buy-base',
+          portfolioId,
+          assetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-10T12:00:00Z'),
+          quantity: '100',
+          unitPrice: '10.00',
+          fees: '0.00',
+        },
+      ];
+
+      // 1. MANUAL_ADJUSTMENT com direction "IN"
+      it('1. deve aceitar MANUAL_ADJUSTMENT com direction "IN" e manter consistência temporal', () => {
+        const prospectiveEvent: TimelineEvent = {
+          id: 'adj-in-standard',
+          portfolioId,
+          assetId,
+          type: 'MANUAL_ADJUSTMENT',
+          direction: 'IN',
+          tradeDate: new Date('2026-01-15T12:00:00Z'),
+          quantity: '50',
+          unitPrice: '10.00',
+          fees: '0.00',
+        };
+
+        expect(() =>
+          validateTimelineConsistency(existingEvents, prospectiveEvent)
+        ).not.toThrow();
+
+        // 8. Confirmar que a quantidade final continua correta
+        const { position } = calculateAssetPosition(assetId, [...existingEvents, prospectiveEvent]);
+        expect(position.quantity.toString()).toBe('150');
+      });
+
+      // 2. MANUAL_ADJUSTMENT com direction "OUT" e saldo suficiente
+      it('2. deve aceitar MANUAL_ADJUSTMENT com direction "OUT" e saldo suficiente', () => {
+        const prospectiveEvent: TimelineEvent = {
+          id: 'adj-out-standard',
+          portfolioId,
+          assetId,
+          type: 'MANUAL_ADJUSTMENT',
+          direction: 'OUT',
+          tradeDate: new Date('2026-01-15T12:00:00Z'),
+          quantity: '40',
+          unitPrice: '0.00',
+          fees: '0.00',
+        };
+
+        expect(() =>
+          validateTimelineConsistency(existingEvents, prospectiveEvent)
+        ).not.toThrow();
+
+        // 8. Confirmar que a quantidade final continua correta
+        const { position } = calculateAssetPosition(assetId, [...existingEvents, prospectiveEvent]);
+        expect(position.quantity.toString()).toBe('60');
+      });
+
+      // 3. MANUAL_ADJUSTMENT com direction " in " aceito após normalização
+      it('3. deve aceitar MANUAL_ADJUSTMENT com direction " in " com espaços/minúsculas após normalização', () => {
+        const prospectiveEvent: TimelineEvent = {
+          id: 'adj-in-spaces',
+          portfolioId,
+          assetId,
+          type: 'MANUAL_ADJUSTMENT',
+          direction: ' in ',
+          tradeDate: new Date('2026-01-15T12:00:00Z'),
+          quantity: '25',
+          unitPrice: '10.00',
+          fees: '0.00',
+        };
+
+        expect(() =>
+          validateTimelineConsistency(existingEvents, prospectiveEvent)
+        ).not.toThrow();
+
+        // 8. Confirmar que a quantidade final continua correta
+        const { position } = calculateAssetPosition(assetId, [...existingEvents, prospectiveEvent]);
+        expect(position.quantity.toString()).toBe('125');
+      });
+
+      // 4. MANUAL_ADJUSTMENT com direction " out " aceito após normalização
+      it('4. deve aceitar MANUAL_ADJUSTMENT com direction " out " com espaços/minúsculas após normalização', () => {
+        const prospectiveEvent: TimelineEvent = {
+          id: 'adj-out-spaces',
+          portfolioId,
+          assetId,
+          type: 'MANUAL_ADJUSTMENT',
+          direction: ' out ',
+          tradeDate: new Date('2026-01-15T12:00:00Z'),
+          quantity: '30',
+          unitPrice: '0.00',
+          fees: '0.00',
+        };
+
+        expect(() =>
+          validateTimelineConsistency(existingEvents, prospectiveEvent)
+        ).not.toThrow();
+
+        // 8. Confirmar que a quantidade final continua correta
+        const { position } = calculateAssetPosition(assetId, [...existingEvents, prospectiveEvent]);
+        expect(position.quantity.toString()).toBe('70');
+      });
+
+      // 5. MANUAL_ADJUSTMENT sem direction rejeitado
+      it('5. deve rejeitar MANUAL_ADJUSTMENT sem direction no validateTimelineConsistency', () => {
+        const prospectiveEventNoDirection: TimelineEvent = {
+          id: 'adj-no-direction',
+          portfolioId,
+          assetId,
+          type: 'MANUAL_ADJUSTMENT',
+          tradeDate: new Date('2026-01-15T12:00:00Z'),
+          quantity: '30',
+          unitPrice: '0.00',
+          fees: '0.00',
+        };
+
+        expect(() =>
+          validateTimelineConsistency(existingEvents, prospectiveEventNoDirection)
+        ).toThrow(/Evento MANUAL_ADJUSTMENT inválido: direção deve ser "IN" ou "OUT"/);
+      });
+
+      // 6. MANUAL_ADJUSTMENT com direction inválida rejeitado
+      it('6. deve rejeitar MANUAL_ADJUSTMENT com direction inválida no validateTimelineConsistency', () => {
+        const prospectiveEventInvalidDirection: TimelineEvent = {
+          id: 'adj-invalid-direction',
+          portfolioId,
+          assetId,
+          type: 'MANUAL_ADJUSTMENT',
+          direction: 'UNKNOWN',
+          tradeDate: new Date('2026-01-15T12:00:00Z'),
+          quantity: '30',
+          unitPrice: '0.00',
+          fees: '0.00',
+        };
+
+        expect(() =>
+          validateTimelineConsistency(existingEvents, prospectiveEventInvalidDirection)
+        ).toThrow(/Evento MANUAL_ADJUSTMENT inválido: direção deve ser "IN" ou "OUT"/);
+      });
+
+      // 7. MANUAL_ADJUSTMENT OUT acima do saldo disponível continua lançando erro retroativo/insuficiente
+      it('7. deve lançar erro quando MANUAL_ADJUSTMENT OUT for superior ao saldo disponível na data', () => {
+        // Se for prospectiveEvent direto com saldo insuficiente na data do evento
+        const prospectiveEventExcess: TimelineEvent = {
+          id: 'adj-out-excess',
+          portfolioId,
+          assetId,
+          type: 'MANUAL_ADJUSTMENT',
+          direction: 'OUT',
+          tradeDate: new Date('2026-01-15T12:00:00Z'),
+          quantity: '150',
+          unitPrice: '0.00',
+          fees: '0.00',
+        };
+
+        expect(() =>
+          validateTimelineConsistency(existingEvents, prospectiveEventExcess)
+        ).toThrow(InsufficientPositionError);
+
+        // Se for conflito retroativo (evento inserido antes de venda posterior)
+        const eventsWithLaterSale: TimelineEvent[] = [
+          {
+            id: 'buy-1',
+            portfolioId,
+            assetId,
+            type: 'BUY',
+            tradeDate: new Date('2026-01-10T12:00:00Z'),
+            quantity: '100',
+            unitPrice: '10.00',
+            fees: '0.00',
+          },
+          {
+            id: 'sell-1',
+            portfolioId,
+            assetId,
+            type: 'SELL',
+            tradeDate: new Date('2026-01-20T12:00:00Z'),
+            quantity: '80',
+            unitPrice: '12.00',
+            fees: '0.00',
+          },
+        ];
+
+        const retroactiveConflictEvent: TimelineEvent = {
+          id: 'adj-conflict',
+          portfolioId,
+          assetId,
+          type: 'MANUAL_ADJUSTMENT',
+          direction: 'OUT',
+          tradeDate: new Date('2026-01-15T12:00:00Z'),
+          quantity: '30',
+          unitPrice: '0.00',
+          fees: '0.00',
+        };
+
+        expect(() =>
+          validateTimelineConsistency(eventsWithLaterSale, retroactiveConflictEvent)
+        ).toThrow(RetroactiveInconsistencyError);
+      });
+    });
+
+    it('não deve permitir que REVERSAL altere quantidade, custo médio, custo total ou PnL', () => {
+      const events: TimelineEvent[] = [
+        {
+          id: 'buy-1',
+          portfolioId,
+          assetId,
+          type: 'BUY',
+          tradeDate: new Date('2026-01-10T12:00:00Z'),
+          quantity: '100',
+          unitPrice: '10.00',
+          fees: '0.00',
+        },
+        {
+          id: 'reversal-ignored',
+          portfolioId,
+          assetId,
+          type: 'REVERSAL',
+          tradeDate: new Date('2026-01-15T12:00:00Z'),
+          quantity: '50',
+          unitPrice: '10.00',
+          fees: '10.00',
+        },
+      ];
+
+      const { position: pos } = calculateAssetPosition(assetId, events);
+
+      // Quantidade permanece 100 (REVERSAL não alterou)
+      expect(pos.quantity.toString()).toBe('100');
+      // Custo permanece 1000 (REVERSAL não alterou nem incorporou taxas)
+      expect(pos.totalCost.toString()).toBe('1000');
+      expect(pos.averagePrice.toString()).toBe('10');
+      expect(pos.totalRealizedPnL.toString()).toBe('0');
+    });
+  });
 });

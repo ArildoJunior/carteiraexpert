@@ -149,6 +149,8 @@ export const tradeDateSchema = eventDateSchema.refine(
 // settlementDate: data válida opcional
 export const settlementDateSchema = eventDateSchema;
 
+export const EVENT_DIRECTIONS = ['IN', 'OUT'] as const;
+
 // ─── Schema de Registro de Evento de Carteira ─────────────────────────────────
 export const createPortfolioEventSchema = z
   .object({
@@ -157,6 +159,7 @@ export const createPortfolioEventSchema = z
     type: z.enum(PORTFOLIO_EVENT_TYPES, {
       message: 'Tipo de evento financeiro inválido.',
     }),
+    direction: z.enum(EVENT_DIRECTIONS).nullable().optional(),
     tradeDate: tradeDateSchema,
     settlementDate: settlementDateSchema.nullable().optional(),
     quantity: quantitySchema,
@@ -182,7 +185,38 @@ export const createPortfolioEventSchema = z
       message: 'A data de liquidação (settlementDate) não pode ser anterior à data de negociação (tradeDate).',
       path: ['settlementDate'],
     }
-  );
+  )
+  .refine(
+    (data) => {
+      if (data.type === 'REVERSAL') {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: 'O tipo REVERSAL não é suportado como evento de lançamento. Para estornar ou corrigir uma operação, utilize o cancelamento lógico auditado.',
+      path: ['type'],
+    }
+  )
+  .superRefine((data, ctx) => {
+    if (data.type === 'MANUAL_ADJUSTMENT') {
+      if (data.direction !== 'IN' && data.direction !== 'OUT') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Eventos do tipo MANUAL_ADJUSTMENT exigem a indicação explícita de direção ("IN" ou "OUT").',
+          path: ['direction'],
+        });
+      }
+    } else {
+      if (data.direction !== null && data.direction !== undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `O campo direction não é permitido para eventos do tipo ${data.type}.`,
+          path: ['direction'],
+        });
+      }
+    }
+  });
 
 export type CreatePortfolioEventInput = z.input<typeof createPortfolioEventSchema>;
 export type CreatePortfolioEventOutput = z.output<typeof createPortfolioEventSchema>;

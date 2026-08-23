@@ -62,6 +62,7 @@ export const portfolioEvents = pgTable(
       .references(() => assets.id, { onDelete: 'restrict' }),
     // 'BUY' | 'SELL' | 'TRANSFER_IN' | 'TRANSFER_OUT' | 'MANUAL_ADJUSTMENT' | 'REVERSAL'
     type: text('type').notNull(),
+    direction: text('direction'), // 'IN' | 'OUT' for MANUAL_ADJUSTMENT
     tradeDate: timestamp('trade_date', { withTimezone: true }).notNull(),
     settlementDate: timestamp('settlement_date', { withTimezone: true }),
     quantity: numeric('quantity', { precision: 28, scale: 10 }).notNull(),
@@ -81,5 +82,6 @@ export const portfolioEvents = pgTable(
     check('chk_portfolio_events_quantity', sql`${table.quantity} > 0`),
     check('chk_portfolio_events_unit_price', sql`${table.unitPrice} >= 0`),
     check('chk_portfolio_events_fees', sql`${table.fees} >= 0`),
+    check('chk_portfolio_events_direction', sql`(${table.type} = 'MANUAL_ADJUSTMENT' AND ${table.direction} IS NOT NULL AND ${table.direction} IN ('IN', 'OUT')) OR (${table.type} <> 'MANUAL_ADJUSTMENT' AND ${table.direction} IS NULL)`),
   ]
 );

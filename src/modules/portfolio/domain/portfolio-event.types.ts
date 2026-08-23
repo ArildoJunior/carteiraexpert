@@ -17,3 +17,5 @@ export type PortfolioEventType =
   | 'JCP';
 
 export type EventSource = 'manual' | 'import' | 'corporate_action';
+
+export type EventDirection = 'IN' | 'OUT';

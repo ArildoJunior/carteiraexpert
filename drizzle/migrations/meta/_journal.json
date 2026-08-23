@@ -43,6 +43,13 @@
       "when": 1786900000000,
       "tag": "0005_market_data_and_fx",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787000000000,
+      "tag": "0006_add_portfolio_events_direction",
+      "breakpoints": true
     }
   ]
 }

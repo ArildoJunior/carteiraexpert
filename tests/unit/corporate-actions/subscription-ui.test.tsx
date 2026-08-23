@@ -287,6 +287,7 @@ describe('UI: Subscription Components e Modais (S1.5)', () => {
           portfolioId: 'port-1',
           assetId: mockOffer.targetAssetId,
           type: 'BUY',
+          direction: null,
           source: 'corporate_action',
           tradeDate: new Date(),
           settlementDate: null,

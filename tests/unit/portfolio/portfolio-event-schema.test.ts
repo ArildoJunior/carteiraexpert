@@ -535,5 +535,200 @@ describe('Portfolio Event Domain Schemas (Unit Tests)', () => {
       expect(result.data.fees).toBe('0');
       expect(result.data.notes).toBe('Primeira compra E2E');
     });
+
+    // ─── 8. Validação de MANUAL_ADJUSTMENT e REVERSAL ─────────────────────────
+    it('deve aceitar MANUAL_ADJUSTMENT com direction = "IN"', () => {
+      const result = createPortfolioEventSchema.safeParse({
+        portfolioId: validPortfolioId,
+        assetId: validAssetId,
+        type: 'MANUAL_ADJUSTMENT',
+        direction: 'IN',
+        tradeDate: validTradeDate,
+        quantity: '50',
+        unitPrice: '10.00',
+        fees: '1.50',
+      });
+
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+      expect(result.data.type).toBe('MANUAL_ADJUSTMENT');
+      expect(result.data.direction).toBe('IN');
+    });
+
+    it('deve aceitar MANUAL_ADJUSTMENT com direction = "OUT"', () => {
+      const result = createPortfolioEventSchema.safeParse({
+        portfolioId: validPortfolioId,
+        assetId: validAssetId,
+        type: 'MANUAL_ADJUSTMENT',
+        direction: 'OUT',
+        tradeDate: validTradeDate,
+        quantity: '20',
+        unitPrice: '0',
+        fees: '0',
+      });
+
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+      expect(result.data.type).toBe('MANUAL_ADJUSTMENT');
+      expect(result.data.direction).toBe('OUT');
+    });
+
+    it('deve rejeitar MANUAL_ADJUSTMENT sem direction informada', () => {
+      const result = createPortfolioEventSchema.safeParse({
+        portfolioId: validPortfolioId,
+        assetId: validAssetId,
+        type: 'MANUAL_ADJUSTMENT',
+        tradeDate: validTradeDate,
+        quantity: '50',
+        unitPrice: '10.00',
+      });
+
+      expect(result.success).toBe(false);
+      if (result.success) return;
+      expect(result.error.issues.some((i) => i.path.includes('direction'))).toBe(true);
+    });
+
+    it('deve rejeitar MANUAL_ADJUSTMENT com direction inválida', () => {
+      const result = createPortfolioEventSchema.safeParse({
+        portfolioId: validPortfolioId,
+        assetId: validAssetId,
+        type: 'MANUAL_ADJUSTMENT',
+        direction: 'INVALID',
+        tradeDate: validTradeDate,
+        quantity: '50',
+        unitPrice: '10.00',
+      });
+
+      expect(result.success).toBe(false);
+    });
+
+    it('deve rejeitar lançamento de REVERSAL no schema de eventos de carteira orientando uso de cancelamento', () => {
+      const result = createPortfolioEventSchema.safeParse({
+        portfolioId: validPortfolioId,
+        assetId: validAssetId,
+        type: 'REVERSAL',
+        tradeDate: validTradeDate,
+        quantity: '10',
+        unitPrice: '10',
+      });
+
+      expect(result.success).toBe(false);
+      if (result.success) return;
+      expect(result.error.issues[0].message).toContain('REVERSAL não é suportado');
+    });
+
+    it('deve rejeitar BUY com direction preenchida (IN ou OUT)', () => {
+      const resIn = createPortfolioEventSchema.safeParse({
+        portfolioId: validPortfolioId,
+        assetId: validAssetId,
+        type: 'BUY',
+        direction: 'IN',
+        tradeDate: validTradeDate,
+        quantity: '10',
+        unitPrice: '10',
+      });
+      expect(resIn.success).toBe(false);
+      if (!resIn.success) {
+        expect(resIn.error.issues[0].message).toContain('não é permitido para eventos do tipo BUY');
+      }
+
+      const resOut = createPortfolioEventSchema.safeParse({
+        portfolioId: validPortfolioId,
+        assetId: validAssetId,
+        type: 'BUY',
+        direction: 'OUT',
+        tradeDate: validTradeDate,
+        quantity: '10',
+        unitPrice: '10',
+      });
+      expect(resOut.success).toBe(false);
+    });
+
+    it('deve rejeitar SELL com direction preenchida', () => {
+      const result = createPortfolioEventSchema.safeParse({
+        portfolioId: validPortfolioId,
+        assetId: validAssetId,
+        type: 'SELL',
+        direction: 'IN',
+        tradeDate: validTradeDate,
+        quantity: '10',
+        unitPrice: '10',
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0].message).toContain('não é permitido para eventos do tipo SELL');
+      }
+    });
+
+    it('deve rejeitar TRANSFER_IN e TRANSFER_OUT com direction preenchida', () => {
+      const resTransferIn = createPortfolioEventSchema.safeParse({
+        portfolioId: validPortfolioId,
+        assetId: validAssetId,
+        type: 'TRANSFER_IN',
+        direction: 'IN',
+        tradeDate: validTradeDate,
+        quantity: '10',
+        unitPrice: '10',
+      });
+      expect(resTransferIn.success).toBe(false);
+
+      const resTransferOut = createPortfolioEventSchema.safeParse({
+        portfolioId: validPortfolioId,
+        assetId: validAssetId,
+        type: 'TRANSFER_OUT',
+        direction: 'OUT',
+        tradeDate: validTradeDate,
+        quantity: '10',
+        unitPrice: '10',
+      });
+      expect(resTransferOut.success).toBe(false);
+    });
+
+    it('deve rejeitar eventos corporativos no schema com direction preenchida', () => {
+      const resSplit = createPortfolioEventSchema.safeParse({
+        portfolioId: validPortfolioId,
+        assetId: validAssetId,
+        type: 'SPLIT',
+        direction: 'IN',
+        tradeDate: validTradeDate,
+        quantity: '2',
+        unitPrice: '0',
+      });
+      expect(resSplit.success).toBe(false);
+
+      const resDividend = createPortfolioEventSchema.safeParse({
+        portfolioId: validPortfolioId,
+        assetId: validAssetId,
+        type: 'DIVIDEND',
+        direction: 'IN',
+        tradeDate: validTradeDate,
+        quantity: '100',
+        unitPrice: '1.50',
+      });
+      expect(resDividend.success).toBe(false);
+    });
+
+    it('deve aceitar BUY, SELL e demais eventos quando direction for null ou omitido', () => {
+      const resNull = createPortfolioEventSchema.safeParse({
+        portfolioId: validPortfolioId,
+        assetId: validAssetId,
+        type: 'BUY',
+        direction: null,
+        tradeDate: validTradeDate,
+        quantity: '100',
+        unitPrice: '25.00',
+      });
+      expect(resNull.success).toBe(true);
+
+      const resOmitted = createPortfolioEventSchema.safeParse({
+        portfolioId: validPortfolioId,
+        assetId: validAssetId,
+        type: 'SELL',
+        tradeDate: validTradeDate,
+        quantity: '50',
+        unitPrice: '30.00',
+      });
+      expect(resOmitted.success).toBe(true);
+    });
   });
 });
