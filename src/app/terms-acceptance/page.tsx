@@ -21,10 +21,10 @@ export default async function TermsAcceptancePage() {
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full bg-surface border border-border-theme rounded-2xl p-8 shadow-xl">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white mb-2">Atualização dos Termos</h1>
-        <p className="text-slate-400 text-sm">
+        <h1 className="text-2xl font-bold text-text-primary mb-2">Atualização dos Termos</h1>
+        <p className="text-text-secondary text-sm">
           Olá, {user.name}! Para continuar usando o CarteiraExpert, você precisa aceitar as versões mais recentes dos nossos Termos de Uso e Política de Privacidade.
         </p>
       </div>

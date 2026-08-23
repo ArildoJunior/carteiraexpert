@@ -71,7 +71,7 @@ export function PortfolioDetailView({
         />
       )}
 
-      {/* 4. Bloco de Direitos de Subscrição Segregados */}
+      {/* 5. Bloco de Direitos de Subscrição Segregados */}
       <SubscriptionPanel
         portfolioId={portfolio.id}
         subscriptions={subscriptions}
@@ -79,13 +79,13 @@ export function PortfolioDetailView({
         onRefresh={() => router.refresh()}
       />
 
-      {/* 4. Bloco de Extrato de Operações Registradas */}
+      {/* 6. Bloco de Extrato de Operações Registradas */}
       <div className="space-y-3" id="portfolio-events-section">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-white tracking-tight">
+          <h2 className="text-lg font-bold text-text-primary tracking-tight">
             Extrato de Operações
           </h2>
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-text-secondary">
             {events.length} {events.length === 1 ? 'registro' : 'registros'}
           </span>
         </div>

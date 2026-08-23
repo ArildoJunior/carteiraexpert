@@ -93,19 +93,19 @@ export function ExerciseSubscriptionModal({
       aria-modal="true"
       aria-labelledby="exercise-modal-title"
     >
-      <div className="relative w-full max-w-lg bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl space-y-6">
+      <div className="relative w-full max-w-lg bg-surface-elevated border border-border-theme rounded-2xl p-6 shadow-2xl space-y-6 text-text-primary">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div className="flex items-center justify-between border-b border-border-theme pb-4">
           <div className="flex items-center gap-2">
-            <span className="text-blue-400 text-lg">⚡</span>
-            <h2 id="exercise-modal-title" className="text-lg font-semibold text-white">
+            <span className="text-action-primary text-lg">⚡</span>
+            <h2 id="exercise-modal-title" className="text-lg font-semibold text-text-primary">
               Exercer Direito de Subscrição
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+            className="text-text-secondary hover:text-text-primary p-1 rounded-lg hover:bg-surface transition-colors"
             aria-label="Fechar modal"
             disabled={pending}
           >
@@ -116,41 +116,41 @@ export function ExerciseSubscriptionModal({
         {/* Sucesso Confirmado pelo Servidor */}
         {state.success && state.data ? (
           <div className="space-y-5 animate-in fade-in zoom-in-95 duration-200" data-testid="exercise-success-view">
-            <div className="p-4 bg-emerald-950/40 border border-emerald-700/60 rounded-xl text-emerald-200 space-y-2 text-sm">
-              <div className="flex items-center gap-2 font-semibold text-emerald-400 text-base">
+            <div className="p-4 bg-positive-text/10 border border-positive-text/30 rounded-xl text-positive-text space-y-2 text-sm">
+              <div className="flex items-center gap-2 font-semibold text-positive-text text-base">
                 <span>✓</span> Exercício Realizado com Sucesso!
               </div>
-              <p className="text-xs text-emerald-300/90 leading-relaxed">
+              <p className="text-xs text-positive-text/90 leading-relaxed">
                 A operação de compra (BUY) foi gerada e vinculada à sua custódia com sucesso.
               </p>
             </div>
 
-            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-2.5 text-xs">
+            <div className="bg-background border border-border-theme rounded-xl p-4 space-y-2.5 text-xs">
               <div className="flex justify-between">
-                <span className="text-slate-400">Ativo Adquirido:</span>
-                <span className="font-semibold text-white">{subscription.offer.targetAsset.ticker}</span>
+                <span className="text-text-secondary">Ativo Adquirido:</span>
+                <span className="font-semibold text-text-primary">{subscription.offer.targetAsset.ticker}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Quantidade Exercida:</span>
-                <span className="font-semibold text-white">{Number(state.data.exercise.exercisedQuantity).toLocaleString('pt-BR')}</span>
+                <span className="text-text-secondary">Quantidade Exercida:</span>
+                <span className="font-semibold text-text-primary tabular-nums">{Number(state.data.exercise.exercisedQuantity).toLocaleString('pt-BR')}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Preço Unitário da Oferta:</span>
-                <span className="font-semibold text-white">R$ {Number(state.data.exercise.exercisePrice).toFixed(2)}</span>
+                <span className="text-text-secondary">Preço Unitário da Oferta:</span>
+                <span className="font-semibold text-text-primary tabular-nums">R$ {Number(state.data.exercise.exercisePrice).toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Taxas:</span>
-                <span className="font-semibold text-white">R$ {Number(state.data.exercise.fees).toFixed(2)}</span>
+                <span className="text-text-secondary">Taxas:</span>
+                <span className="font-semibold text-text-primary tabular-nums">R$ {Number(state.data.exercise.fees).toFixed(2)}</span>
               </div>
-              <div className="flex justify-between border-t border-slate-700 pt-2 text-sm">
-                <span className="text-slate-300 font-medium">Custo Total Liquidado:</span>
-                <span className="font-bold text-emerald-400" data-testid="exercised-total-cost">
+              <div className="flex justify-between border-t border-border-theme pt-2 text-sm">
+                <span className="text-text-secondary font-medium">Custo Total Liquidado:</span>
+                <span className="font-bold text-positive-text tabular-nums" data-testid="exercised-total-cost">
                   R$ {Number(state.data.exercise.totalCost).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
               <div className="flex justify-between pt-1">
-                <span className="text-slate-400">Status do Lote:</span>
-                <span className="font-medium text-blue-300">{state.data.subscriptionRight.status}</span>
+                <span className="text-text-secondary">Status do Lote:</span>
+                <span className="font-medium text-action-primary">{state.data.subscriptionRight.status}</span>
               </div>
             </div>
 
@@ -158,7 +158,7 @@ export function ExerciseSubscriptionModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-5 py-2 text-sm font-medium bg-slate-700 hover:bg-slate-600 text-white rounded-xl transition-all"
+                className="px-5 py-2 text-sm font-semibold bg-action-primary hover:opacity-90 text-action-primary-text rounded-xl transition-all shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary"
                 data-testid="exercise-close-success-btn"
               >
                 Concluir
@@ -171,7 +171,7 @@ export function ExerciseSubscriptionModal({
             {/* Feedback Geral de Erro */}
             {!state.success && state.error && (
               <div
-                className="p-3 bg-red-950/40 border border-red-800 rounded-xl text-red-300 text-sm"
+                className="p-3 bg-negative-text/10 border border-negative-text/30 rounded-xl text-negative-text text-sm"
                 role="alert"
                 data-testid="exercise-error-message"
               >
@@ -180,24 +180,24 @@ export function ExerciseSubscriptionModal({
             )}
 
             {/* Parâmetros Imutáveis da Oferta */}
-            <div className="bg-slate-800/40 border border-slate-700/60 rounded-xl p-3.5 grid grid-cols-2 gap-3 text-xs">
+            <div className="bg-background border border-border-theme rounded-xl p-3.5 grid grid-cols-2 gap-3 text-xs">
               <div>
-                <span className="text-slate-400 block">Direito:</span>
-                <span className="font-semibold text-white">{subscription.offer.rightAsset.ticker}</span>
+                <span className="text-text-secondary block">Direito:</span>
+                <span className="font-semibold text-text-primary">{subscription.offer.rightAsset.ticker}</span>
               </div>
               <div>
-                <span className="text-slate-400 block">Ativo Destino:</span>
-                <span className="font-semibold text-white">{subscription.offer.targetAsset.ticker}</span>
+                <span className="text-text-secondary block">Ativo Destino:</span>
+                <span className="font-semibold text-text-primary">{subscription.offer.targetAsset.ticker}</span>
               </div>
               <div>
-                <span className="text-slate-400 block">Preço de Exercício (Oferta):</span>
-                <span className="font-semibold text-emerald-400" data-testid="readonly-exercise-price">
+                <span className="text-text-secondary block">Preço de Exercício (Oferta):</span>
+                <span className="font-semibold text-positive-text tabular-nums" data-testid="readonly-exercise-price">
                   R$ {exercisePriceNum.toFixed(2)}
                 </span>
               </div>
               <div>
-                <span className="text-slate-400 block">Saldo Disponível:</span>
-                <span className="font-semibold text-blue-400" data-testid="readonly-remaining-qty">
+                <span className="text-text-secondary block">Saldo Disponível:</span>
+                <span className="font-semibold text-action-primary tabular-nums" data-testid="readonly-remaining-qty">
                   {remainingNum.toLocaleString('pt-BR')}
                 </span>
               </div>
@@ -206,13 +206,13 @@ export function ExerciseSubscriptionModal({
             {/* Quantidade a Exercer */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label htmlFor="exercise-quantity-input" className="text-sm font-medium text-slate-200">
+                <label htmlFor="exercise-quantity-input" className="text-sm font-medium text-text-secondary">
                   Quantidade a Exercer
                 </label>
                 <button
                   type="button"
                   onClick={() => setQuantity(subscription.remainingQuantity)}
-                  className="text-xs font-semibold text-blue-400 hover:text-blue-300 transition-colors"
+                  className="text-xs font-semibold text-action-primary hover:underline transition-colors"
                   disabled={pending}
                 >
                   Usar Máximo ({remainingNum.toLocaleString('pt-BR')})
@@ -229,17 +229,17 @@ export function ExerciseSubscriptionModal({
                 onChange={(e) => setQuantity(e.target.value)}
                 placeholder="Ex: 50"
                 disabled={pending}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                className="w-full bg-background border border-border-theme rounded-xl px-3 py-2.5 text-sm text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-action-primary font-mono tabular-nums transition-all"
                 required
               />
               {state.fieldErrors?.quantity && (
-                <p className="text-xs text-red-400">{state.fieldErrors.quantity[0]}</p>
+                <p className="text-xs text-negative-text">{state.fieldErrors.quantity[0]}</p>
               )}
             </div>
 
             {/* Taxas */}
             <div className="space-y-1.5">
-              <label htmlFor="exercise-fees-input" className="text-sm font-medium text-slate-200">
+              <label htmlFor="exercise-fees-input" className="text-sm font-medium text-text-secondary">
                 Taxas / Emolumentos (R$)
               </label>
               <input
@@ -252,16 +252,16 @@ export function ExerciseSubscriptionModal({
                 onChange={(e) => setFees(e.target.value)}
                 placeholder="0.00"
                 disabled={pending}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                className="w-full bg-background border border-border-theme rounded-xl px-3 py-2.5 text-sm text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-action-primary font-mono tabular-nums transition-all"
               />
               {state.fieldErrors?.fees && (
-                <p className="text-xs text-red-400">{state.fieldErrors.fees[0]}</p>
+                <p className="text-xs text-negative-text">{state.fieldErrors.fees[0]}</p>
               )}
             </div>
 
             {/* Data do Exercício */}
             <div className="space-y-1.5">
-              <label htmlFor="exercise-date-input" className="text-sm font-medium text-slate-200">
+              <label htmlFor="exercise-date-input" className="text-sm font-medium text-text-secondary">
                 Data do Exercício
               </label>
               <input
@@ -271,44 +271,44 @@ export function ExerciseSubscriptionModal({
                 value={exerciseDate}
                 onChange={(e) => setExerciseDate(e.target.value)}
                 disabled={pending}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                className="w-full bg-background border border-border-theme rounded-xl px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-action-primary transition-all"
                 required
               />
               {state.fieldErrors?.exerciseDate && (
-                <p className="text-xs text-red-400">{state.fieldErrors.exerciseDate[0]}</p>
+                <p className="text-xs text-negative-text">{state.fieldErrors.exerciseDate[0]}</p>
               )}
             </div>
 
             {/* Estimativa Visual do Custo */}
-            <div className="bg-slate-800/40 border border-slate-700/40 rounded-xl p-3 text-xs space-y-1">
-              <div className="flex items-center justify-between text-slate-300">
+            <div className="bg-background border border-border-theme rounded-xl p-3 text-xs space-y-1">
+              <div className="flex items-center justify-between text-text-secondary">
                 <span>Estimativa de Custo Total:</span>
-                <span className="font-semibold text-white">R$ {Number(estimatedCost).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                <span className="font-semibold text-text-primary tabular-nums">R$ {Number(estimatedCost).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
               </div>
-              <p className="text-[11px] text-slate-500 italic">
+              <p className="text-[11px] text-text-secondary/70 italic">
                 * Estimativa ilustrativa. A liquidação e quantização bancária (8 casas) são processadas exclusivamente pelo servidor.
               </p>
             </div>
 
             {/* Ações */}
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-border-theme">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={pending}
-                className="px-4 py-2 text-sm text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
+                className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary rounded-xl hover:bg-surface transition-colors"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={pending || !quantity || Number(quantity) <= 0 || Number(quantity) > remainingNum}
-                className="px-5 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl shadow-lg shadow-blue-950/50 transition-all flex items-center gap-2"
+                className="px-5 py-2 text-sm font-semibold bg-action-primary hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-action-primary-text rounded-xl shadow-sm transition-all flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary"
                 data-testid="exercise-submit-btn"
               >
                 {pending ? (
                   <>
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span className="w-4 h-4 border-2 border-action-primary-text/30 border-t-action-primary-text rounded-full animate-spin" />
                     Processando...
                   </>
                 ) : (

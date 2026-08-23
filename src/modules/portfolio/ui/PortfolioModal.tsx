@@ -94,19 +94,19 @@ export function PortfolioModal({
       aria-modal="true"
       aria-labelledby="portfolio-modal-title"
     >
-      <div className="relative w-full max-w-md bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl space-y-5">
+      <div className="relative w-full max-w-md bg-surface-elevated border border-border-theme rounded-2xl p-6 shadow-2xl space-y-5 text-text-primary">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div className="flex items-center justify-between border-b border-border-theme pb-4">
           <h2
             id="portfolio-modal-title"
-            className="text-lg font-semibold text-white"
+            className="text-lg font-semibold text-text-primary"
           >
             {isEditing ? 'Editar Carteira' : 'Nova Carteira'}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+            className="text-text-secondary hover:text-text-primary p-1 rounded-lg hover:bg-surface transition-colors"
             aria-label="Fechar modal"
           >
             ✕
@@ -120,7 +120,7 @@ export function PortfolioModal({
             <div
               id="portfolio-error-alert"
               role="alert"
-              className="bg-red-950/60 border border-red-800 text-red-300 text-sm rounded-lg px-4 py-3"
+              className="bg-negative-text/10 border border-negative-text/30 text-negative-text text-sm rounded-lg px-4 py-3"
             >
               {state.error}
             </div>
@@ -130,9 +130,9 @@ export function PortfolioModal({
           <div>
             <label
               htmlFor="portfolio-name"
-              className="block text-sm font-medium text-slate-300 mb-1.5"
+              className="block text-sm font-medium text-text-secondary mb-1.5"
             >
-              Nome da Carteira <span className="text-red-400">*</span>
+              Nome da Carteira <span className="text-negative-text">*</span>
             </label>
             <input
               id="portfolio-name"
@@ -145,12 +145,12 @@ export function PortfolioModal({
               aria-describedby={
                 state.fieldErrors?.name ? 'portfolio-name-error' : undefined
               }
-              className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3.5 py-2.5 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+              className="w-full bg-background border border-border-theme rounded-lg px-3.5 py-2.5 text-text-primary placeholder:text-text-secondary/60 text-sm focus:outline-none focus:ring-2 focus:ring-action-primary focus:border-transparent transition-all"
             />
             {state.fieldErrors?.name && (
               <p
                 id="portfolio-name-error"
-                className="text-red-400 text-xs mt-1"
+                className="text-negative-text text-xs mt-1"
               >
                 {state.fieldErrors.name[0]}
               </p>
@@ -161,7 +161,7 @@ export function PortfolioModal({
           <div>
             <label
               htmlFor="portfolio-description"
-              className="block text-sm font-medium text-slate-300 mb-1.5"
+              className="block text-sm font-medium text-text-secondary mb-1.5"
             >
               Descrição (opcional)
             </label>
@@ -172,7 +172,7 @@ export function PortfolioModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Objetivos, estratégia ou notas da carteira..."
-              className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3.5 py-2.5 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all resize-none"
+              className="w-full bg-background border border-border-theme rounded-lg px-3.5 py-2.5 text-text-primary placeholder:text-text-secondary/60 text-sm focus:outline-none focus:ring-2 focus:ring-action-primary focus:border-transparent transition-all resize-none"
             />
           </div>
 
@@ -181,7 +181,7 @@ export function PortfolioModal({
             <div>
               <label
                 htmlFor="portfolio-base-currency"
-                className="block text-sm font-medium text-slate-300 mb-1.5"
+                className="block text-sm font-medium text-text-secondary mb-1.5"
               >
                 Moeda Base
               </label>
@@ -190,7 +190,7 @@ export function PortfolioModal({
                 name="baseCurrency"
                 value={baseCurrency}
                 onChange={(e) => setBaseCurrency(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                className="w-full bg-background border border-border-theme rounded-lg px-3 py-2.5 text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-action-primary focus:border-transparent transition-all"
               >
                 <option value="BRL">BRL (R$ - Real Brasileiro)</option>
                 <option value="USD">USD ($ - Dólar Americano)</option>
@@ -201,7 +201,7 @@ export function PortfolioModal({
             <div>
               <label
                 htmlFor="portfolio-status"
-                className="block text-sm font-medium text-slate-300 mb-1.5"
+                className="block text-sm font-medium text-text-secondary mb-1.5"
               >
                 Status da Carteira
               </label>
@@ -212,7 +212,7 @@ export function PortfolioModal({
                 onChange={(e) =>
                   setStatus(e.target.value as 'active' | 'archived')
                 }
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                className="w-full bg-background border border-border-theme rounded-lg px-3 py-2.5 text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-action-primary focus:border-transparent transition-all"
               >
                 <option value="active">Ativa</option>
                 <option value="archived">Arquivada</option>
@@ -221,12 +221,12 @@ export function PortfolioModal({
           )}
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-border-theme">
             <button
               type="button"
               onClick={onClose}
               disabled={pending}
-              className="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
+              className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-text-primary bg-surface hover:bg-border-theme/40 rounded-lg transition-colors border border-border-theme"
             >
               Cancelar
             </button>
@@ -234,7 +234,7 @@ export function PortfolioModal({
               id="portfolio-submit"
               type="submit"
               disabled={pending}
-              className="px-5 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:cursor-not-allowed rounded-lg shadow-sm transition-all"
+              className="px-5 py-2 text-sm font-semibold text-action-primary-text bg-action-primary hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary"
             >
               {pending
                 ? isEditing

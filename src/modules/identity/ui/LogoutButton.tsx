@@ -13,7 +13,7 @@ export function LogoutButton() {
       id="logout-button"
       type="button"
       onClick={handleLogout}
-      className="text-sm text-slate-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-slate-700"
+      className="text-sm font-semibold text-text-secondary hover:text-text-primary transition-colors px-3 py-1.5 rounded-lg hover:bg-surface-elevated focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary"
     >
       Sair
     </button>

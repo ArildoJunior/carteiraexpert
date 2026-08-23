@@ -234,47 +234,47 @@ export function AssetPositionDetailModal({
   return (
     <div
       id="asset-detail-modal-backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
         id="asset-detail-modal-content"
-        className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl space-y-6 p-6 sm:p-8 max-h-[90vh] flex flex-col"
+        className="bg-surface-elevated border border-border-theme rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl space-y-6 p-6 sm:p-8 max-h-[90vh] flex flex-col text-text-primary"
       >
         {/* Cabeçalho */}
-        <div className="flex items-start justify-between border-b border-slate-800 pb-4">
+        <div className="flex items-start justify-between border-b border-border-theme pb-4">
           <div>
             <div className="flex items-center gap-2.5 flex-wrap">
               <h2
                 id="asset-detail-modal-title"
-                className="text-2xl font-bold text-white tracking-tight"
+                className="text-2xl font-bold text-text-primary tracking-tight"
               >
                 {pos ? pos.ticker : 'Carregando Ativo...'}
               </h2>
               {pos?.isCustom && (
-                <span className="text-[11px] uppercase font-bold text-amber-400 bg-amber-950/60 border border-amber-800/60 px-2 py-0.5 rounded-md">
+                <span className="text-[11px] uppercase font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-md">
                   Customizado
                 </span>
               )}
               {pos?.hasFractionalShares && (
                 <span
                   id="asset-detail-fractional-badge"
-                  className="text-[11px] font-semibold text-amber-400 bg-amber-950/60 border border-amber-800/60 px-2 py-0.5 rounded-md flex items-center gap-1"
+                  className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-md flex items-center gap-1"
                   title="A quantidade em custódia contém fração residual resultante de evento corporativo."
                 >
                   ⚠️ Fração Residual
                 </span>
               )}
               {pos && (
-                <span className="text-xs text-slate-400 font-mono bg-slate-800 px-2 py-0.5 rounded-md">
+                <span className="text-xs text-text-secondary font-mono bg-background border border-border-theme px-2 py-0.5 rounded-md">
                   {pos.market} • {pos.currency}
                 </span>
               )}
             </div>
             {pos && (
-              <p className="text-sm text-slate-400 mt-1">{pos.name}</p>
+              <p className="text-sm text-text-secondary mt-1">{pos.name}</p>
             )}
           </div>
 
@@ -282,7 +282,7 @@ export function AssetPositionDetailModal({
             id="btn-close-asset-detail-modal"
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition-colors"
+            className="text-text-secondary hover:text-text-primary p-2 rounded-xl hover:bg-surface transition-colors"
           >
             ✕
           </button>
@@ -292,13 +292,13 @@ export function AssetPositionDetailModal({
         {actionSuccess && (
           <div
             id="corporate-action-success-msg"
-            className="bg-emerald-950/50 border border-emerald-800/80 rounded-xl p-3.5 text-xs text-emerald-300 flex items-center justify-between"
+            className="bg-positive-text/10 border border-positive-text/30 rounded-xl p-3.5 text-xs text-positive-text flex items-center justify-between"
           >
             <span>{actionSuccess}</span>
             <button
               type="button"
               onClick={() => setActionSuccess(null)}
-              className="text-emerald-400 hover:text-white font-bold ml-2"
+              className="text-positive-text hover:underline font-bold ml-2"
             >
               ✕
             </button>
@@ -309,102 +309,102 @@ export function AssetPositionDetailModal({
         <div className="flex-1 overflow-y-auto space-y-6 pr-1">
           {loading ? (
             <div className="py-16 text-center space-y-3">
-              <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="text-sm text-slate-400">
+              <div className="w-8 h-8 border-2 border-action-primary border-t-transparent rounded-full animate-spin mx-auto" />
+              <p className="text-sm text-text-secondary">
                 Carregando histórico e posições do ativo...
               </p>
             </div>
           ) : error || !pos ? (
-            <div className="bg-red-950/40 border border-red-800/60 rounded-2xl p-6 text-center text-red-300 text-sm">
+            <div className="bg-negative-text/10 border border-negative-text/30 rounded-2xl p-6 text-center text-negative-text text-sm">
               {error || 'Dados do ativo não encontrados.'}
             </div>
           ) : (
             <>
               {/* Cards de Métricas do Ativo (5 Colunas) */}
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-3.5 space-y-1">
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                <div className="bg-background border border-border-theme rounded-2xl p-3.5 space-y-1">
+                  <p className="text-[11px] font-semibold text-text-secondary uppercase tracking-wider">
                     Quantidade
                   </p>
                   <p
                     id="asset-detail-qty"
-                    className="text-base sm:text-lg font-bold font-mono text-white"
+                    className="text-base sm:text-lg font-bold font-mono tabular-nums text-text-primary"
                   >
                     {formatQuantity(pos.quantity)}
                   </p>
-                  <p className="text-[10px] text-slate-500">
+                  <p className="text-[10px] text-text-secondary">
                     {pos.hasFractionalShares ? 'Com fração residual' : 'Em custódia ativa'}
                   </p>
                 </div>
 
-                <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-3.5 space-y-1">
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                <div className="bg-background border border-border-theme rounded-2xl p-3.5 space-y-1">
+                  <p className="text-[11px] font-semibold text-text-secondary uppercase tracking-wider">
                     Custo Médio
                   </p>
                   <p
                     id="asset-detail-avg-price"
-                    className="text-base sm:text-lg font-bold font-mono text-slate-200"
+                    className="text-base sm:text-lg font-bold font-mono tabular-nums text-text-primary"
                   >
                     {formatMoney(pos.averagePrice, pos.currency)}
                   </p>
-                  <p className="text-[10px] text-slate-500">Com taxas inclusas</p>
+                  <p className="text-[10px] text-text-secondary">Com taxas inclusas</p>
                 </div>
 
-                <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-3.5 space-y-1">
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                <div className="bg-background border border-border-theme rounded-2xl p-3.5 space-y-1">
+                  <p className="text-[11px] font-semibold text-text-secondary uppercase tracking-wider">
                     Total Investido
                   </p>
                   <p
                     id="asset-detail-total-cost"
-                    className="text-base sm:text-lg font-bold font-mono text-emerald-400"
+                    className="text-base sm:text-lg font-bold font-mono tabular-nums text-action-primary"
                   >
                     {formatMoney(pos.totalCost, pos.currency)}
                   </p>
-                  <p className="text-[10px] text-slate-500">Custo de aquisição</p>
+                  <p className="text-[10px] text-text-secondary">Custo de aquisição</p>
                 </div>
 
-                <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-3.5 space-y-1">
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                <div className="bg-background border border-border-theme rounded-2xl p-3.5 space-y-1">
+                  <p className="text-[11px] font-semibold text-text-secondary uppercase tracking-wider">
                     PnL Realizado
                   </p>
                   <p
                     id="asset-detail-realized-pnl"
-                    className={`text-base sm:text-lg font-bold font-mono ${
+                    className={`text-base sm:text-lg font-bold font-mono tabular-nums ${
                       isPositivePnL
-                        ? 'text-emerald-400'
+                        ? 'text-positive-text'
                         : isNegativePnL
-                        ? 'text-red-400'
-                        : 'text-slate-300'
+                        ? 'text-negative-text'
+                        : 'text-text-secondary'
                     }`}
                   >
                     {isPositivePnL ? '+' : ''}
                     {formatMoney(pos.totalRealizedPnL, pos.currency)}
                   </p>
-                  <p className="text-[10px] text-slate-500">Lucro de vendas</p>
+                  <p className="text-[10px] text-text-secondary">Lucro de vendas</p>
                 </div>
 
-                <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-3.5 space-y-1 col-span-2 sm:col-span-1">
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                <div className="bg-background border border-border-theme rounded-2xl p-3.5 space-y-1 col-span-2 sm:col-span-1">
+                  <p className="text-[11px] font-semibold text-text-secondary uppercase tracking-wider">
                     Proventos
                   </p>
                   <p
                     id="asset-detail-income-received"
-                    className="text-base sm:text-lg font-bold font-mono text-amber-400"
+                    className="text-base sm:text-lg font-bold font-mono tabular-nums text-positive-text"
                   >
                     {formatMoney(pos.totalIncomeReceived || '0', pos.currency)}
                   </p>
-                  <p className="text-[10px] text-slate-500">Dividendos e JCP</p>
+                  <p className="text-[10px] text-text-secondary">Dividendos e JCP</p>
                 </div>
               </div>
 
               {/* Seção de Lançamento de Eventos Corporativos e Proventos */}
-              <div className="bg-slate-950/50 border border-slate-800/80 rounded-2xl p-4 space-y-3">
+              <div className="bg-background border border-border-theme rounded-2xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-text-primary">
                       Eventos Corporativos & Proventos
                     </h3>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
+                    <p className="text-[11px] text-text-secondary mt-0.5">
                       Registre desdobramentos, grupamentos, bonificações de ações, dividendos e JCP.
                     </p>
                   </div>
@@ -416,7 +416,7 @@ export function AssetPositionDetailModal({
                       setShowActionForm(!showActionForm);
                       setActionError(null);
                     }}
-                    className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 bg-emerald-950/60 border border-emerald-800/60 px-3 py-1.5 rounded-xl transition-colors"
+                    className="text-xs font-semibold text-action-primary hover:underline bg-action-primary/10 border border-action-primary/30 px-3 py-1.5 rounded-xl transition-colors"
                   >
                     {showActionForm ? 'Cancelar' : '+ Lançar Evento / Provento'}
                   </button>
@@ -426,12 +426,12 @@ export function AssetPositionDetailModal({
                   <form
                     id="corporate-action-form"
                     onSubmit={handleEventSubmit}
-                    className="pt-3 border-t border-slate-800/80 space-y-4"
+                    className="pt-3 border-t border-border-theme space-y-4"
                   >
                     {actionError && (
                       <div
                         id="corporate-action-error-msg"
-                        className="bg-red-950/50 border border-red-800/80 rounded-xl p-3 text-xs text-red-300"
+                        className="bg-negative-text/10 border border-negative-text/30 rounded-xl p-3 text-xs text-negative-text"
                       >
                         {actionError}
                       </div>
@@ -442,7 +442,7 @@ export function AssetPositionDetailModal({
                       <div>
                         <label
                           htmlFor="input-corporate-action-type"
-                          className="block text-[11px] font-semibold text-slate-300 mb-1"
+                          className="block text-[11px] font-semibold text-text-secondary mb-1"
                         >
                           Tipo de Operação
                         </label>
@@ -450,7 +450,7 @@ export function AssetPositionDetailModal({
                           id="input-corporate-action-type"
                           value={actionType}
                           onChange={(e) => setActionType(e.target.value as ActionFormType)}
-                          className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                          className="w-full bg-surface border border-border-theme rounded-xl px-3 py-2 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-action-primary"
                         >
                           <option value="SPLIT">🔀 Desdobramento (Split)</option>
                           <option value="GROUPING">🔄 Grupamento</option>
@@ -464,7 +464,7 @@ export function AssetPositionDetailModal({
                       <div>
                         <label
                           htmlFor="input-corporate-action-trade-date"
-                          className="block text-[11px] font-semibold text-slate-300 mb-1"
+                          className="block text-[11px] font-semibold text-text-secondary mb-1"
                         >
                           {actionType === 'SPLIT' || actionType === 'GROUPING'
                             ? 'Data de Corte (Data Ex)'
@@ -476,7 +476,7 @@ export function AssetPositionDetailModal({
                           required
                           value={actionTradeDate}
                           onChange={(e) => setActionTradeDate(e.target.value)}
-                          className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                          className="w-full bg-surface border border-border-theme rounded-xl px-3 py-2 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-action-primary"
                         />
                       </div>
 
@@ -485,7 +485,7 @@ export function AssetPositionDetailModal({
                         <div>
                           <label
                             htmlFor="input-corporate-action-settlement-date"
-                            className="block text-[11px] font-semibold text-slate-300 mb-1"
+                            className="block text-[11px] font-semibold text-text-secondary mb-1"
                           >
                             Data de Pagamento *
                           </label>
@@ -495,7 +495,7 @@ export function AssetPositionDetailModal({
                             required
                             value={actionSettlementDate}
                             onChange={(e) => setActionSettlementDate(e.target.value)}
-                            className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                            className="w-full bg-surface border border-border-theme rounded-xl px-3 py-2 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-action-primary"
                           />
                         </div>
                       )}
@@ -505,7 +505,7 @@ export function AssetPositionDetailModal({
                         <div>
                           <label
                             htmlFor="input-corporate-action-factor"
-                            className="block text-[11px] font-semibold text-slate-300 mb-1"
+                            className="block text-[11px] font-semibold text-text-secondary mb-1"
                           >
                             Fator de Proporção (ex: 2, 4, 10)
                           </label>
@@ -518,7 +518,7 @@ export function AssetPositionDetailModal({
                             placeholder="Ex: 10"
                             value={actionFactor}
                             onChange={(e) => setActionFactor(e.target.value)}
-                            className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                            className="w-full bg-surface border border-border-theme rounded-xl px-3 py-2 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-action-primary font-mono tabular-nums"
                           />
                         </div>
                       )}
@@ -529,7 +529,7 @@ export function AssetPositionDetailModal({
                           <div>
                             <label
                               htmlFor="input-bonus-quantity"
-                              className="block text-[11px] font-semibold text-slate-300 mb-1"
+                              className="block text-[11px] font-semibold text-text-secondary mb-1"
                             >
                               Qtd de Ações Bonificadas *
                             </label>
@@ -542,14 +542,14 @@ export function AssetPositionDetailModal({
                               placeholder="Ex: 10"
                               value={bonusQuantity}
                               onChange={(e) => setBonusQuantity(e.target.value)}
-                              className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                              className="w-full bg-surface border border-border-theme rounded-xl px-3 py-2 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-action-primary font-mono tabular-nums"
                             />
                           </div>
 
                           <div>
                             <label
                               htmlFor="input-bonus-unit-price"
-                              className="block text-[11px] font-semibold text-slate-300 mb-1"
+                              className="block text-[11px] font-semibold text-text-secondary mb-1"
                             >
                               Custo Unitário Atribuído (R$)
                             </label>
@@ -562,7 +562,7 @@ export function AssetPositionDetailModal({
                               placeholder="Ex: 15.40 (ou 0 se sem custo)"
                               value={bonusUnitPrice}
                               onChange={(e) => setBonusUnitPrice(e.target.value)}
-                              className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                              className="w-full bg-surface border border-border-theme rounded-xl px-3 py-2 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-action-primary font-mono tabular-nums"
                             />
                           </div>
                         </>
@@ -574,7 +574,7 @@ export function AssetPositionDetailModal({
                           <div>
                             <label
                               htmlFor="input-income-quantity"
-                              className="block text-[11px] font-semibold text-slate-300 mb-1"
+                              className="block text-[11px] font-semibold text-text-secondary mb-1"
                             >
                               Qtd de Ações Elegíveis *
                             </label>
@@ -587,14 +587,14 @@ export function AssetPositionDetailModal({
                               placeholder="Ex: 100"
                               value={incomeQuantity}
                               onChange={(e) => setIncomeQuantity(e.target.value)}
-                              className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                              className="w-full bg-surface border border-border-theme rounded-xl px-3 py-2 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-action-primary font-mono tabular-nums"
                             />
                           </div>
 
                           <div>
                             <label
                               htmlFor="input-income-unit-price"
-                              className="block text-[11px] font-semibold text-slate-300 mb-1"
+                              className="block text-[11px] font-semibold text-text-secondary mb-1"
                             >
                               {actionType === 'DIVIDEND' ? 'Valor por Ação (R$) *' : 'Valor Bruto por Ação (R$) *'}
                             </label>
@@ -607,7 +607,7 @@ export function AssetPositionDetailModal({
                               placeholder="Ex: 0.55"
                               value={incomeUnitPrice}
                               onChange={(e) => setIncomeUnitPrice(e.target.value)}
-                              className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                              className="w-full bg-surface border border-border-theme rounded-xl px-3 py-2 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-action-primary font-mono tabular-nums"
                             />
                           </div>
 
@@ -616,14 +616,14 @@ export function AssetPositionDetailModal({
                               <div className="flex items-center justify-between mb-1">
                                 <label
                                   htmlFor="input-income-fees"
-                                  className="block text-[11px] font-semibold text-slate-300"
+                                  className="block text-[11px] font-semibold text-text-secondary"
                                 >
                                   IRRF Retido Total (R$)
                                 </label>
                                 <button
                                   type="button"
                                   onClick={handleCalculateJcpIrrf}
-                                  className="text-[10px] text-amber-400 hover:text-amber-300 hover:underline"
+                                  className="text-[10px] text-action-primary hover:underline font-semibold"
                                   title="Calcula 15% sobre o valor bruto"
                                 >
                                   Calcular 15%
@@ -638,7 +638,7 @@ export function AssetPositionDetailModal({
                                 placeholder="Ex: 7.50"
                                 value={incomeFees}
                                 onChange={(e) => setIncomeFees(e.target.value)}
-                                className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                                className="w-full bg-surface border border-border-theme rounded-xl px-3 py-2 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-action-primary font-mono tabular-nums"
                               />
                             </div>
                           )}
@@ -648,9 +648,9 @@ export function AssetPositionDetailModal({
 
                     {/* Feedback de Estimativa Líquida para Proventos */}
                     {estimatedIncomeNet && (
-                      <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-300 flex items-center justify-between">
-                        <span className="text-slate-400">Total Líquido Estimado:</span>
-                        <span className="font-mono font-bold text-amber-400">
+                      <div className="bg-surface border border-border-theme rounded-xl p-2.5 text-xs text-text-primary flex items-center justify-between">
+                        <span className="text-text-secondary">Total Líquido Estimado:</span>
+                        <span className="font-mono tabular-nums font-bold text-positive-text">
                           {estimatedIncomeNet}
                         </span>
                       </div>
@@ -660,7 +660,7 @@ export function AssetPositionDetailModal({
                     <div>
                       <label
                         htmlFor="input-corporate-action-notes"
-                        className="block text-[11px] font-semibold text-slate-300 mb-1"
+                        className="block text-[11px] font-semibold text-text-secondary mb-1"
                       >
                         Observações (Opcional)
                       </label>
@@ -671,7 +671,7 @@ export function AssetPositionDetailModal({
                         placeholder="Ex: Aprovado em Assembleia Geral Ordinária"
                         value={actionNotes}
                         onChange={(e) => setActionNotes(e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                        className="w-full bg-surface border border-border-theme rounded-xl px-3 py-2 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-action-primary"
                       />
                     </div>
 
@@ -680,7 +680,7 @@ export function AssetPositionDetailModal({
                         id="btn-submit-corporate-action"
                         type="submit"
                         disabled={actionSubmitting}
-                        className="text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 px-4 py-2 rounded-xl transition-colors shadow-sm flex items-center gap-1.5"
+                        className="text-xs font-semibold text-action-primary-text bg-action-primary hover:opacity-90 disabled:opacity-50 px-4 py-2 rounded-xl transition-colors shadow-sm flex items-center gap-1.5"
                       >
                         {actionSubmitting ? 'Registrando...' : 'Confirmar Lançamento'}
                       </button>
@@ -691,17 +691,17 @@ export function AssetPositionDetailModal({
 
               {/* Tabela de Vendas Realizadas e Apuração de Lucro */}
               <div className="space-y-3">
-                <h3 className="text-sm font-bold text-white flex items-center justify-between">
+                <h3 className="text-sm font-bold text-text-primary flex items-center justify-between">
                   <span>Histórico de Vendas e PnL Realizado</span>
-                  <span className="text-xs font-normal text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full">
+                  <span className="text-xs font-normal text-text-secondary bg-background border border-border-theme px-2 py-0.5 rounded-full">
                     {detail.realizedTrades.length}{' '}
                     {detail.realizedTrades.length === 1 ? 'venda' : 'vendas'}
                   </span>
                 </h3>
 
                 {detail.realizedTrades.length === 0 ? (
-                  <div className="bg-slate-950/40 border border-slate-800/60 rounded-2xl p-6 text-center space-y-1 text-xs text-slate-400">
-                    <p className="font-semibold text-slate-300">
+                  <div className="bg-background border border-border-theme rounded-2xl p-6 text-center space-y-1 text-xs text-text-secondary">
+                    <p className="font-semibold text-text-primary">
                       Nenhuma venda realizada para este ativo.
                     </p>
                     <p>
@@ -709,13 +709,13 @@ export function AssetPositionDetailModal({
                     </p>
                   </div>
                 ) : (
-                  <div className="border border-slate-800 rounded-2xl overflow-hidden shadow-inner">
+                  <div className="border border-border-theme rounded-2xl overflow-hidden shadow-inner">
                     <table
                       id="asset-realized-trades-table"
                       className="w-full text-left border-collapse text-xs"
                     >
                       <thead>
-                        <tr className="border-b border-slate-800 bg-slate-950/80 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                        <tr className="border-b border-border-theme bg-background/60 text-[11px] font-semibold text-text-secondary uppercase tracking-wider">
                           <th className="px-4 py-3">Data</th>
                           <th className="px-3 py-3 text-right">Qtd</th>
                           <th className="px-3 py-3 text-right">Preço Venda</th>
@@ -723,7 +723,7 @@ export function AssetPositionDetailModal({
                           <th className="px-4 py-3 text-right">PnL Apurado</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-800/50 text-slate-300">
+                      <tbody className="divide-y divide-border-theme/50 text-text-primary">
                         {detail.realizedTrades.map((trade) => {
                           const tradePnL = new Decimal(trade.realizedPnL || '0');
                           const isTradePos = tradePnL.greaterThan(0);
@@ -735,27 +735,27 @@ export function AssetPositionDetailModal({
                           return (
                             <tr
                               key={trade.eventId}
-                              className="hover:bg-slate-800/30 transition-colors"
+                              className="hover:bg-surface/50 transition-colors"
                             >
-                              <td className="px-4 py-3 font-mono text-slate-300 whitespace-nowrap">
+                              <td className="px-4 py-3 font-mono tabular-nums text-text-secondary whitespace-nowrap">
                                 {tradeDateFormatted}
                               </td>
-                              <td className="px-3 py-3 text-right font-mono font-medium text-white whitespace-nowrap">
+                              <td className="px-3 py-3 text-right font-mono tabular-nums font-medium text-text-primary whitespace-nowrap">
                                 {formatQuantity(trade.quantity)}
                               </td>
-                              <td className="px-3 py-3 text-right font-mono text-slate-300 whitespace-nowrap">
+                              <td className="px-3 py-3 text-right font-mono tabular-nums text-text-secondary whitespace-nowrap">
                                 {formatMoney(trade.salePrice, pos.currency)}
                               </td>
-                              <td className="px-3 py-3 text-right font-mono text-slate-400 whitespace-nowrap">
+                              <td className="px-3 py-3 text-right font-mono tabular-nums text-text-secondary whitespace-nowrap">
                                 {formatMoney(trade.costBasisPrice, pos.currency)}
                               </td>
                               <td
-                                className={`px-4 py-3 text-right font-mono font-bold whitespace-nowrap ${
+                                className={`px-4 py-3 text-right font-mono tabular-nums font-bold whitespace-nowrap ${
                                   isTradePos
-                                    ? 'text-emerald-400'
+                                    ? 'text-positive-text'
                                     : isTradeNeg
-                                    ? 'text-red-400'
-                                    : 'text-slate-300'
+                                    ? 'text-negative-text'
+                                    : 'text-text-secondary'
                                 }`}
                               >
                                 {isTradePos ? '+' : ''}
@@ -774,12 +774,12 @@ export function AssetPositionDetailModal({
         </div>
 
         {/* Rodapé */}
-        <div className="border-t border-slate-800 pt-4 flex justify-end">
+        <div className="border-t border-border-theme pt-4 flex justify-end">
           <button
             id="btn-asset-detail-close-bottom"
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors"
+            className="px-5 py-2.5 text-xs font-semibold text-text-primary bg-surface hover:bg-border-theme/40 rounded-xl transition-colors border border-border-theme"
           >
             Fechar
           </button>

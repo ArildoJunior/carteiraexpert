@@ -104,19 +104,19 @@ export function AllocateSubscriptionModal({
       aria-modal="true"
       aria-labelledby="allocate-modal-title"
     >
-      <div className="relative w-full max-w-lg bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl space-y-6">
+      <div className="relative w-full max-w-lg bg-surface-elevated border border-border-theme rounded-2xl p-6 shadow-2xl space-y-6 text-text-primary">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div className="flex items-center justify-between border-b border-border-theme pb-4">
           <div className="flex items-center gap-2">
-            <span className="text-emerald-400 text-lg">📝</span>
-            <h2 id="allocate-modal-title" className="text-lg font-semibold text-white">
+            <span className="text-action-primary text-lg">📝</span>
+            <h2 id="allocate-modal-title" className="text-lg font-semibold text-text-primary">
               Atribuir Direitos de Subscrição
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+            className="text-text-secondary hover:text-text-primary p-1 rounded-lg hover:bg-surface transition-colors"
             aria-label="Fechar modal"
             disabled={pending}
           >
@@ -125,8 +125,8 @@ export function AllocateSubscriptionModal({
         </div>
 
         {/* Informação Contábil / Regulatória */}
-        <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3.5 text-xs text-slate-300 leading-relaxed space-y-1">
-          <p className="font-medium text-emerald-400">Atribuição com Custo Zero</p>
+        <div className="bg-background border border-border-theme rounded-xl p-3.5 text-xs text-text-secondary leading-relaxed space-y-1">
+          <p className="font-medium text-action-primary">Atribuição com Custo Zero</p>
           <p>
             Informe a quantidade exata de direitos atribuídos à sua custódia conforme o informe oficial da sua corretora. A atribuição de direitos não altera o saldo financeiro da carteira.
           </p>
@@ -135,7 +135,7 @@ export function AllocateSubscriptionModal({
         {/* Feedback Geral de Erro */}
         {!state.success && state.error && (
           <div
-            className="p-3 bg-red-950/40 border border-red-800 rounded-xl text-red-300 text-sm"
+            className="p-3 bg-negative-text/10 border border-negative-text/30 rounded-xl text-negative-text text-sm"
             role="alert"
             data-testid="allocate-error-message"
           >
@@ -147,15 +147,15 @@ export function AllocateSubscriptionModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Seleção de Oferta */}
           <div className="space-y-1.5">
-            <label htmlFor="offer-select" className="text-sm font-medium text-slate-200">
+            <label htmlFor="offer-select" className="text-sm font-medium text-text-secondary">
               Oferta de Subscrição Disponível
             </label>
             {loadingOffers ? (
-              <div className="p-3 text-xs text-slate-400 bg-slate-800/40 rounded-xl border border-slate-700 animate-pulse">
+              <div className="p-3 text-xs text-text-secondary bg-surface rounded-xl border border-border-theme animate-pulse">
                 Carregando ofertas disponíveis...
               </div>
             ) : offers.length === 0 ? (
-              <div className="p-3 text-xs text-amber-300/90 bg-amber-950/30 rounded-xl border border-amber-800/40">
+              <div className="p-3 text-xs text-amber-600 dark:text-amber-300 bg-amber-500/10 rounded-xl border border-amber-500/30">
                 Nenhuma oferta ativa de subscrição encontrada no catálogo.
               </div>
             ) : (
@@ -165,7 +165,7 @@ export function AllocateSubscriptionModal({
                 value={selectedOfferId}
                 onChange={(e) => setSelectedOfferId(e.target.value)}
                 disabled={pending || offers.length === 0}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                className="w-full bg-background border border-border-theme rounded-xl px-3 py-2.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-action-primary transition-all"
                 required
               >
                 {offers.map((offer) => (
@@ -179,24 +179,24 @@ export function AllocateSubscriptionModal({
 
           {/* Detalhes da Oferta Selecionada */}
           {selectedOffer && (
-            <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-3.5 grid grid-cols-2 gap-3 text-xs">
+            <div className="bg-background border border-border-theme rounded-xl p-3.5 grid grid-cols-2 gap-3 text-xs">
               <div>
-                <span className="text-slate-400 block">Ativo Originador:</span>
-                <span className="font-semibold text-white">{selectedOffer.originAsset.ticker}</span>
+                <span className="text-text-secondary block">Ativo Originador:</span>
+                <span className="font-semibold text-text-primary">{selectedOffer.originAsset.ticker}</span>
               </div>
               <div>
-                <span className="text-slate-400 block">Ativo de Destino:</span>
-                <span className="font-semibold text-white">{selectedOffer.targetAsset.ticker}</span>
+                <span className="text-text-secondary block">Ativo de Destino:</span>
+                <span className="font-semibold text-text-primary">{selectedOffer.targetAsset.ticker}</span>
               </div>
               <div>
-                <span className="text-slate-400 block">Preço de Exercício:</span>
-                <span className="font-semibold text-emerald-400">
+                <span className="text-text-secondary block">Preço de Exercício:</span>
+                <span className="font-semibold text-positive-text tabular-nums">
                   R$ {Number(selectedOffer.exercisePrice).toFixed(2)}
                 </span>
               </div>
               <div>
-                <span className="text-slate-400 block">Fim da Vigência:</span>
-                <span className="font-semibold text-slate-200">
+                <span className="text-text-secondary block">Fim da Vigência:</span>
+                <span className="font-semibold text-text-primary">
                   {new Date(selectedOffer.exerciseEndDate).toLocaleDateString('pt-BR')}
                 </span>
               </div>
@@ -205,7 +205,7 @@ export function AllocateSubscriptionModal({
 
           {/* Quantidade Atribuída */}
           <div className="space-y-1.5">
-            <label htmlFor="allocated-quantity-input" className="text-sm font-medium text-slate-200">
+            <label htmlFor="allocated-quantity-input" className="text-sm font-medium text-text-secondary">
               Quantidade de Direitos Atribuída
             </label>
             <input
@@ -218,33 +218,33 @@ export function AllocateSubscriptionModal({
               onChange={(e) => setAllocatedQuantity(e.target.value)}
               placeholder="Ex: 100"
               disabled={pending || offers.length === 0}
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+              className="w-full bg-background border border-border-theme rounded-xl px-3 py-2.5 text-sm text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-action-primary font-mono tabular-nums transition-all"
               required
             />
             {state.fieldErrors?.allocatedQuantity && (
-              <p className="text-xs text-red-400">{state.fieldErrors.allocatedQuantity[0]}</p>
+              <p className="text-xs text-negative-text">{state.fieldErrors.allocatedQuantity[0]}</p>
             )}
           </div>
 
           {/* Ações */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-border-theme">
             <button
               type="button"
               onClick={onClose}
               disabled={pending}
-              className="px-4 py-2 text-sm text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
+              className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary rounded-xl hover:bg-surface transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={pending || offers.length === 0 || !allocatedQuantity}
-              className="px-5 py-2 text-sm font-medium bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl shadow-lg shadow-emerald-950/50 transition-all flex items-center gap-2"
+              className="px-5 py-2 text-sm font-semibold bg-action-primary hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-action-primary-text rounded-xl shadow-sm transition-all flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary"
               data-testid="allocate-submit-btn"
             >
               {pending ? (
                 <>
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span className="w-4 h-4 border-2 border-action-primary-text/30 border-t-action-primary-text rounded-full animate-spin" />
                   Atribuindo...
                 </>
               ) : (

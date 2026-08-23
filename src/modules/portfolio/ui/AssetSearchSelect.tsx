@@ -54,7 +54,6 @@ export function AssetSearchSelect({
   useEffect(() => {
     if (!isOpen) return;
 
-    // Dispara indicador de carregamento imediatamente
     setLoading(true);
 
     const timer = setTimeout(() => {
@@ -84,27 +83,27 @@ export function AssetSearchSelect({
     <div className="space-y-1.5" ref={containerRef}>
       <label
         htmlFor="asset-search-input"
-        className="block text-sm font-medium text-slate-300"
+        className="block text-sm font-medium text-text-secondary"
       >
-        Ativo <span className="text-red-400">*</span>
+        Ativo <span className="text-negative-text">*</span>
       </label>
 
       {/* Card de Ativo Selecionado ou Campo de Busca */}
       {selectedAsset ? (
         <div
           id="selected-asset-card"
-          className="flex items-center justify-between bg-slate-950 border border-emerald-600/70 rounded-lg px-3.5 py-2.5"
+          className="flex items-center justify-between bg-background border border-action-primary/70 rounded-lg px-3.5 py-2.5"
         >
           <div className="flex items-center gap-3">
             <span
               id="selected-asset-ticker"
-              className="font-bold text-emerald-400 text-sm tracking-wide bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/60"
+              className="font-bold text-action-primary text-sm tracking-wide bg-action-primary/10 px-2 py-0.5 rounded border border-action-primary/30"
             >
               {selectedAsset.ticker}
             </span>
             <span
               id="selected-asset-name"
-              className="text-slate-300 text-sm truncate max-w-[200px]"
+              className="text-text-primary text-sm truncate max-w-[200px]"
             >
               {selectedAsset.name}
             </span>
@@ -117,7 +116,7 @@ export function AssetSearchSelect({
               setQuery('');
               setResults([]);
             }}
-            className="text-xs text-slate-400 hover:text-red-400 transition-colors p-1"
+            className="text-xs text-text-secondary hover:text-negative-text transition-colors p-1"
           >
             Trocar
           </button>
@@ -142,7 +141,7 @@ export function AssetSearchSelect({
             aria-describedby={error ? 'asset-select-error' : undefined}
             aria-expanded={isOpen}
             aria-autocomplete="list"
-            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3.5 py-2.5 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+            className="w-full bg-background border border-border-theme rounded-lg px-3.5 py-2.5 text-text-primary placeholder:text-text-secondary/60 text-sm focus:outline-none focus:ring-2 focus:ring-action-primary focus:border-transparent transition-all"
             autoComplete="off"
           />
 
@@ -152,16 +151,16 @@ export function AssetSearchSelect({
               id="asset-search-dropdown"
               role="listbox"
               aria-busy={loading}
-              className="absolute z-20 top-full left-0 right-0 mt-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto divide-y divide-slate-800"
+              className="absolute z-20 top-full left-0 right-0 mt-1 bg-surface-elevated border border-border-theme rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto divide-y divide-border-theme"
             >
               {loading ? (
                 <div
                   id="asset-search-loading"
                   role="status"
                   aria-live="polite"
-                  className="p-4 text-center text-slate-400 text-sm flex items-center justify-center gap-2"
+                  className="p-4 text-center text-text-secondary text-sm flex items-center justify-center gap-2"
                 >
-                  <span className="inline-block w-3.5 h-3.5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                  <span className="inline-block w-3.5 h-3.5 border-2 border-action-primary border-t-transparent rounded-full animate-spin" />
                   Buscando ativos...
                 </div>
               ) : results.length > 0 ? (
@@ -177,27 +176,27 @@ export function AssetSearchSelect({
                       onSelectAsset(asset);
                       setIsOpen(false);
                     }}
-                    className="w-full text-left px-4 py-2.5 hover:bg-slate-800/80 transition-colors flex items-center justify-between group"
+                    className="w-full text-left px-4 py-2.5 hover:bg-surface transition-colors flex items-center justify-between group"
                   >
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-white text-sm group-hover:text-emerald-400">
+                        <span className="font-semibold text-text-primary text-sm group-hover:text-action-primary">
                           {asset.ticker}
                         </span>
                         {asset.isCustom && (
-                          <span className="text-[10px] uppercase font-bold text-amber-400 bg-amber-950/60 border border-amber-800 px-1.5 py-0.2 rounded">
+                          <span className="text-[10px] uppercase font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.2 rounded">
                             Customizado
                           </span>
                         )}
-                        <span className="text-xs text-slate-500 font-mono">
+                        <span className="text-xs text-text-secondary font-mono">
                           {asset.market}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-400 truncate max-w-[280px]">
+                      <p className="text-xs text-text-secondary truncate max-w-[280px]">
                         {asset.name}
                       </p>
                     </div>
-                    <span className="text-xs text-slate-500">{asset.currency}</span>
+                    <span className="text-xs text-text-secondary">{asset.currency}</span>
                   </button>
                 ))
               ) : (
@@ -205,7 +204,7 @@ export function AssetSearchSelect({
                   id="asset-search-empty"
                   className="p-4 text-center space-y-2"
                 >
-                  <p className="text-sm text-slate-400">
+                  <p className="text-sm text-text-secondary">
                     {query.trim()
                       ? `Nenhum ativo encontrado para "${query}".`
                       : 'Nenhum ativo disponível no momento.'}
@@ -220,7 +219,7 @@ export function AssetSearchSelect({
                         setIsOpen(false);
                         onRequestCreateCustomAsset(trimmed);
                       }}
-                      className="inline-flex items-center text-xs font-semibold text-emerald-400 hover:text-emerald-300 underline"
+                      className="inline-flex items-center text-xs font-semibold text-action-primary hover:underline"
                     >
                       + Cadastrar ativo customizado com este código
                     </button>
@@ -233,7 +232,7 @@ export function AssetSearchSelect({
       )}
 
       {error && (
-        <p id="asset-select-error" className="text-red-400 text-xs mt-1">
+        <p id="asset-select-error" className="text-negative-text text-xs mt-1">
           {error}
         </p>
       )}

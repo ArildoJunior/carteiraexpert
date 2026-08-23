@@ -100,14 +100,14 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
   const endItem = Math.min(page * limit, historyData.totalCount);
 
   return (
-    <div className="space-y-6" id="history-page-container">
+    <div className="space-y-6 text-text-primary" id="history-page-container">
       {/* Cabeçalho */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">
+          <h1 className="text-2xl font-bold text-text-primary tracking-tight">
             Extrato de Operações
           </h1>
-          <p className="text-slate-400 text-sm mt-1">
+          <p className="text-text-secondary text-sm mt-1">
             Histórico cronológico, detalhado e auditável de todas as suas compras, vendas e eventos corporativos.
           </p>
         </div>
@@ -116,14 +116,14 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
           <Link
             id="history-back-to-dashboard-btn"
             href="/dashboard"
-            className="text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-3.5 py-2 rounded-xl transition-colors"
+            className="text-xs font-semibold text-text-primary hover:text-action-primary bg-surface hover:bg-background border border-border-theme px-3.5 py-2 rounded-xl transition-colors"
           >
             ← Voltar ao Dashboard
           </Link>
           <Link
             id="history-portfolios-btn"
             href="/portfolios"
-            className="text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 px-3.5 py-2 rounded-xl transition-colors shadow-sm"
+            className="text-xs font-semibold text-action-primary-text bg-action-primary hover:opacity-90 px-3.5 py-2 rounded-xl transition-colors shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary"
           >
             💼 Carteiras
           </Link>
@@ -143,14 +143,14 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
       {/* Tabela de Histórico de Operações */}
       <div
         id="history-table-container"
-        className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl"
+        className="bg-surface border border-border-theme rounded-2xl overflow-hidden shadow-sm"
       >
-        <div className="px-6 py-4 border-b border-slate-800/80 flex items-center justify-between">
-          <h2 className="text-base font-bold text-white flex items-center gap-2.5">
+        <div className="px-6 py-4 border-b border-border-theme flex items-center justify-between">
+          <h2 className="text-base font-bold text-text-primary flex items-center gap-2.5">
             <span>Operações Realizadas</span>
             <span
               id="history-total-count-badge"
-              className="text-xs font-normal bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full"
+              className="text-xs font-normal bg-background text-text-secondary border border-border-theme px-2 py-0.5 rounded-full tabular-nums"
             >
               {historyData.totalCount}{' '}
               {historyData.totalCount === 1 ? 'operação' : 'operações'}
@@ -158,10 +158,10 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
           </h2>
 
           {historyData.totalCount > 0 && (
-            <p className="text-xs text-slate-400">
-              Exibindo <span className="font-mono text-white font-semibold">{startItem}</span> a{' '}
-              <span className="font-mono text-white font-semibold">{endItem}</span> de{' '}
-              <span className="font-mono text-white font-semibold">{historyData.totalCount}</span>
+            <p className="text-xs text-text-secondary">
+              Exibindo <span className="font-mono tabular-nums text-text-primary font-semibold">{startItem}</span> a{' '}
+              <span className="font-mono tabular-nums text-text-primary font-semibold">{endItem}</span> de{' '}
+              <span className="font-mono tabular-nums text-text-primary font-semibold">{historyData.totalCount}</span>
             </p>
           )}
         </div>
@@ -171,13 +171,13 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
             id="empty-history-state"
             className="p-16 text-center space-y-3"
           >
-            <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-slate-500 text-xl font-bold mx-auto">
+            <div className="w-12 h-12 rounded-full bg-background border border-border-theme flex items-center justify-center text-text-secondary text-xl font-bold mx-auto">
               📜
             </div>
-            <p className="text-sm font-medium text-slate-300">
+            <p className="text-sm font-medium text-text-primary">
               Nenhuma operação encontrada com os filtros selecionados.
             </p>
-            <p className="text-xs text-slate-500 max-w-sm mx-auto">
+            <p className="text-xs text-text-secondary max-w-sm mx-auto">
               Tente ajustar os critérios de filtro ou cadastre novas transações manuais em suas carteiras.
             </p>
             {(params.portfolioId || params.type || params.ticker || params.startDate || params.endDate) && (
@@ -185,7 +185,7 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
                 <Link
                   id="btn-empty-clear-filters"
                   href="/history"
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400 hover:underline"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-action-primary hover:underline"
                 >
                   Limpar todos os filtros →
                 </Link>
@@ -199,7 +199,7 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
               className="w-full text-left border-collapse text-sm"
             >
               <thead>
-                <tr className="border-b border-slate-800/80 bg-slate-950/40 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                <tr className="border-b border-border-theme bg-background/60 text-[11px] font-semibold text-text-secondary uppercase tracking-wider">
                   <th className="px-6 py-3.5">Tipo</th>
                   <th className="px-4 py-3.5">Carteira</th>
                   <th className="px-4 py-3.5">Ativo</th>
@@ -211,7 +211,7 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
                   <th className="px-6 py-3.5">Notas</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/50 text-slate-300">
+              <tbody className="divide-y divide-border-theme text-text-primary">
                 {historyData.items.map((event) => {
                   const isBuy = event.type === 'BUY';
                   const isSell = event.type === 'SELL';
@@ -240,42 +240,42 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
                     <tr
                       key={event.id}
                       id={`history-event-row-${event.id}`}
-                      className="hover:bg-slate-800/30 transition-colors"
+                      className="hover:bg-background/40 transition-colors"
                     >
                       {/* Tipo */}
                       <td className="px-6 py-3.5 whitespace-nowrap">
                         {isBuy && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-400 border border-emerald-800/60">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-positive-text/10 text-positive-text border border-positive-text/30">
                             🟢 Compra
                           </span>
                         )}
                         {isSell && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-950/80 text-blue-400 border border-blue-800/60">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-action-primary/10 text-action-primary border border-action-primary/30">
                             🔵 Venda
                           </span>
                         )}
                         {isSplit && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-950/80 text-purple-400 border border-purple-800/60">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/30">
                             🔀 Desdobramento
                           </span>
                         )}
                         {isGrouping && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-950/80 text-amber-400 border border-amber-800/60">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
                             🔄 Grupamento
                           </span>
                         )}
                         {isBonus && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-pink-950/80 text-pink-400 border border-pink-800/60">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-pink-500/10 text-pink-600 dark:text-pink-400 border border-pink-500/30">
                             🎁 Bonificação
                           </span>
                         )}
                         {isDividend && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-700/60">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-positive-text/10 text-positive-text border border-positive-text/30">
                             💵 Dividendo
                           </span>
                         )}
                         {isJcp && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-950/80 text-teal-300 border border-teal-700/60">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-500/10 text-teal-600 dark:text-teal-300 border border-teal-500/30">
                             🏛️ JCP
                           </span>
                         )}
@@ -285,7 +285,7 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
                       <td className="px-4 py-3.5 whitespace-nowrap">
                         <Link
                           href={`/portfolios/${event.portfolioId}`}
-                          className="font-medium text-emerald-400 hover:text-emerald-300 hover:underline transition-colors"
+                          className="font-medium text-action-primary hover:underline transition-colors"
                           id={`history-event-portfolio-${event.id}`}
                         >
                           {event.portfolioName}
@@ -297,28 +297,28 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
                         <div className="flex flex-col">
                           <span
                             id={`history-event-ticker-${event.id}`}
-                            className="font-bold text-white tracking-wide"
+                            className="font-bold text-text-primary tracking-wide"
                           >
                             {event.assetTicker}
                           </span>
-                          <span className="text-xs text-slate-500 truncate max-w-[160px]">
+                          <span className="text-xs text-text-secondary truncate max-w-[160px]">
                             {event.assetName}
                           </span>
                         </div>
                       </td>
 
                       {/* Data */}
-                      <td className="px-4 py-3.5 font-mono text-xs text-slate-300 whitespace-nowrap">
+                      <td className="px-4 py-3.5 font-mono tabular-nums text-xs text-text-secondary whitespace-nowrap">
                         <div>{tradeDateFormatted}</div>
                         {settlementDateFormatted && (
-                          <div className="text-[10px] text-slate-500">
+                          <div className="text-[10px] text-text-secondary/70">
                             Pagto: {settlementDateFormatted}
                           </div>
                         )}
                       </td>
 
                       {/* Quantidade / Fator */}
-                      <td className="px-4 py-3.5 text-right font-mono font-medium text-slate-200 whitespace-nowrap">
+                      <td className="px-4 py-3.5 text-right font-mono tabular-nums font-medium text-text-primary whitespace-nowrap">
                         {isSplit && `Fator 1:${formatQuantity(event.quantity)}`}
                         {isGrouping && `Fator ${formatQuantity(event.quantity)}:1`}
                         {isBonus && `+${formatQuantity(event.quantity)}`}
@@ -327,7 +327,7 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
                       </td>
 
                       {/* Preço Unitário */}
-                      <td className="px-4 py-3.5 text-right font-mono font-medium text-slate-200 whitespace-nowrap">
+                      <td className="px-4 py-3.5 text-right font-mono tabular-nums font-medium text-text-primary whitespace-nowrap">
                         {isSplit || isGrouping ? (
                           '—'
                         ) : isBonus ? (
@@ -338,7 +338,7 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
                       </td>
 
                       {/* Taxas */}
-                      <td className="px-4 py-3.5 text-right font-mono text-xs text-slate-400 whitespace-nowrap">
+                      <td className="px-4 py-3.5 text-right font-mono tabular-nums text-xs text-text-secondary whitespace-nowrap">
                         {isJcp
                           ? `IRRF ${formatMoney(event.fees, event.currency)}`
                           : isSplit || isGrouping || isBonus
@@ -349,33 +349,33 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
                       </td>
 
                       {/* Total da Operação */}
-                      <td className="px-4 py-3.5 text-right font-mono font-semibold whitespace-nowrap">
+                      <td className="px-4 py-3.5 text-right font-mono tabular-nums font-semibold whitespace-nowrap">
                         {isSplit || isGrouping ? (
-                          <span className="text-slate-400">—</span>
+                          <span className="text-text-secondary">—</span>
                         ) : isBonus ? (
-                          <span className="text-slate-300">
+                          <span className="text-text-primary">
                             {decPrice.greaterThan(0) ? `+${formatMoney(totalGross, event.currency)}` : 'R$ 0,00'}
                           </span>
                         ) : isDividend ? (
-                          <span className="text-amber-400">+{formatMoney(totalGross, event.currency)}</span>
+                          <span className="text-positive-text">+{formatMoney(totalGross, event.currency)}</span>
                         ) : isJcp ? (
-                          <span className="text-amber-400">+{formatMoney(totalNetJcp, event.currency)}</span>
+                          <span className="text-positive-text">+{formatMoney(totalNetJcp, event.currency)}</span>
                         ) : (
-                          <span className="text-white">{formatMoney(totalGross, event.currency)}</span>
+                          <span className="text-text-primary">{formatMoney(totalGross, event.currency)}</span>
                         )}
                       </td>
 
                       {/* Notas / Observações */}
-                      <td className="px-6 py-3.5 text-xs text-slate-400 max-w-[200px]">
+                      <td className="px-6 py-3.5 text-xs text-text-secondary max-w-[200px]">
                         {event.notes ? (
                           <span
                             title={event.notes}
-                            className="text-slate-300 bg-slate-950/80 px-2 py-1 rounded-md border border-slate-800 block truncate"
+                            className="text-text-primary bg-background px-2 py-1 rounded-md border border-border-theme block truncate"
                           >
                             {event.notes}
                           </span>
                         ) : (
-                          <span className="text-slate-600">—</span>
+                          <span className="text-text-secondary/50">—</span>
                         )}
                       </td>
                     </tr>
@@ -390,11 +390,11 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
         {historyData.totalPages > 1 && (
           <div
             id="history-pagination-controls"
-            className="px-6 py-4 border-t border-slate-800 flex items-center justify-between bg-slate-950/40 text-xs"
+            className="px-6 py-4 border-t border-border-theme flex items-center justify-between bg-background/60 text-xs"
           >
-            <div className="text-slate-400">
-              Página <span className="font-bold text-white">{historyData.page}</span> de{' '}
-              <span className="font-bold text-white">{historyData.totalPages}</span>
+            <div className="text-text-secondary">
+              Página <span className="font-bold text-text-primary tabular-nums">{historyData.page}</span> de{' '}
+              <span className="font-bold text-text-primary tabular-nums">{historyData.totalPages}</span>
             </div>
 
             <div className="flex items-center gap-2">
@@ -402,12 +402,12 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
                 <Link
                   id="btn-history-prev-page"
                   href={buildPageUrl(page - 1)}
-                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold transition-colors"
+                  className="px-3 py-1.5 rounded-lg bg-surface hover:bg-background border border-border-theme text-text-primary font-semibold transition-colors"
                 >
                   ← Anterior
                 </Link>
               ) : (
-                <span className="px-3 py-1.5 rounded-lg bg-slate-800/40 text-slate-600 cursor-not-allowed font-semibold">
+                <span className="px-3 py-1.5 rounded-lg bg-surface/50 border border-border-theme/40 text-text-secondary/50 cursor-not-allowed font-semibold">
                   ← Anterior
                 </span>
               )}
@@ -416,12 +416,12 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
                 <Link
                   id="btn-history-next-page"
                   href={buildPageUrl(page + 1)}
-                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold transition-colors"
+                  className="px-3 py-1.5 rounded-lg bg-surface hover:bg-background border border-border-theme text-text-primary font-semibold transition-colors"
                 >
                   Próxima →
                 </Link>
               ) : (
-                <span className="px-3 py-1.5 rounded-lg bg-slate-800/40 text-slate-600 cursor-not-allowed font-semibold">
+                <span className="px-3 py-1.5 rounded-lg bg-surface/50 border border-border-theme/40 text-text-secondary/50 cursor-not-allowed font-semibold">
                   Próxima →
                 </span>
               )}

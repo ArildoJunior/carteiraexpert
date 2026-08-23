@@ -68,14 +68,14 @@ export function CancelEventModal({
       aria-modal="true"
       aria-labelledby="cancel-event-modal-title"
     >
-      <div className="relative w-full max-w-md bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl space-y-5">
+      <div className="relative w-full max-w-md bg-surface-elevated border border-border-theme rounded-2xl p-6 shadow-2xl space-y-5 text-text-primary">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div className="flex items-center justify-between border-b border-border-theme pb-4">
           <div className="flex items-center gap-2">
-            <span className="text-red-400 text-lg">⚠️</span>
+            <span className="text-negative-text text-lg">⚠️</span>
             <h2
               id="cancel-event-modal-title"
-              className="text-lg font-semibold text-white"
+              className="text-lg font-semibold text-text-primary"
             >
               Cancelar Operação
             </h2>
@@ -83,7 +83,7 @@ export function CancelEventModal({
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+            className="text-text-secondary hover:text-text-primary p-1 rounded-lg hover:bg-surface transition-colors"
             aria-label="Fechar modal"
           >
             ✕
@@ -91,7 +91,7 @@ export function CancelEventModal({
         </div>
 
         {/* Warning info */}
-        <div className="bg-amber-950/40 border border-amber-800/60 rounded-xl p-3 text-xs text-amber-200/90 leading-relaxed">
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
           <strong>Atenção:</strong> Eventos patrimoniais são registros
           históricos e nunca são apagados fisicamente. O cancelamento registrará
           uma exclusão lógica com auditoria e justificativa obrigatória.
@@ -104,7 +104,7 @@ export function CancelEventModal({
             <div
               id="cancel-event-error-alert"
               role="alert"
-              className="bg-red-950/60 border border-red-800 text-red-300 text-sm rounded-lg px-4 py-3"
+              className="bg-negative-text/10 border border-negative-text/30 text-negative-text text-sm rounded-lg px-4 py-3"
             >
               {state.error}
             </div>
@@ -114,10 +114,10 @@ export function CancelEventModal({
           <div>
             <label
               htmlFor="cancellation-reason"
-              className="block text-sm font-medium text-slate-300 mb-1.5"
+              className="block text-sm font-medium text-text-secondary mb-1.5"
             >
               Justificativa do Cancelamento{' '}
-              <span className="text-red-400">*</span>
+              <span className="text-negative-text">*</span>
             </label>
             <textarea
               id="cancellation-reason"
@@ -132,28 +132,28 @@ export function CancelEventModal({
                   ? 'cancellation-reason-error'
                   : undefined
               }
-              className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3.5 py-2.5 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all resize-none"
+              className="w-full bg-background border border-border-theme rounded-lg px-3.5 py-2.5 text-text-primary placeholder:text-text-secondary/60 text-sm focus:outline-none focus:ring-2 focus:ring-negative-text focus:border-transparent transition-all resize-none"
             />
             {state.fieldErrors?.cancellationReason && (
               <p
                 id="cancellation-reason-error"
-                className="text-red-400 text-xs mt-1"
+                className="text-negative-text text-xs mt-1"
               >
                 {state.fieldErrors.cancellationReason[0]}
               </p>
             )}
-            <p className="text-xs text-slate-500 mt-1 text-right">
+            <p className="text-xs text-text-secondary mt-1 text-right">
               {reason.length}/500 caracteres (mínimo 5)
             </p>
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-border-theme">
             <button
               type="button"
               onClick={onClose}
               disabled={pending}
-              className="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
+              className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
             >
               Voltar
             </button>
@@ -161,7 +161,7 @@ export function CancelEventModal({
               id="confirm-cancel-event-submit"
               type="submit"
               disabled={pending || reason.trim().length < 5}
-              className="px-5 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-500 disabled:bg-red-900/50 disabled:text-slate-400 disabled:cursor-not-allowed rounded-lg shadow-sm transition-all"
+              className="px-5 py-2 text-sm font-semibold text-white bg-negative-text hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-negative-text"
             >
               {pending ? 'Cancelando...' : 'Confirmar Cancelamento'}
             </button>

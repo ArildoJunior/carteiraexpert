@@ -37,25 +37,25 @@ export function PortfolioHeader({
   }
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+    <div className="bg-surface border border-border-theme rounded-2xl p-6 shadow-sm space-y-4 text-text-primary">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         {/* Title & Info */}
         <div className="space-y-1">
           <div className="flex items-center gap-3">
             <h1
               id="portfolio-title"
-              className="text-2xl font-bold text-white tracking-tight"
+              className="text-2xl font-bold text-text-primary tracking-tight"
             >
               {portfolio.name}
             </h1>
             <span
               id="portfolio-currency-badge"
-              className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-mono"
+              className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-background text-text-secondary border border-border-theme font-mono"
             >
               {portfolio.baseCurrency}
             </span>
             {portfolio.status === 'archived' && (
-              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-950/80 text-amber-400 border border-amber-800">
+              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-300 border border-amber-500/30">
                 Arquivada
               </span>
             )}
@@ -63,12 +63,12 @@ export function PortfolioHeader({
           {portfolio.description && (
             <p
               id="portfolio-description-text"
-              className="text-slate-400 text-sm max-w-2xl"
+              className="text-text-secondary text-sm max-w-2xl"
             >
               {portfolio.description}
             </p>
           )}
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-text-secondary">
             {eventsCount === 1
               ? '1 operação registrada'
               : `${eventsCount} operações registradas`}
@@ -81,7 +81,7 @@ export function PortfolioHeader({
             id="btn-edit-portfolio"
             type="button"
             onClick={() => setIsEditModalOpen(true)}
-            className="px-3.5 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl transition-all"
+            className="px-3.5 py-2 text-xs font-semibold text-text-primary hover:bg-border-theme/40 bg-surface-elevated border border-border-theme rounded-xl transition-all"
           >
             ✏️ Editar Carteira
           </button>
@@ -89,7 +89,7 @@ export function PortfolioHeader({
             id="btn-delete-portfolio"
             type="button"
             onClick={() => setShowDeleteConfirm(true)}
-            className="px-3.5 py-2 text-xs font-semibold text-red-400 hover:text-red-300 bg-red-950/30 hover:bg-red-950/60 border border-red-900/50 rounded-xl transition-all"
+            className="px-3.5 py-2 text-xs font-semibold text-negative-text hover:bg-negative-text/20 bg-negative-text/10 border border-negative-text/30 rounded-xl transition-all"
           >
             🗑️ Excluir
           </button>
@@ -97,7 +97,7 @@ export function PortfolioHeader({
             id="btn-new-transaction"
             type="button"
             onClick={onNewTransaction}
-            className="px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-sm transition-all flex items-center gap-1.5"
+            className="px-4 py-2 text-xs font-semibold text-action-primary-text bg-action-primary hover:opacity-90 rounded-xl shadow-sm transition-all flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary"
           >
             <span>+</span> Nova Operação
           </button>
@@ -119,11 +119,11 @@ export function PortfolioHeader({
           role="dialog"
           aria-modal="true"
         >
-          <div className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl p-6 space-y-4 shadow-2xl">
-            <h3 className="text-lg font-bold text-white">Excluir Carteira</h3>
-            <p className="text-sm text-slate-400">
+          <div className="w-full max-w-sm bg-surface-elevated border border-border-theme rounded-2xl p-6 space-y-4 shadow-2xl">
+            <h3 className="text-lg font-bold text-text-primary">Excluir Carteira</h3>
+            <p className="text-sm text-text-secondary">
               Tem certeza que deseja excluir logicamente a carteira{' '}
-              <strong className="text-white">&quot;{portfolio.name}&quot;</strong>? O histórico
+              <strong className="text-text-primary">&quot;{portfolio.name}&quot;</strong>? O histórico
               permanecerá protegido na trilha de auditoria.
             </p>
             <div className="flex items-center justify-end gap-3 pt-2">
@@ -131,7 +131,7 @@ export function PortfolioHeader({
                 type="button"
                 onClick={() => setShowDeleteConfirm(false)}
                 disabled={isDeleting}
-                className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-white bg-slate-800 rounded-lg"
+                className="px-4 py-2 text-xs font-medium text-text-secondary hover:text-text-primary bg-background border border-border-theme rounded-lg"
               >
                 Cancelar
               </button>
@@ -140,7 +140,7 @@ export function PortfolioHeader({
                 type="button"
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-500 disabled:bg-red-950 rounded-lg"
+                className="px-4 py-2 text-xs font-semibold text-white bg-negative-text hover:opacity-90 disabled:opacity-50 rounded-lg"
               >
                 {isDeleting ? 'Excluindo...' : 'Sim, Excluir'}
               </button>

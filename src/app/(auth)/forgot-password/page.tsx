@@ -9,10 +9,10 @@ export const metadata: Metadata = {
 
 export default function ForgotPasswordPage() {
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-2xl p-8 shadow-2xl">
+    <div className="bg-surface border border-border-theme rounded-2xl p-8 shadow-xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Recuperar senha</h1>
-        <p className="text-slate-400 text-sm mt-1">
+        <h1 className="text-2xl font-bold text-text-primary">Recuperar senha</h1>
+        <p className="text-text-secondary text-sm mt-1">
           Informe seu e-mail e enviaremos um link para redefinir sua senha.
         </p>
       </div>
@@ -22,7 +22,7 @@ export default function ForgotPasswordPage() {
       <div className="mt-6 text-center">
         <Link
           href="/login"
-          className="text-sm text-slate-400 hover:text-slate-300 transition-colors"
+          className="text-sm font-medium text-action-primary hover:underline transition-all"
         >
           ← Voltar ao login
         </Link>

@@ -72,19 +72,19 @@ export function CancelSubscriptionModal({
       aria-modal="true"
       aria-labelledby="cancel-subscription-modal-title"
     >
-      <div className="relative w-full max-w-md bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl space-y-5">
+      <div className="relative w-full max-w-md bg-surface-elevated border border-border-theme rounded-2xl p-6 shadow-2xl space-y-5 text-text-primary">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div className="flex items-center justify-between border-b border-border-theme pb-4">
           <div className="flex items-center gap-2">
-            <span className="text-red-400 text-lg">⚠️</span>
-            <h2 id="cancel-subscription-modal-title" className="text-lg font-semibold text-white">
+            <span className="text-negative-text text-lg">⚠️</span>
+            <h2 id="cancel-subscription-modal-title" className="text-lg font-semibold text-text-primary">
               Cancelar Saldo de Subscrição
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+            className="text-text-secondary hover:text-text-primary p-1 rounded-lg hover:bg-surface transition-colors"
             aria-label="Fechar modal"
             disabled={pending}
           >
@@ -93,8 +93,8 @@ export function CancelSubscriptionModal({
         </div>
 
         {/* Warning info */}
-        <div className="bg-amber-950/40 border border-amber-800/60 rounded-xl p-3.5 text-xs text-amber-200/90 leading-relaxed space-y-1">
-          <p className="font-medium text-amber-300">Atenção sobre o Cancelamento:</p>
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 text-xs text-amber-700 dark:text-amber-300 leading-relaxed space-y-1">
+          <p className="font-medium text-amber-600 dark:text-amber-300">Atenção sobre o Cancelamento:</p>
           <p>
             O cancelamento incide exclusivamente sobre o saldo remanescente ({Number(subscription.remainingQuantity).toLocaleString('pt-BR')} direitos) de <strong>{subscription.offer.rightAsset.ticker}</strong>. Operações de compra (BUY) já realizadas anteriormente continuarão íntegras no extrato.
           </p>
@@ -103,7 +103,7 @@ export function CancelSubscriptionModal({
         {/* Feedback Geral de Erro */}
         {!state.success && state.error && (
           <div
-            className="p-3 bg-red-950/40 border border-red-800 rounded-xl text-red-300 text-sm"
+            className="p-3 bg-negative-text/10 border border-negative-text/30 rounded-xl text-negative-text text-sm"
             role="alert"
             data-testid="cancel-error-message"
           >
@@ -114,8 +114,8 @@ export function CancelSubscriptionModal({
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label htmlFor="cancel-reason-input" className="text-sm font-medium text-slate-200">
-              Motivo do Cancelamento <span className="text-red-400">*</span>
+            <label htmlFor="cancel-reason-input" className="text-sm font-medium text-text-secondary">
+              Motivo do Cancelamento <span className="text-negative-text">*</span>
             </label>
             <textarea
               id="cancel-reason-input"
@@ -125,29 +125,29 @@ export function CancelSubscriptionModal({
               onChange={(e) => setReason(e.target.value)}
               placeholder="Descreva a justificativa para auditoria (mínimo 3 caracteres)..."
               disabled={pending}
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 transition-all resize-none"
+              className="w-full bg-background border border-border-theme rounded-xl px-3 py-2.5 text-sm text-text-primary placeholder:text-text-secondary/60 focus:outline-none focus:ring-2 focus:ring-negative-text transition-all resize-none"
               required
               minLength={3}
               maxLength={500}
             />
             {state.fieldErrors?.reason && (
-              <p className="text-xs text-red-400">{state.fieldErrors.reason[0]}</p>
+              <p className="text-xs text-negative-text">{state.fieldErrors.reason[0]}</p>
             )}
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-border-theme">
             <button
               type="button"
               onClick={onClose}
               disabled={pending}
-              className="px-4 py-2 text-sm text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
+              className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary rounded-xl hover:bg-surface transition-colors"
             >
               Voltar
             </button>
             <button
               type="submit"
               disabled={pending || reason.trim().length < 3}
-              className="px-5 py-2 text-sm font-medium bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl shadow-lg shadow-red-950/50 transition-all flex items-center gap-2"
+              className="px-5 py-2 text-sm font-semibold bg-negative-text hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl shadow-sm transition-all flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-negative-text"
               data-testid="cancel-submit-btn"
             >
               {pending ? (

@@ -19,10 +19,10 @@ export default async function ResetPasswordPage({ searchParams }: Props) {
   if (!token) notFound();
 
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-2xl p-8 shadow-2xl">
+    <div className="bg-surface border border-border-theme rounded-2xl p-8 shadow-xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Criar nova senha</h1>
-        <p className="text-slate-400 text-sm mt-1">
+        <h1 className="text-2xl font-bold text-text-primary">Criar nova senha</h1>
+        <p className="text-text-secondary text-sm mt-1">
           Escolha uma senha forte para proteger sua conta.
         </p>
       </div>
@@ -32,7 +32,7 @@ export default async function ResetPasswordPage({ searchParams }: Props) {
       <div className="mt-6 text-center">
         <Link
           href="/login"
-          className="text-sm text-slate-400 hover:text-slate-300 transition-colors"
+          className="text-sm font-medium text-action-primary hover:underline transition-all"
         >
           ← Voltar ao login
         </Link>

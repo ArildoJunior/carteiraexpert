@@ -1,26 +1,64 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-background: #F8FAFC;
+  --bg-surface: #FFFFFF;
+  --bg-surface-elevated: #FFFFFF;
+  --text-primary: #0F172A;
+  --text-secondary: #64748B;
+  --border-theme: #E2E8F0;
+  --positive-text: #047857;
+  --positive-chart: #059669;
+  --negative-text: #B91C1C;
+  --negative-chart: #DC2626;
+  --action-primary: #C9A86A;
+  --action-primary-text: #0F172A;
+  --cost-color: #4F46E5;
+  --quoted-cost-color: #6366F1;
+}
+
+.dark {
+  --bg-background: #0B1120;
+  --bg-surface: #1E293B;
+  --bg-surface-elevated: #263449;
+  --text-primary: #FFFFFF;
+  --text-secondary: #94A3B8;
+  --border-theme: #334155;
+  --positive-text: #10B981;
+  --positive-chart: #10B981;
+  --negative-text: #EF4444;
+  --negative-chart: #EF4444;
+  --action-primary: #4F46E5;
+  --action-primary-text: #FFFFFF;
+  --cost-color: #818CF8;
+  --quoted-cost-color: #A5B4FC;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-background: var(--bg-background);
+  --color-surface: var(--bg-surface);
+  --color-surface-elevated: var(--bg-surface-elevated);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-border-theme: var(--border-theme);
+  --color-positive-text: var(--positive-text);
+  --color-positive-chart: var(--positive-chart);
+  --color-negative-text: var(--negative-text);
+  --color-negative-chart: var(--negative-chart);
+  --color-action-primary: var(--action-primary);
+  --color-action-primary-text: var(--action-primary-text);
+  --color-cost: var(--cost-color);
+  --color-quoted-cost: var(--quoted-cost-color);
+  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg-background);
+  color: var(--text-primary);
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }

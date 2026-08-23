@@ -32,14 +32,14 @@ export default async function DashboardPage() {
   const data = await getSerializedUserDashboardData(user);
 
   return (
-    <div className="space-y-8" id="dashboard-page-container">
+    <div className="space-y-8 text-text-primary" id="dashboard-page-container">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">
+          <h1 className="text-2xl font-bold text-text-primary tracking-tight">
             Olá, {user.name.split(' ')[0]} 👋
           </h1>
-          <p className="text-slate-400 text-sm mt-1">
+          <p className="text-text-secondary text-sm mt-1">
             Visão consolidada das suas posições patrimoniais e histórico de operações.
           </p>
         </div>
@@ -47,7 +47,7 @@ export default async function DashboardPage() {
         <Link
           id="dashboard-new-portfolio-btn"
           href="/portfolios"
-          className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-sm transition-all self-start sm:self-auto"
+          className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-action-primary-text bg-action-primary hover:opacity-90 rounded-xl shadow-sm transition-all self-start sm:self-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary"
         >
           <span>💼</span> Gerenciar Carteiras
         </Link>
@@ -70,17 +70,17 @@ export default async function DashboardPage() {
       <div className="space-y-4" id="dashboard-portfolios-section">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-white tracking-tight">
+            <h2 className="text-lg font-bold text-text-primary tracking-tight">
               Minhas Carteiras
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-text-secondary mt-0.5">
               Carteiras ativas cadastradas na plataforma.
             </p>
           </div>
           <Link
             id="dashboard-view-all-portfolios-link"
             href="/portfolios"
-            className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition-colors"
+            className="text-xs font-semibold text-action-primary hover:underline transition-colors"
           >
             Ver todas ({data.totalActivePortfolios}) →
           </Link>
@@ -89,17 +89,17 @@ export default async function DashboardPage() {
         {data.totalActivePortfolios === 0 ? (
           <div
             id="empty-portfolios-state"
-            className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center space-y-3 shadow-lg"
+            className="bg-surface border border-border-theme rounded-2xl p-8 text-center space-y-3 shadow-sm"
           >
-            <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-slate-500 text-xl font-bold mx-auto">
+            <div className="w-12 h-12 rounded-full bg-background flex items-center justify-center text-text-secondary text-xl font-bold mx-auto border border-border-theme">
               💼
             </div>
-            <p className="text-sm font-medium text-slate-300">
+            <p className="text-sm font-medium text-text-primary">
               Você ainda não possui carteiras cadastradas.
             </p>
             <Link
               href="/portfolios"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400 hover:underline"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-action-primary hover:underline"
             >
               Criar minha primeira carteira →
             </Link>
@@ -120,38 +120,38 @@ export default async function DashboardPage() {
                   key={p.portfolioId}
                   id={`dashboard-portfolio-card-${p.portfolioId}`}
                   href={`/portfolios/${p.portfolioId}`}
-                  className="bg-slate-900 border border-slate-800 hover:border-emerald-500/50 rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5 space-y-3 block shadow-md group"
+                  className="bg-surface border border-border-theme hover:border-action-primary rounded-2xl p-5 transition-all duration-200 hover:-translate-y-0.5 space-y-3 block shadow-sm group focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary"
                 >
                   <div className="flex items-center justify-between">
-                    <h3 className="font-bold text-white text-base truncate group-hover:text-emerald-400 transition-colors">
+                    <h3 className="font-bold text-text-primary text-base truncate group-hover:text-action-primary transition-colors">
                       {p.portfolioName}
                     </h3>
-                    <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                    <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded bg-background text-text-secondary border border-border-theme">
                       {p.baseCurrency}
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-800/60 text-xs">
+                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border-theme text-xs">
                     <div>
-                      <p className="text-[11px] text-slate-500 uppercase font-semibold">
+                      <p className="text-[11px] text-text-secondary uppercase font-semibold">
                         Em Custódia
                       </p>
-                      <p className="font-mono font-bold text-white text-sm mt-0.5">
+                      <p className="font-mono tabular-nums font-bold text-text-primary text-sm mt-0.5">
                         {formatMoney(p.summary.totalInvestedCost, p.baseCurrency)}
                       </p>
                     </div>
 
                     <div className="text-right">
-                      <p className="text-[11px] text-slate-500 uppercase font-semibold">
+                      <p className="text-[11px] text-text-secondary uppercase font-semibold">
                         PnL Realizado
                       </p>
                       <p
-                        className={`font-mono font-bold text-sm mt-0.5 ${
+                        className={`font-mono tabular-nums font-bold text-sm mt-0.5 ${
                           isPositivePnL
-                            ? 'text-emerald-400'
+                            ? 'text-positive-text'
                             : isNegativePnL
-                            ? 'text-red-400'
-                            : 'text-slate-300'
+                            ? 'text-negative-text'
+                            : 'text-text-secondary'
                         }`}
                       >
                         {isPositivePnL ? '+' : ''}
@@ -160,12 +160,12 @@ export default async function DashboardPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-800/40 text-xs text-slate-400">
+                  <div className="flex items-center justify-between pt-2 border-t border-border-theme text-xs text-text-secondary">
                     <span>
                       {activeAssetsCount}{' '}
                       {activeAssetsCount === 1 ? 'ativo' : 'ativos'}
                     </span>
-                    <span className="text-emerald-400 font-semibold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                    <span className="text-action-primary font-semibold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
                       Acessar →
                     </span>
                   </div>
@@ -182,10 +182,10 @@ export default async function DashboardPage() {
       </div>
 
       {/* Aviso institucional sobre limites */}
-      <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 flex items-start gap-3">
-        <span className="text-slate-400 text-base">ℹ️</span>
-        <div className="space-y-0.5 text-xs text-slate-400">
-          <p className="text-slate-300 font-semibold">
+      <div className="bg-surface border border-border-theme rounded-2xl p-4 flex items-start gap-3 shadow-sm">
+        <span className="text-action-primary text-base">ℹ️</span>
+        <div className="space-y-0.5 text-xs text-text-secondary">
+          <p className="text-text-primary font-semibold">
             Consolidação Patrimonial — CarteiraExpert
           </p>
           <p>

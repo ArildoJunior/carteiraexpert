@@ -15,7 +15,7 @@ export function LoginForm() {
         <div
           id="login-error-alert"
           role="alert"
-          className="bg-red-950/50 border border-red-800 text-red-300 text-sm rounded-lg px-4 py-3"
+          className="bg-negative-text/10 border border-negative-text/30 text-negative-text text-sm rounded-lg px-4 py-3"
         >
           {state.error}
         </div>
@@ -23,7 +23,7 @@ export function LoginForm() {
 
       {/* E-mail */}
       <div>
-        <label htmlFor="login-email" className="block text-sm font-medium text-slate-300 mb-1.5">
+        <label htmlFor="login-email" className="block text-sm font-medium text-text-secondary mb-1.5">
           E-mail
         </label>
         <input
@@ -34,10 +34,10 @@ export function LoginForm() {
           autoComplete="email"
           placeholder="seu@email.com"
           aria-describedby={state.fieldErrors?.email ? 'login-email-error' : undefined}
-          className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+          className="w-full bg-background border border-border-theme rounded-lg px-3 py-2.5 text-text-primary placeholder:text-text-secondary/60 text-sm focus:outline-none focus:ring-2 focus:ring-action-primary focus:border-transparent transition-all"
         />
         {state.fieldErrors?.email && (
-          <p id="login-email-error" className="text-red-400 text-xs mt-1">
+          <p id="login-email-error" className="text-negative-text text-xs mt-1">
             {state.fieldErrors.email[0]}
           </p>
         )}
@@ -45,7 +45,7 @@ export function LoginForm() {
 
       {/* Senha */}
       <div>
-        <label htmlFor="login-password" className="block text-sm font-medium text-slate-300 mb-1.5">
+        <label htmlFor="login-password" className="block text-sm font-medium text-text-secondary mb-1.5">
           Senha
         </label>
         <input
@@ -56,10 +56,10 @@ export function LoginForm() {
           autoComplete="current-password"
           placeholder="••••••••"
           aria-describedby={state.fieldErrors?.password ? 'login-password-error' : undefined}
-          className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2.5 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+          className="w-full bg-background border border-border-theme rounded-lg px-3 py-2.5 text-text-primary placeholder:text-text-secondary/60 text-sm focus:outline-none focus:ring-2 focus:ring-action-primary focus:border-transparent transition-all"
         />
         {state.fieldErrors?.password && (
-          <p id="login-password-error" className="text-red-400 text-xs mt-1">
+          <p id="login-password-error" className="text-negative-text text-xs mt-1">
             {state.fieldErrors.password[0]}
           </p>
         )}
@@ -70,7 +70,7 @@ export function LoginForm() {
         id="login-submit"
         type="submit"
         disabled={pending}
-        className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:bg-emerald-800 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-lg text-sm transition-all duration-200 mt-2"
+        className="w-full bg-action-primary hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-action-primary-text font-semibold py-2.5 rounded-lg text-sm transition-all duration-200 mt-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-action-primary"
       >
         {pending ? 'Entrando...' : 'Entrar'}
       </button>

@@ -40,15 +40,15 @@ export function RecentActivityFeed({ events }: RecentActivityFeedProps) {
     return (
       <div
         id="empty-recent-activities"
-        className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center space-y-3 shadow-lg"
+        className="bg-surface border border-border-theme rounded-2xl p-8 text-center space-y-3 shadow-sm"
       >
-        <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-slate-500 text-xl font-bold mx-auto">
+        <div className="w-12 h-12 rounded-full bg-background flex items-center justify-center text-text-secondary text-xl font-bold mx-auto">
           ⚡
         </div>
-        <p className="text-sm font-medium text-slate-300">
+        <p className="text-sm font-medium text-text-primary">
           Nenhuma operação recente registrada.
         </p>
-        <p className="text-xs text-slate-500 max-w-sm mx-auto">
+        <p className="text-xs text-text-secondary max-w-sm mx-auto">
           Suas compras e vendas manuais aparecerão aqui organizadas cronologicamente por carteira.
         </p>
       </div>
@@ -58,17 +58,17 @@ export function RecentActivityFeed({ events }: RecentActivityFeedProps) {
   return (
     <div
       id="dashboard-recent-activity-section"
-      className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl"
+      className="bg-surface border border-border-theme rounded-2xl overflow-hidden shadow-sm"
     >
-      <div className="px-6 py-4 border-b border-slate-800/80 flex items-center justify-between">
+      <div className="px-6 py-4 border-b border-border-theme flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-white flex items-center gap-2.5">
+          <h2 className="text-lg font-bold text-text-primary flex items-center gap-2.5">
             <span>Atividades Recentes</span>
-            <span className="text-xs font-normal bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">
+            <span className="text-xs font-normal bg-background text-text-secondary px-2 py-0.5 rounded-full border border-border-theme">
               Últimas {events.length}
             </span>
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-text-secondary mt-0.5">
             Histórico consolidado de compras e vendas ativas entre todas as suas carteiras.
           </p>
         </div>
@@ -76,7 +76,7 @@ export function RecentActivityFeed({ events }: RecentActivityFeedProps) {
         <Link
           id="btn-view-all-history-from-dashboard"
           href="/history"
-          className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition-colors"
+          className="text-xs font-semibold text-action-primary hover:underline transition-colors"
         >
           Ver extrato completo →
         </Link>
@@ -88,7 +88,7 @@ export function RecentActivityFeed({ events }: RecentActivityFeedProps) {
           className="w-full text-left border-collapse text-sm"
         >
           <thead>
-            <tr className="border-b border-slate-800/80 bg-slate-950/40 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+            <tr className="border-b border-border-theme bg-background/50 text-[11px] font-semibold text-text-secondary uppercase tracking-wider">
               <th className="px-6 py-3.5">Tipo</th>
               <th className="px-4 py-3.5">Carteira</th>
               <th className="px-4 py-3.5">Ativo</th>
@@ -98,7 +98,7 @@ export function RecentActivityFeed({ events }: RecentActivityFeedProps) {
               <th className="px-6 py-3.5 text-right">Taxas</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800/50 text-slate-300">
+          <tbody className="divide-y divide-border-theme/50 text-text-primary">
             {events.map((event) => {
               const isBuy = event.type === 'BUY';
               const isSell = event.type === 'SELL';
@@ -120,42 +120,42 @@ export function RecentActivityFeed({ events }: RecentActivityFeedProps) {
                 <tr
                   key={event.id}
                   id={`recent-event-row-${event.id}`}
-                  className="hover:bg-slate-800/30 transition-colors"
+                  className="hover:bg-surface-elevated/50 transition-colors"
                 >
                   {/* Tipo */}
                   <td className="px-6 py-3.5 whitespace-nowrap">
                     {isBuy && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-400 border border-emerald-800/60">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-positive-text/10 text-positive-text border border-positive-text/30">
                         🟢 Compra
                       </span>
                     )}
                     {isSell && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-950/80 text-blue-400 border border-blue-800/60">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-action-primary/10 text-action-primary border border-action-primary/30">
                         🔵 Venda
                       </span>
                     )}
                     {isSplit && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-950/80 text-purple-400 border border-purple-800/60">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-500 border border-indigo-500/30">
                         🔀 Desdobramento
                       </span>
                     )}
                     {isGrouping && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-950/80 text-amber-400 border border-amber-800/60">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-300 border border-amber-500/30">
                         🔄 Grupamento
                       </span>
                     )}
                     {isBonus && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-pink-950/80 text-pink-400 border border-pink-800/60">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-pink-500/10 text-pink-500 border border-pink-500/30">
                         🎁 Bonificação
                       </span>
                     )}
                     {isDividend && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-700/60">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-positive-text/10 text-positive-text border border-positive-text/30">
                         💵 Dividendo
                       </span>
                     )}
                     {isJcp && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-950/80 text-teal-300 border border-teal-700/60">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-500/10 text-teal-600 dark:text-teal-300 border border-teal-500/30">
                         🏛️ JCP
                       </span>
                     )}
@@ -165,7 +165,7 @@ export function RecentActivityFeed({ events }: RecentActivityFeedProps) {
                   <td className="px-4 py-3.5 whitespace-nowrap">
                     <Link
                       href={`/portfolios/${event.portfolioId}`}
-                      className="font-medium text-emerald-400 hover:text-emerald-300 hover:underline transition-colors"
+                      className="font-medium text-action-primary hover:underline transition-colors"
                       id={`recent-event-portfolio-${event.id}`}
                     >
                       {event.portfolioName}
@@ -177,23 +177,23 @@ export function RecentActivityFeed({ events }: RecentActivityFeedProps) {
                     <div className="flex flex-col">
                       <span
                         id={`recent-event-ticker-${event.id}`}
-                        className="font-bold text-white tracking-wide"
+                        className="font-bold text-text-primary tracking-wide"
                       >
                         {event.assetTicker}
                       </span>
-                      <span className="text-xs text-slate-500 truncate max-w-[160px]">
+                      <span className="text-xs text-text-secondary truncate max-w-[160px]">
                         {event.assetName}
                       </span>
                     </div>
                   </td>
 
                   {/* Data */}
-                  <td className="px-4 py-3.5 font-mono text-xs text-slate-300 whitespace-nowrap">
+                  <td className="px-4 py-3.5 font-mono text-xs text-text-secondary whitespace-nowrap">
                     {tradeDateFormatted}
                   </td>
 
                   {/* Quantidade / Fator */}
-                  <td className="px-4 py-3.5 text-right font-mono font-medium text-slate-200 whitespace-nowrap">
+                  <td className="px-4 py-3.5 text-right font-mono tabular-nums font-medium text-text-primary whitespace-nowrap">
                     {isSplit && `Fator 1:${formatQuantity(event.quantity)}`}
                     {isGrouping && `Fator ${formatQuantity(event.quantity)}:1`}
                     {isBonus && `+${formatQuantity(event.quantity)}`}
@@ -202,7 +202,7 @@ export function RecentActivityFeed({ events }: RecentActivityFeedProps) {
                   </td>
 
                   {/* Preço Unitário */}
-                  <td className="px-4 py-3.5 text-right font-mono font-medium text-slate-200 whitespace-nowrap">
+                  <td className="px-4 py-3.5 text-right font-mono tabular-nums font-medium text-text-primary whitespace-nowrap">
                     {isSplit || isGrouping ? (
                       '—'
                     ) : isBonus ? (
@@ -213,7 +213,7 @@ export function RecentActivityFeed({ events }: RecentActivityFeedProps) {
                   </td>
 
                   {/* Taxas */}
-                  <td className="px-6 py-3.5 text-right font-mono text-xs text-slate-400 whitespace-nowrap">
+                  <td className="px-6 py-3.5 text-right font-mono tabular-nums text-xs text-text-secondary whitespace-nowrap">
                     {isJcp
                       ? `IRRF ${formatMoney(event.fees, event.currency)}`
                       : isSplit || isGrouping || isBonus

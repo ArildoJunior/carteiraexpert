@@ -11,6 +11,7 @@ import {
 import type { SerializedAssetPosition } from '../domain/position.types';
 import type { AllocationBasis, ChartGroupingType } from '../domain/chart.types';
 import { calculatePortfolioAllocation } from '../domain/chart-engine';
+import { useTheme } from '@/lib/theme/ThemeContext';
 
 interface PortfolioAllocationChartsProps {
   positions: SerializedAssetPosition[];
@@ -37,31 +38,31 @@ function ChartCustomTooltip({ active, payload }: CustomTooltipProps) {
   const data = payload[0].payload;
 
   return (
-    <div className="bg-slate-900/95 border border-slate-700/80 rounded-xl p-3.5 shadow-2xl backdrop-blur-md text-xs space-y-1.5 min-w-[180px] z-50">
+    <div className="bg-surface-elevated border border-border-theme rounded-xl p-3.5 shadow-xl backdrop-blur-md text-xs space-y-1.5 min-w-[180px] z-50 text-text-primary">
       <div className="flex items-center gap-2">
         <span
           className="w-2.5 h-2.5 rounded-full inline-block shrink-0"
           style={{ backgroundColor: data.color }}
         />
-        <p className="font-bold text-white text-sm tracking-tight truncate">
+        <p className="font-bold text-text-primary text-sm tracking-tight truncate">
           {data.label}
         </p>
       </div>
 
       {data.secondaryLabel && (
-        <p className="text-slate-400 text-[11px] truncate">
+        <p className="text-text-secondary text-[11px] truncate">
           {data.secondaryLabel}
         </p>
       )}
 
-      <div className="pt-1 border-t border-slate-800 flex items-center justify-between gap-4 font-mono">
-        <span className="text-slate-400">Valor:</span>
-        <span className="font-bold text-white">{data.formattedValue}</span>
+      <div className="pt-1 border-t border-border-theme flex items-center justify-between gap-4 font-mono tabular-nums">
+        <span className="text-text-secondary">Valor:</span>
+        <span className="font-bold text-text-primary">{data.formattedValue}</span>
       </div>
 
-      <div className="flex items-center justify-between gap-4 font-mono">
-        <span className="text-slate-400">Participação:</span>
-        <span className="font-bold text-emerald-400">{data.formattedPercent}</span>
+      <div className="flex items-center justify-between gap-4 font-mono tabular-nums">
+        <span className="text-text-secondary">Participação:</span>
+        <span className="font-bold text-positive-text">{data.formattedPercent}</span>
       </div>
     </div>
   );
@@ -71,6 +72,7 @@ export function PortfolioAllocationCharts({
   positions,
   baseCurrency = 'BRL',
 }: PortfolioAllocationChartsProps) {
+  const { tokens } = useTheme();
   const [basis, setBasis] = useState<AllocationBasis>('market_value');
   const [groupingType, setGroupingType] = useState<ChartGroupingType>('asset');
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -106,20 +108,20 @@ export function PortfolioAllocationCharts({
   return (
     <div
       id="portfolio-allocation-charts-container"
-      className="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl space-y-6"
+      className="bg-surface border border-border-theme rounded-2xl p-5 sm:p-6 shadow-sm space-y-6 text-text-primary"
     >
       {/* ─── Header do Gráfico ────────────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border-theme">
         <div>
           <div className="flex items-center gap-2.5">
             <span className="text-xl">📊</span>
-            <h2 className="text-lg font-bold text-white tracking-tight">
+            <h2 className="text-lg font-bold text-text-primary tracking-tight">
               Alocação e Composição Patrimonial
             </h2>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-text-secondary mt-1">
             Distribuição proporcional da carteira calculada por{' '}
-            <span className="font-semibold text-slate-300">
+            <span className="font-semibold text-text-primary">
               {isCostBasis ? 'Custo de Aquisição' : 'Valor a Mercado'}
             </span>
             .
@@ -129,7 +131,7 @@ export function PortfolioAllocationCharts({
         {/* Controles de Visualização */}
         <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto">
           {/* Seletor de Agrupamento */}
-          <div className="flex bg-slate-950/80 border border-slate-800 p-1 rounded-xl text-xs font-semibold">
+          <div className="flex bg-background border border-border-theme p-1 rounded-xl text-xs font-semibold">
             <button
               id="chart-grouping-tab-asset"
               type="button"
@@ -137,8 +139,8 @@ export function PortfolioAllocationCharts({
               onClick={() => setGroupingType('asset')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
                 groupingType === 'asset'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-action-primary text-action-primary-text shadow-sm'
+                  : 'text-text-secondary hover:text-text-primary'
               }`}
             >
               Por Ativo
@@ -150,8 +152,8 @@ export function PortfolioAllocationCharts({
               onClick={() => setGroupingType('asset_type')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
                 groupingType === 'asset_type'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-action-primary text-action-primary-text shadow-sm'
+                  : 'text-text-secondary hover:text-text-primary'
               }`}
             >
               Por Classe
@@ -163,8 +165,8 @@ export function PortfolioAllocationCharts({
               onClick={() => setGroupingType('currency')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
                 groupingType === 'currency'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-action-primary text-action-primary-text shadow-sm'
+                  : 'text-text-secondary hover:text-text-primary'
               }`}
             >
               Por Moeda
@@ -172,7 +174,7 @@ export function PortfolioAllocationCharts({
           </div>
 
           {/* Seletor de Base (Mercado vs Custo) */}
-          <div className="flex bg-slate-950/80 border border-slate-800 p-1 rounded-xl text-xs font-semibold">
+          <div className="flex bg-background border border-border-theme p-1 rounded-xl text-xs font-semibold">
             <button
               id="chart-basis-market_value"
               type="button"
@@ -180,8 +182,8 @@ export function PortfolioAllocationCharts({
               onClick={() => setBasis('market_value')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
                 basis === 'market_value'
-                  ? 'bg-sky-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-action-primary text-action-primary-text shadow-sm'
+                  : 'text-text-secondary hover:text-text-primary'
               }`}
             >
               Valor a Mercado
@@ -193,8 +195,8 @@ export function PortfolioAllocationCharts({
               onClick={() => setBasis('cost_basis')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
                 basis === 'cost_basis'
-                  ? 'bg-sky-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-action-primary text-action-primary-text shadow-sm'
+                  : 'text-text-secondary hover:text-text-primary'
               }`}
             >
               Custo de Aquisição
@@ -207,7 +209,7 @@ export function PortfolioAllocationCharts({
       {basis === 'market_value' && chartData.isPartiallyQuoted && (
         <div
           id="chart-unquoted-warning"
-          className="bg-amber-950/30 border border-amber-800/50 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-300"
+          className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-700 dark:text-amber-300"
         >
           <div className="flex items-center gap-2">
             <span>⚠️</span>
@@ -222,7 +224,7 @@ export function PortfolioAllocationCharts({
           <button
             type="button"
             onClick={() => setBasis('cost_basis')}
-            className="text-amber-200 underline font-semibold hover:text-white shrink-0 self-start sm:self-auto"
+            className="text-amber-700 dark:text-amber-200 underline font-semibold hover:opacity-80 shrink-0 self-start sm:self-auto"
           >
             Ver por Custo de Aquisição →
           </button>
@@ -233,22 +235,22 @@ export function PortfolioAllocationCharts({
       {basis === 'market_value' && chartData.hasOnlyUnquotedPositions ? (
         <div
           id="chart-only-unquoted-state"
-          className="py-12 px-4 text-center space-y-3 bg-slate-950/40 border border-dashed border-slate-800 rounded-2xl"
+          className="py-12 px-4 text-center space-y-3 bg-background border border-dashed border-border-theme rounded-2xl"
         >
-          <div className="w-12 h-12 rounded-full bg-slate-800/80 flex items-center justify-center text-xl mx-auto">
+          <div className="w-12 h-12 rounded-full bg-surface-elevated flex items-center justify-center text-xl mx-auto">
             📉
           </div>
-          <h3 className="text-sm font-bold text-white">
+          <h3 className="text-sm font-bold text-text-primary">
             Sem cotações de mercado disponíveis
           </h3>
-          <p className="text-xs text-slate-400 max-w-md mx-auto">
+          <p className="text-xs text-text-secondary max-w-md mx-auto">
             Os ativos em custódia ainda não possuem cotações cadastradas no banco interno para marcação a mercado.
           </p>
           <button
             id="chart-switch-to-cost-btn"
             type="button"
             onClick={() => setBasis('cost_basis')}
-            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-500 rounded-xl transition-all shadow-sm"
+            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-action-primary-text bg-action-primary hover:opacity-90 rounded-xl transition-all shadow-sm"
           >
             Visualizar por Custo de Aquisição
           </button>
@@ -269,7 +271,7 @@ export function PortfolioAllocationCharts({
                     innerRadius={72}
                     outerRadius={105}
                     paddingAngle={2}
-                    stroke="#0f172a"
+                    stroke={tokens.surface}
                     strokeWidth={2}
                     onMouseEnter={(_, index) => setActiveIndex(index)}
                     onMouseLeave={() => setActiveIndex(null)}
@@ -294,13 +296,13 @@ export function PortfolioAllocationCharts({
 
             {/* Totalizador no centro da Rosca */}
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-text-secondary">
                 {isCostBasis ? 'Custo Total' : 'Valor a Mercado'}
               </span>
-              <span className="text-base sm:text-lg font-bold font-mono text-white tracking-tight">
+              <span className="text-base sm:text-lg font-bold font-mono tabular-nums text-text-primary tracking-tight">
                 {chartData.formattedTotalValue}
               </span>
-              <span className="text-[10px] text-slate-500 font-medium mt-0.5">
+              <span className="text-[10px] text-text-secondary font-medium mt-0.5">
                 {chartData.slices.length}{' '}
                 {chartData.slices.length === 1 ? 'categoria' : 'categorias'}
               </span>
@@ -329,10 +331,10 @@ export function PortfolioAllocationCharts({
                       setActiveIndex(activeIndex === index ? null : index);
                     }
                   }}
-                  className={`flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-sky-500 ${
+                  className={`flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-action-primary ${
                     isHovered
-                      ? 'bg-slate-800/90 border-slate-600 shadow-md translate-x-1'
-                      : 'bg-slate-950/40 border-slate-800/60 hover:bg-slate-800/50'
+                      ? 'bg-surface-elevated border-action-primary/50 shadow-md translate-x-1'
+                      : 'bg-background border-border-theme hover:bg-surface-elevated'
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -341,22 +343,22 @@ export function PortfolioAllocationCharts({
                       style={{ backgroundColor: slice.color }}
                     />
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-white truncate">
+                      <p className="text-xs font-bold text-text-primary truncate">
                         {slice.label}
                       </p>
                       {slice.secondaryLabel && (
-                        <p className="text-[11px] text-slate-400 truncate">
+                        <p className="text-[11px] text-text-secondary truncate">
                           {slice.secondaryLabel}
                         </p>
                       )}
                     </div>
                   </div>
 
-                  <div className="text-right shrink-0 pl-3 font-mono">
-                    <p className="text-xs font-bold text-white">
+                  <div className="text-right shrink-0 pl-3 font-mono tabular-nums">
+                    <p className="text-xs font-bold text-text-primary">
                       {slice.formattedValue}
                     </p>
-                    <p className="text-[11px] font-semibold text-emerald-400">
+                    <p className="text-[11px] font-semibold text-positive-text">
                       {slice.formattedPercent}
                     </p>
                   </div>

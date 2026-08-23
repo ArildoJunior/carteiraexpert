@@ -9,10 +9,10 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-2xl p-8 shadow-2xl">
+    <div className="bg-surface border border-border-theme rounded-2xl p-8 shadow-xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Bem-vindo de volta</h1>
-        <p className="text-slate-400 text-sm mt-1">
+        <h1 className="text-2xl font-bold text-text-primary">Bem-vindo de volta</h1>
+        <p className="text-text-secondary text-sm mt-1">
           Acesse sua carteira de investimentos.
         </p>
       </div>
@@ -20,17 +20,19 @@ export default function LoginPage() {
       <LoginForm />
 
       <div className="mt-6 text-center space-y-2">
-        <Link
-          href="/forgot-password"
-          className="text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
-        >
-          Esqueci minha senha
-        </Link>
-        <p className="text-slate-500 text-sm">
+        <div>
+          <Link
+            href="/forgot-password"
+            className="text-sm font-medium text-action-primary hover:underline transition-all"
+          >
+            Esqueci minha senha
+          </Link>
+        </div>
+        <p className="text-text-secondary text-sm">
           Não tem conta?{' '}
           <Link
             href="/register"
-            className="text-emerald-400 hover:text-emerald-300 transition-colors"
+            className="text-action-primary font-medium hover:underline transition-all"
           >
             Criar conta grátis
           </Link>
