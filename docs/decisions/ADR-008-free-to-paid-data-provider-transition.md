@@ -21,13 +21,13 @@ Conforme a evolução do produto e as exigências operacionais, será necessári
 
 ## Estado Atual da Implementação
 
-- **`ManualPayloadAdapter`:** Implementado e validado para ingestão de dados sob demanda;
-- **`MockMarketDataProviderAdapter`:** Implementado e validado para testes unitários e de integração;
+- **`ManualPayloadAdapter`:** Implementado e validado para ingestão estruturada sob demanda;
+- **`MockProviderAdapter`:** Implementado e validado para testes unitários e de integração;
+- **`BrapiAdapter`:** Implementado e validado como conector para a API pública da BRAPI, consumido via script administrativo CLI (`scripts/ingest-market-data.ts`);
 - **Persistência Local Relacional:** Implementada e validada nas tabelas `market_quotes` e `exchange_rates`;
-- **Provedores Externos Reais:** Não implementados (nenhum conector HTTP externo ativo no código);
-- **Sincronização Automática em Background:** Não implementada (planejada no roadmap);
+- **Sincronização Automática em Background (Cron Jobs):** Não implementada (planejada no roadmap);
 - **Streaming / WebSocket:** Não implementado;
-- **Migração para Provedores Pagos:** Decisão aprovada, com implementação futura conforme demanda de negócio.
+- **Migração para Provedores Pagos:** Decisão aprovada, com contratação e implementação futura conforme expansão de volume e exigências de SLA.
 
 ## Consequências
 

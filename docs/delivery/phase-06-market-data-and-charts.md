@@ -7,14 +7,16 @@ Prover infraestrutura local para ingestão, persistência e consulta de cotaçõ
 ## Estado Atual da Fase
 
 > **Classificação:** **Parcialmente implementada.**  
-> A infraestrutura interna de ingestão manual/mock, persistência local de cotações e câmbio, motores de valuation e evolução diária, e gráficos Recharts estão implementados e testados. Conexões a provedores externos reais, sincronização automática e WebSockets permanecem planejados.
+> A infraestrutura interna de ingestão (manual, mock e provedor público BRAPI), persistência local de cotações e câmbio, script administrativo CLI (`pnpm market:ingest`), motores de valuation e evolução diária, e gráficos Recharts estão implementados e testados. A execução operacional agendada via rotinas em background / cron jobs periódicos e streaming via WebSockets permanecem planejados.
 
 ## Pacote 06.01 — Ingestão Interna, Cotações e Câmbio
 
 ### Incluído e Comprovado
 
-- Contrato de adaptadores de ingestão (`MarketDataProviderAdapter`);
+- Contrato canônico de adaptadores de ingestão (`MarketDataProviderAdapter`);
 - Adaptador manual estruturado (`ManualPayloadAdapter`) e adaptador mock para testes (`MockProviderAdapter`);
+- Adaptador externo real para API pública BRAPI (`BrapiAdapter` em `src/modules/market-data/server/adapters/brapi.adapter.ts`), com validação estrita de timezones UTC e filtros por data de referência (`targetDate`);
+- Script administrativo CLI para ingestão em lote (`scripts/ingest-market-data.ts`, executável via `pnpm market:ingest`);
 - Serviço de ingestão e normalização (`MarketDataIngestionService`) com validação Zod e `Decimal`;
 - Persistência relacional local nas tabelas `market_quotes` e `exchange_rates`;
 - Mecanismo de desempate e ranking de qualidade de cotações (`DELAY_STATUS_QUALITY_RANK`);
@@ -25,19 +27,19 @@ Prover infraestrutura local para ingestão, persistência e consulta de cotaçõ
 
 ### Planejado / Não Implementado neste Pacote
 
-- Integração direta e síncrona com provedores externos reais de cotações de mercado;
-- Sincronização automática em background via cron jobs;
+- Execução operacional agendada via cron jobs ou workers em background para atualização automática periódica;
+- Provedores comerciais contratados com SLA dedicado;
 - Feeds em tempo real via WebSocket.
 
 ### Critérios de Aceite
 
-- [x] Contrato de adaptadores e implementações manual/mock operacionais;
+- [x] Contrato de adaptadores e implementações manual, mock e BRAPI operacionais e testados;
 - [x] Ingestão valida tipos, moedas e valores numéricos com `Decimal`;
 - [x] Cotações e taxas cambiais são persistidas no PostgreSQL com rastreabilidade;
 - [x] Motor de valuation e evolução trata cotações ausentes, obsoletas e divergência cambial;
 - [x] Testes unitários e de integração de market data e evolução aprovados;
-- [ ] Provedores externos reais integrados em background (*Planejado*);
-- [ ] Jobs assíncronos periódicos de atualização (*Planejado*).
+- [ ] Rotinas agendadas (cron jobs) de ingestão periódica em background (*Planejado*);
+- [ ] Conexão com provedores comerciais pagos de alta disponibilidade (*Planejado*).
 
 ## Pacote 06.02 — Gráficos e Visualizações
 

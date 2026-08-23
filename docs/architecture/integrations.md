@@ -25,17 +25,39 @@ Define a interface comprovada no código:
 
 - **`ManualPayloadAdapter`** (`src/modules/market-data/server/adapters/manual-payload.adapter.ts`): *Implementado e validado*. Adaptador síncrono que processa payloads estruturados em formato JSON submetidos manualmente via API ou scripts administrativos.
 - **`MockProviderAdapter`** (`src/modules/market-data/server/adapters/mock-provider.adapter.ts`): *Implementado e validado*. Adaptador determinístico para testes unitários, testes de integração e ambiente de desenvolvimento local, gerando cotações e taxas simuladas sem dependência de rede.
+- **`BrapiAdapter`** (`src/modules/market-data/server/adapters/brapi.adapter.ts`): *Implementado e validado*. Adaptador que consome a API pública da BRAPI (B3 / mercado brasileiro), com suporte a autenticação via `BRAPI_TOKEN`, normalização rigorosa de fusos horários para UTC, e filtros por data de referência (`targetDate`).
 
-### 2.3. Provedores Externos Reais
-- **Estado da Implementação:** *Não implementado / Não verificado*.
-- Não há fornecedores externos reais (ex: B3, Brapi, AlphaVantage, CoinGecko, etc.) integrados ou contratados no estado atual.
-- Não existem credenciais, chaves de API externas ou chamadas HTTP para terceiros configuradas no código de produção.
+### 2.3. Provedores Externos e Execução Operacional
+
+- **Adaptador Externo Disponível:** O `BrapiAdapter` está implementado e integrado ao ecossistema através do script CLI administrativo `scripts/ingest-market-data.ts` (comando `pnpm market:ingest`).
+- **Execução Operacional Sob Demanda vs. Agendada:** A ingestão de mercado atual é disparada sob demanda (via script CLI ou chamada manual de serviço). A automação periódica em background (cron jobs / workers assíncronos) permanece planejada.
+- **Provedores Comerciais Pagos:** A integração com fontes pagas com SLA dedicado e suporte a alta disponibilidade permanece como diretriz futura aprovada (conforme ADR-008).
 
 ## 3. Fluxo de Ingestão de Dados de Mercado
 
 O fluxo comprovado no código (`src/modules/market-data/server/market-data-ingestion.service.ts`) opera nas seguintes etapas:
 
-Adaptador (Manual / Mock) → Validação (Zod) → Normalização (UTC / Decimal) → Ingestão (`MarketDataIngestionService`) → Banco Interno (`market_quotes` / `exchange_rates`) → Motores de Domínio → Interface
+```text
+Adaptador (Manual / Mock / BRAPI)
+       │
+       ▼
+Validação de Schema (Zod)
+       │
+       ▼
+Normalização (UTC / Decimal)
+       │
+       ▼
+Ingestão (`MarketDataIngestionService` + Ranking de Qualidade)
+       │
+       ▼
+Banco de Dados Interno (`market_quotes` / `exchange_rates`)
+       │
+       ▼
+Motores de Domínio (`valuation-engine` / `portfolio-evolution-engine`)
+       │
+       ▼
+Interface do Usuário (Server Components / Gráficos Recharts)
+```
 
 ### 3.1. Validação com Zod e Decimal
 Localização: `src/modules/market-data/domain/market-data.schema.ts`
@@ -70,8 +92,8 @@ Os dados ingeridos são consumidos exclusivamente através de consultas no banco
 
 ## 5. Testes Comprovados
 
-- Testes unitários do schema e serviço de ingestão: `tests/unit/market-data/market-data-schema.test.ts` e `market-data-ingestion.test.ts`.
-- Testes de integração de ingestão no banco: `tests/integration/market-data/market-data-ingestion.test.ts`.
+- Testes unitários de schemas e adaptadores: `tests/unit/market-data/market-data-schema.test.ts`, `market-data-ingestion.test.ts` e `tests/unit/market-data/adapters/brapi.adapter.test.ts`.
+- Testes de integração de ingestão no banco e conector BRAPI: `tests/integration/market-data/market-data-ingestion.test.ts` e `tests/integration/market-data/brapi-ingestion.test.ts`.
 - Testes de valuation e evolução patrimonial com cotações e câmbio: `tests/unit/portfolio/portfolio-evolution-engine.test.ts` e `tests/integration/portfolio/portfolio-evolution.service.test.ts`.
 
 ## 6. Matriz de Estado das Capacidades de Integração
@@ -81,12 +103,14 @@ Os dados ingeridos são consumidos exclusivamente através de consultas no banco
 | Contrato abstrato de provedor (`MarketDataProviderAdapter`) | Implementado | **Implementado e validado** |
 | Adaptador manual estruturado (`ManualPayloadAdapter`) | Implementado | **Implementado e validado** |
 | Adaptador mock para testes (`MockProviderAdapter`) | Implementado | **Implementado e validado** |
+| Adaptador externo BRAPI (`BrapiAdapter`) | Implementado | **Implementado e validado** |
+| Script CLI de ingestão (`scripts/ingest-market-data.ts`) | Implementado | **Implementado e validado** |
 | Serviço de ingestão e normalização (`MarketDataIngestionService`) | Implementado | **Implementado e validado** |
 | Persistência local de cotações (`market_quotes`) | Implementado | **Implementado e validado** |
 | Persistência local de câmbio (`exchange_rates`) | Implementado | **Implementado e validado** |
 | Tratamento de cotações obsoletas / ausentes no valuation | Implementado | **Implementado e validado** |
-| Provedores externos reais de cotações / câmbio | Não implementado | **Não verificado / Pendente** |
-| Sincronização automática em background / Cron jobs | Não implementado | **Planejado, não implementado** |
+| Sincronização automática em background / Cron jobs periódicos | Não implementado | **Planejado, não implementado** |
+| Provedores comerciais pagos com SLA dedicado | Não implementado | **Planejado, não implementado** |
 | Feeds de cotações em tempo real via WebSocket | Não implementado | **Planejado, não implementado** |
 | Open Finance e APIs bancárias para custódia | Não implementado | **Fora do escopo do MVP** |
 | Mensageria assíncrona / Filas Redis | Não implementado | **Planejado, não implementado** |

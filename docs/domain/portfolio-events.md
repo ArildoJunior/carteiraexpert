@@ -2,22 +2,30 @@
 
 Este documento descreve os eventos operacionais patrimoniais persistidos na tabela `portfolio_events` do CarteiraExpert.
 
-## 1. Tipos de Eventos Operacionais Implementados
+## 1. Tipos de Eventos Implementados
 
-A tabela `portfolio_events` (`src/lib/db/schema/portfolio.ts`) suporta exatamente seis tipos de eventos operacionais:
+A tabela `portfolio_events` (`src/lib/db/schema/portfolio.ts`) armazena os fatos históricos do extrato de uma carteira, abrangendo tanto eventos operacionais de negociação quanto eventos societários (ações corporativas), conforme o enum canônico `PORTFOLIO_EVENT_TYPES` (`src/modules/portfolio/domain/portfolio-event.schema.ts`):
 
-- **`BUY`:** Compra ou aquisição de ativos (ações, FIIs, ETFs, BDRs, criptoativos, etc., incluindo novos lotes originados por exercício de subscrição).
+### 1.1. Eventos Operacionais de Negociação e Custódia
+- **`BUY`:** Compra ou aquisição de ativos (ações, FIIs, ETFs, BDRs, criptoativos, etc., incluindo novos lotes originados por liquidação de subscrição).
 - **`SELL`:** Venda ou alienação de ativos, com baixa proporcional de quantidade e custo investido, e apuração determinística de PnL realizado.
 - **`TRANSFER_IN`:** Transferência de custódia de entrada para a carteira selecionada, incorporando a quantidade e o custo unitário informado.
 - **`TRANSFER_OUT`:** Transferência de custódia de saída da carteira, reduzindo a quantidade e o custo investido proporcionalmente (sem apuração de lucro/prejuízo mercantil).
-- **`MANUAL_ADJUSTMENT`:** Tipo presente no schema e no enum para ajustes manuais corretivos de posição ou quantidade com trilha de auditoria (*Tratamento contábil no motor: Não verificado / Pendente de detalhamento*).
-- **`REVERSAL`:** Tipo presente no schema e no enum para estorno de eventos anteriores (*Tratamento contábil no motor: Não verificado / Pendente de detalhamento*).
+- **`MANUAL_ADJUSTMENT`:** Tipo presente no schema e no enum para ajustes manuais de posição (*Tratamento contábil no motor `position-engine.ts`: Pendência técnica*).
+- **`REVERSAL`:** Tipo presente no schema e no enum para estorno de eventos anteriores (*Tratamento contábil no motor `position-engine.ts`: Pendência técnica*).
 
-### 1.1. Delegação de Ações Corporativas e Subscrições
-- **Ações Corporativas:** Eventos societários como desdobramentos (`SPLIT`), grupamentos (`GROUPING`), bonificações (`BONUS_SHARE`), dividendos (`DIVIDEND`) e juros sobre capital próprio (`JCP`) são processados pelo domínio do módulo `corporate-actions` e **não pertencem** aos seis tipos físicos da tabela `portfolio_events`.
-- **Subscrições:** Possuem modelo relacional próprio composto por três tabelas (`subscription_offers`, `subscription_rights`, `subscription_exercises`), no qual o exercício gera atomicamente um evento operacional do tipo `BUY`.
+### 1.2. Eventos Societários (Ações Corporativas)
+Orquestrados pelo módulo `src/modules/corporate-actions/` e persistidos na tabela `portfolio_events`:
+- **`SPLIT`:** Desdobramento de ações com aumento proporcional de quantidade e redução de custo unitário.
+- **`GROUPING`:** Grupamento de ações com redução proporcional de quantidade e aumento de custo unitário.
+- **`BONUS_SHARE`:** Bonificação em cotas com custo atribuído opcional e recálculo de custo médio.
+- **`DIVIDEND`:** Rendimentos isentos em dinheiro creditados na data de liquidação com base na custódia elegível da Data-Com.
+- **`JCP`:** Juros sobre Capital Próprio em dinheiro com retenção de 15% de IRRF retido na fonte.
 
-### 1.2. Eventos Inexistentes no Banco Físico
+### 1.3. Direitos de Subscrição
+- **Subscrições:** Possuem modelo relacional próprio composto por três tabelas (`subscription_offers`, `subscription_rights`, `subscription_exercises`), no qual o exercício gera atomicamente um evento operacional do tipo `BUY` com controle de idempotência via `idempotencyKey`.
+
+### 1.4. Eventos Inexistentes no Banco Físico
 Não existem eventos formais ou tabelas no banco de dados para:
 - Depósito monetário;
 - Retirada monetária;

@@ -14,6 +14,7 @@ Este documento descreve as regras de domínio, contratos de adaptadores e ingest
 ### 2.1. Adaptadores Implementados
 - **`ManualPayloadAdapter`** (`src/modules/market-data/server/adapters/manual-payload.adapter.ts`): Processa payloads estruturados em formato JSON submetidos manualmente via API ou rotinas administrativas (*Implementado e validado*).
 - **`MockProviderAdapter`** (`src/modules/market-data/server/adapters/mock-provider.adapter.ts`): Fornece cotações e taxas determinísticas simuladas para testes e ambiente local (*Implementado e validado*).
+- **`BrapiAdapter`** (`src/modules/market-data/server/adapters/brapi.adapter.ts`): Conector que consome cotações de ações brasileiras (B3) via API pública da BRAPI com normalização UTC (*Implementado e validado*).
 
 ### 2.2. Serviço de Ingestão (`MarketDataIngestionService`)
 O serviço valida os dados com Zod e `Decimal` (`src/modules/market-data/domain/market-data.schema.ts`), normaliza as datas para `00:00:00.000Z` e aplica a hierarquia de qualidade (`DELAY_STATUS_QUALITY_RANK`):
@@ -47,10 +48,12 @@ O motor de evolução temporal (`src/modules/portfolio/domain/portfolio-evolutio
 | Contrato abstrato de provedor (`MarketDataProviderAdapter`) | Implementado | **Implementado e validado** |
 | Adaptador manual (`ManualPayloadAdapter`) | Implementado | **Implementado e validado** |
 | Adaptador mock para testes (`MockProviderAdapter`) | Implementado | **Implementado e validado** |
+| Adaptador externo BRAPI (`BrapiAdapter`) | Implementado | **Implementado e validado** |
+| Script CLI administrativo de ingestão (`scripts/ingest-market-data.ts`) | Implementado | **Implementado e validado** |
 | Serviço de ingestão e normalização (`MarketDataIngestionService`) | Implementado | **Implementado e validado** |
 | Persistência e consulta local (`market_quotes` e `exchange_rates`) | Implementado | **Implementado e validado** |
 | Tratamento de cotações obsoletas, ausentes e divergência cambial | Implementado | **Implementado e validado** |
-| Provedores externos reais de cotações (B3, APIs de mercado) | Não implementado | **Não verificado / Pendente** |
-| Sincronização automática em background / Cron jobs | Não implementado | **Planejado, não implementado** |
+| Sincronização automática em background / Cron jobs periódicos | Não implementado | **Planejado, não implementado** |
+| Provedores comerciais pagos com SLA dedicado | Não implementado | **Planejado, não implementado** |
 | Streaming em tempo real via WebSocket | Não implementado | **Planejado, não implementado** |
 | Livro de ofertas e profundidade de mercado | Não suportado | **Fora do escopo do MVP** |
