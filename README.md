@@ -10,7 +10,7 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 
 - **Fase 01 — Fundação Técnica:** Concluída (Arquitetura modular, motor financeiro baseado em `Decimal`, auditoria imutável e infraestrutura de testes).
 - **Fase 02 — Identidade, Acesso e Segurança:** Concluída (Cadastro, login com Argon2id, sessões em banco com SHA-256, controle de taxa com HMAC-SHA256, recuperação de senha atômica, consentimentos versionados LGPD *append-only* e motor de verificação física de schema).
-- **Fase 03 — Carteiras, Ativos e Posições:** Concluída e Publicada (Pacotes 03.00-E, 03.01-D, 03.02, 03.03 e 03.04 — Gestão de carteiras, ativos globais e customizados, lançamentos manuais, motor de custo médio ponderado, validação temporal de vendas, apuração de PnL realizado, dashboard consolidado e extrato de histórico paginado com filtros avançados).
+- **Fase 03 — Carteiras, Ativos e Posições:** Concluída e Publicada (Pacotes 03.00-E, 03.01-D, 03.02, 03.03 e 03.04 — Gestão de carteiras, ativos globais e customizados, lançamentos manuais de Compra, Venda e Ajustes Manuais (`MANUAL_ADJUSTMENT`) com direção explícita (`IN` e `OUT`), motor de custo médio ponderado, validação temporal de vendas e saídas com bloqueio de saldo descoberto, apuração de PnL realizado, tratamento de `REVERSAL` como evento neutro no cálculo contábil, dashboard consolidado e extrato de histórico paginado com filtros avançados).
 - **Fase 04 — Eventos Corporativos e Subscrições:**
   - **Pacote 04.01 — Split e Grupamento de Ativos:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Processamento determinístico de desdobramentos e grupamentos, preservação do custo de aquisição invariante, identificação de frações em `Decimal`, recálculo automático de quantidade e custo médio, e extrato `/history` integrado).
   - **Pacote 04.02 — Bonificação, Dividendos e JCP:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Bonificação de ações com custo atribuído opcional, recebimento de proventos em dinheiro — dividendos isentos e Juros sobre Capital Próprio com apuração líquida e retenção de 15% de IRRF —, exigência mandatória de Data de Pagamento e Data-Com, totalização em `totalIncomeReceived`).
@@ -40,24 +40,27 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 - **Gestão de Carteiras via UI (`/portfolios`):** Criação, edição, listagem em grade e exclusão lógica auditada de carteiras por usuário.
 - **Visão Detalhada da Carteira (`/portfolios/[id]`):** Cabeçalho com métricas da carteira, quadro de posições consolidadas em custódia, extrato cronológico de operações ativas e ações de lançamento.
 - **Ativos Globais e Customizados:** Autocomplete debounced com busca server-side no lançamento de operações e modal para cadastro rápido de ativos customizados por usuário com ticker único.
-- **Registro Manual de Operações:** Modal para lançamento de ordens de Compra (`BUY`) e Venda (`SELL`) com indicação em tempo real de quantidade disponível em custódia, datas de negociação/liquidação, quantidade, preço unitário, taxas e notas.
+- **Registro Manual de Operações e Ajustes:** Modal para lançamento de ordens de Compra (`BUY`), Venda (`SELL`) e Ajuste Manual (`MANUAL_ADJUSTMENT`) com seleção condicional obrigatória de direção (`IN` ou `OUT`), indicação em tempo real de quantidade disponível em custódia para vendas e ajustes de saída, datas de negociação/liquidação, quantidade, preço unitário, taxas e notas.
 - **Cancelamento Auditado com Justificativa:** Cancelamento seguro com exclusão lógica (`deletedAt: NOW()`), motivo obrigatório (mínimo de 5 caracteres), validação de linha temporal e registro em `audit_logs`.
 - **Isolamento Multiusuário e Proteção IDOR:** Bloqueio e auditoria de qualquer tentativa de acesso a carteiras, ativos, posições ou extratos de outros usuários.
 - **Segregação Transacional e Injeção de Auditoria:** Arquitetura com separação estrita entre coordenadores e transações atômicas `...InTransaction`, com rollback físico comprovado no PostgreSQL.
 
 ### 4. Motor de Posições, Custo Médio e Validação Temporal
-- **Cálculo Determinístico de Posição:** Quantidade acumulada em custódia calculada a partir do histórico de compras e vendas ativas.
+- **Cálculo Determinístico de Posição:** Quantidade acumulada em custódia calculada a partir do histórico de compras, vendas e ajustes ativos.
 - **Custo Médio Ponderado Unitário:** Incorporação automática de taxas e emolumentos no custo de aquisição ($CM = \frac{Custo_{total}}{Quantidade}$).
 - **Apuração de Resultado Realizado ($PnL$):** Cálculo de lucro ou prejuízo realizado em cada operação de venda ($Receita_{liquida} - Custo_{base}$), abatendo taxas operacionais e preservando o custo médio unitário remanescente.
-- **Validação Temporal de Vendas:** Rejeição atômica e rollback de vendas a descoberto ($Q_{venda} > Q_{disponível}$ na data de negociação).
-- **Consistência da Linha do Tempo:** Rejeição de eventos retroativos fora de ordem ou cancelamento de compras antigas que invalidem vendas posteriores na linha do tempo.
+- **Ajustes Manuais de Posição (`MANUAL_ADJUSTMENT`):** Tratamento determinístico por delta de quantidade. Entrada manual (`IN`) incrementa quantidade em custódia e adiciona custo ($Q_{nova} = Q + \Delta Q$, $Custo_{novo} = Custo + \Delta Custo$), recalculando o custo médio ponderado sem gerar PnL realizado. Saída manual (`OUT`) reduz quantidade e custo proporcionalmente ao custo médio ponderado vigente sem alterar o custo médio unitário nem gerar PnL mercantil, zerando o custo total se consumir 100% da posição e rejeitando atomicamente saídas superiores ao saldo disponível na data.
+- **Tratamento de `REVERSAL`:** Formalizado no domínio e schema como evento neutro no cálculo contábil de posições, não alterando quantidade em custódia, custo médio, custo total, PnL realizado ou taxas operacionais.
+- **Validação Temporal de Vendas e Saídas:** Rejeição atômica e rollback de vendas ou ajustes manuais de saída a descoberto ($Q_{saida} > Q_{disponivel}$ na data de negociação).
+- **Consistência da Linha do Tempo:** Rejeição de eventos retroativos fora de ordem ou cancelamento de compras antigas que invalidem vendas ou ajustes posteriores na linha do tempo.
+- **Validação no Schema e no Banco de Dados:** Validação estrita de `direction` com Zod (`superRefine` exigindo `IN`/`OUT` exclusivamente para `MANUAL_ADJUSTMENT` e proibindo para outros tipos) e check constraint física no PostgreSQL (`chk_portfolio_events_direction` via migração `0006_add_portfolio_events_direction.sql`).
 - **Proteção Contra Concorrência:** Bloqueio pessimista no PostgreSQL (`FOR UPDATE`) para serialização de transações na carteira.
 
 ### 5. Histórico e Dashboard Consolidado
 - **Dashboard Consolidado SSR (`/dashboard`):** Visão geral patrimonial em Server Component com cálculo em tempo real e revalidação sob demanda.
 - **Segregação por Moeda Base:** Agrupamento estrito de métricas por moeda (`BRL`, `USD`, `EUR`), sem conversão cambial fictícia.
 - **Métricas Consolidadas:** Custo total de aquisição em custódia, PnL realizado acumulado de vendas, taxas acumuladas, proventos acumulados, contagem de ativos distintos e carteiras ativas.
-- **Feed Unificado e Extrato Geral (`/history`):** Extrato cronológico multicarteiras de compras, vendas e eventos corporativos, com filtros avançados por carteira, tipo de operação, ativo e período de datas.
+- **Feed Unificado e Extrato Geral (`/history`):** Extrato cronológico multicarteiras de compras, vendas, ajustes e eventos corporativos, com filtros avançados por carteira, tipo de operação, ativo e período de datas.
 - **Exclusão de Soft Deletes:** Desconsideração estrita de eventos e carteiras canceladas/excluídas em todas as consultas e agregações.
 
 ### 6. Eventos Corporativos e Subscrições (Fase 04)
@@ -107,7 +110,7 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 
 ```text
 carteiraexpert/
-├── drizzle/                     # Migrações versionadas SQL (0000 a 0005)
+├── drizzle/                     # Migrações versionadas SQL (0000 a 0006)
 │   └── migrations/
 ├── scripts/                     # Scripts de manutenção e infraestrutura
 │   ├── ingest-market-data.ts    # Ingestão administrativa de dados de mercado (BRAPI / Manual)

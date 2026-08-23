@@ -9,18 +9,18 @@
 ## Estado do Repositório Git
 
 - **Branch:** `main` (sincronizada com `origin/main`)
-- **Commit publicado:** `bb9d683`
-- **Mensagem do commit:** `fix: corrigir modo automático do tema`
+- **Commit publicado:** `5d21187`
+- **Mensagem do commit:** `feat(portfolio): add manual position adjustments`
 
 ---
 
 ## Estado Geral
 
-A fundação técnica, a camada de identidade, segurança, governança, o módulo de carteiras com operações manuais, motor de posições, dashboard consolidado, extrato de histórico, o suporte completo a eventos corporativos (Split, Grupamento, Bonificação, Dividendos, JCP e Subscrições), a infraestrutura de dados de mercado com adaptador BRAPI e o sistema global de temas encontram-se no seguinte status:
+A fundação técnica, a camada de identidade, segurança, governança, o módulo de carteiras com operações manuais e ajustes, motor de posições, dashboard consolidado, extrato de histórico, o suporte completo a eventos corporativos (Split, Grupamento, Bonificação, Dividendos, JCP e Subscrições), a infraestrutura de dados de mercado com adaptador BRAPI e o sistema global de temas encontram-se no seguinte status:
 
 - **Fase 01 — Fundação Técnica:** **IMPLEMENTADA E VALIDADA** (Arquitetura modular monolítica, motor financeiro determinístico baseado em `Decimal`, persistência `NUMERIC`, infraestrutura de testes unitários, integração e E2E, e registro em `audit_logs` nos fluxos auditados).
 - **Fase 02 — Identidade, Acesso e Segurança:** **IMPLEMENTADA E VALIDADA NOS FLUXOS COMPROVADOS** (Cadastro, login com hash Argon2id com parâmetros seguros, sessões com hash SHA-256 no banco, controle de taxa stateless com HMAC-SHA256, redefinição atômica de senha, logout auditado, consentimentos versionados LGPD com trigger append-only em `user_consents`. As rotas e operações analisadas utilizam o identificador autenticado do usuário para restringir o acesso aos dados, com a cobertura completa de todas as rotas e serviços sujeita à validação contínua).
-- **Fase 03 — Carteiras, Ativos e Posições:** **IMPLEMENTADA E VALIDADA NOS FLUXOS COMPROVADOS** (Gestão de múltiplas carteiras estruturais, catálogo de ativos, quatro tipos operacionais com processamento no motor de posições comprovado por testes — `BUY`, `SELL`, `TRANSFER_IN` e `TRANSFER_OUT` —, tipos `MANUAL_ADJUSTMENT` e `REVERSAL` presentes no schema, enum e mecanismos de auditoria com cálculo contábil no motor mantido como pendência técnica, motor de custo médio ponderado, validação temporal de vendas com bloqueio de saldo descoberto via `InsufficientPositionError`, apuração de PnL realizado por venda, cancelamento lógico com justificativa, extrato `/history` paginado com filtros avançados e visualização contextual em `/portfolios/[id]`).
+- **Fase 03 — Carteiras, Ativos e Posições:** **IMPLEMENTADA E VALIDADA NOS FLUXOS COMPROVADOS** (Gestão de múltiplas carteiras estruturais, catálogo de ativos, tipos operacionais com processamento no motor de posições comprovado por testes — `BUY`, `SELL`, `TRANSFER_IN`, `TRANSFER_OUT` e `MANUAL_ADJUSTMENT` —, suporte completo a `MANUAL_ADJUSTMENT` com direção `IN` (entrada com incorporação de custo e recálculo do custo médio sem PnL) e `OUT` (saída proporcional ao custo médio sem PnL mercantil e com rejeição atômica de saldo insuficiente via `InsufficientPositionError`), validação estrita no schema Zod e constraint física no PostgreSQL via migração `0006_add_portfolio_events_direction.sql`, tratamento formal de `REVERSAL` como evento neutro/sem efeito contábil sobre posições, custo, PnL ou taxas, validação de consistência temporal com normalização de direção em `validateTimelineConsistency`, cancelamento lógico com justificativa, extrato `/history` paginado com filtros avançados e modal `TransactionModal` na interface com testes unitários, integração e E2E).
 - **Fase 04 — Ações Corporativas e Subscrições:** **IMPLEMENTADA E VALIDADA NOS FLUXOS COMPROVADOS**
   - **Pacote 04.01 — Split e Grupamento de Ativos:** Processamento determinístico de desdobramentos (`SPLIT`) e grupamentos (`GROUPING`), preservação do custo total de aquisição invariante, identificação de frações em `Decimal`, validação temporal e integração à interface e extrato.
   - **Pacote 04.02 — Bonificação, Dividendos e JCP:** Processamento de bonificação de ações (`BONUS_SHARE`) com custo atribuído opcional e recálculo de custo médio, proventos em dinheiro — dividendos isentos (`DIVIDEND`) e Juros sobre Capital Próprio (`JCP`) com retenção de 15% de IRRF —, exigência de Data de Pagamento (`settlementDate`), validação de custódia na Data-Com (`tradeDate`) e totalização em `totalIncomeReceived`.
@@ -47,7 +47,7 @@ O banco de dados relacional oficial do CarteiraExpert é composto exatamente pel
 6. `user_consents`: Registro versionado de termos LGPD com trigger *append-only*;
 7. `portfolios`: Carteiras de investimento estruturais;
 8. `assets`: Catálogo unificado de ativos cadastrados e customizados;
-9. `portfolio_events`: Eventos operacionais de carteira (`BUY`, `SELL`, `TRANSFER_IN`, `TRANSFER_OUT`, `MANUAL_ADJUSTMENT`, `REVERSAL`) e societários (`SPLIT`, `GROUPING`, `BONUS_SHARE`, `DIVIDEND`, `JCP`);
+9. `portfolio_events`: Eventos operacionais de carteira (`BUY`, `SELL`, `TRANSFER_IN`, `TRANSFER_OUT`, `MANUAL_ADJUSTMENT`, `REVERSAL`) e societários (`SPLIT`, `GROUPING`, `BONUS_SHARE`, `DIVIDEND`, `JCP`), com coluna `direction` e constraint física condicional `chk_portfolio_events_direction`;
 10. `subscription_offers`: Ofertas societárias de direitos de subscrição;
 11. `subscription_rights`: Custódia de direitos de subscrição alocados por carteira;
 12. `subscription_exercises`: Exercício liquidado de direitos gerando evento `BUY`;
@@ -78,8 +78,8 @@ Permanecem como regras de negócio aprovadas ou capacidades planejadas:
 
 - [x] **Typecheck:** Arquitetura TypeScript em Strict Mode (incluindo fixtures de tipagem estática `tests/types/database-contracts.test-d.ts`).
 - [x] **Lint:** Configuração Biome integrada para linting e formatação.
-- [x] **Testes Unitários:** Comprovados no repositório (**35 arquivos e 510 testes**, incluindo 22 testes unitários do sistema de tema).
-- [x] **Testes de Integração:** Comprovados no repositório (**22 arquivos e 222 testes** em PostgreSQL real).
-- [x] **Testes End-to-End (E2E):** Suítes Playwright estruturadas (autenticação, consentimento LGPD, carteiras e subscrições em `e2e/subscription.spec.ts`).
-- [x] **Verificação Física do Schema:** 14 tabelas físicas catalogadas e validadas pelo Schema Guardian.
+- [x] **Testes Unitários:** Comprovados no repositório (**36 arquivos e 543 testes**, incluindo 22 testes unitários do sistema de tema, testes de UI em `transaction-modal-ui.test.tsx` e testes do motor em `position-engine.test.ts`).
+- [x] **Testes de Integração:** Comprovados no repositório (**22 arquivos e 229 testes** em PostgreSQL real, incluindo constraints de schema e persistência de eventos com `direction`).
+- [x] **Testes End-to-End (E2E):** Suítes Playwright estruturadas (**66 testes aprovados** cobrindo autenticação, consentimento LGPD, carteiras e subscrições em Chromium, Firefox e WebKit).
+- [x] **Verificação Física do Schema:** 14 tabelas físicas catalogadas e validadas pelo Schema Guardian (incluindo migração `0006_add_portfolio_events_direction.sql`).
 - [x] **Validação Visual Manual do Tema:** Realizada e aprovada no navegador para os modos Claro, Escuro e Automático/System em todas as páginas públicas e privadas.
