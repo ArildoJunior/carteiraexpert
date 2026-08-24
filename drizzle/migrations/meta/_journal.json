@@ -50,6 +50,13 @@
       "when": 1787000000000,
       "tag": "0006_add_portfolio_events_direction",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787100000000,
+      "tag": "0007_add_commercial_plans_and_entitlements",
+      "breakpoints": true
     }
   ]
 }

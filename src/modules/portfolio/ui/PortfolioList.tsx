@@ -3,25 +3,40 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import type { Portfolio } from '../domain/portfolio.types';
+import type { PlanQuotaSummary } from '@/modules/plans/domain/plan.types';
 import { PortfolioModal } from './PortfolioModal';
 import { useRouter } from 'next/navigation';
 
 interface PortfolioListProps {
   portfolios: Portfolio[];
+  quotaSummary?: PlanQuotaSummary;
 }
 
-export function PortfolioList({ portfolios }: PortfolioListProps) {
+export function PortfolioList({ portfolios, quotaSummary }: PortfolioListProps) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const router = useRouter();
+
+  const canCreate = quotaSummary ? quotaSummary.canCreateMore : true;
 
   return (
     <div className="space-y-6">
       {/* Top action bar */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary tracking-tight">
-            Minhas Carteiras
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-text-primary tracking-tight">
+              Minhas Carteiras
+            </h1>
+            {quotaSummary && (
+              <span
+                id="plan-quota-badge"
+                className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-surface-elevated text-text-secondary border border-border-theme"
+              >
+                {quotaSummary.planName}: {quotaSummary.activePortfoliosCount}/{quotaSummary.maxActivePortfolios} ativas
+                {quotaSummary.frozenPortfoliosCount > 0 && ` • ${quotaSummary.frozenPortfoliosCount} congelada${quotaSummary.frozenPortfoliosCount > 1 ? 's' : ''}`}
+              </span>
+            )}
+          </div>
           <p className="text-sm text-text-secondary mt-1">
             Gerencie suas carteiras e registre suas operações patrimoniais.
           </p>
@@ -29,8 +44,14 @@ export function PortfolioList({ portfolios }: PortfolioListProps) {
         <button
           id="btn-create-portfolio"
           type="button"
+          disabled={!canCreate}
           onClick={() => setIsCreateModalOpen(true)}
-          className="px-4 py-2.5 text-sm font-semibold text-action-primary-text bg-action-primary hover:opacity-90 rounded-xl shadow-sm transition-all flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary"
+          title={!canCreate ? 'Limite de carteiras ativas para o plano atingido.' : undefined}
+          className={`px-4 py-2.5 text-sm font-semibold rounded-xl shadow-sm transition-all flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary ${
+            canCreate
+              ? 'text-action-primary-text bg-action-primary hover:opacity-90'
+              : 'text-text-secondary bg-surface border border-border-theme cursor-not-allowed opacity-60'
+          }`}
         >
           <span>+</span> Nova Carteira
         </button>
@@ -97,8 +118,15 @@ export function PortfolioList({ portfolios }: PortfolioListProps) {
               </div>
 
               <div className="pt-4 mt-4 border-t border-border-theme flex items-center justify-between text-xs text-text-secondary">
-                <span className="capitalize">
-                  Status: {portfolio.status === 'active' ? 'Ativa' : 'Arquivada'}
+                <span>
+                  Status:{' '}
+                  {portfolio.status === 'active' ? (
+                    <span className="font-semibold text-positive-text">Ativa</span>
+                  ) : portfolio.status === 'frozen' ? (
+                    <span className="font-semibold text-amber-500">Congelada</span>
+                  ) : (
+                    <span className="font-semibold text-text-secondary">Arquivada</span>
+                  )}
                 </span>
                 <span className="font-semibold text-action-primary group-hover:translate-x-0.5 transition-transform">
                   Ver operações →

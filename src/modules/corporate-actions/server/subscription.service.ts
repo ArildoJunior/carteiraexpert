@@ -14,6 +14,7 @@ import {
 } from '@/lib/db/schema';
 import { getPortfolioById } from '@/modules/portfolio/server/portfolio.service';
 import { getAssetById } from '@/modules/portfolio/server/asset.service';
+import { assertPortfolioWritable } from '@/modules/plans/server/plan.service';
 import {
   validateTimelineConsistency,
   type TimelineEvent,
@@ -142,8 +143,9 @@ export async function allocateSubscriptionRightInTransaction(
   const input = allocateSubscriptionRightSchema.parse(rawInput);
   const serverNowUtc = new Date();
 
-  // 1. Valida existência e titularidade da carteira (impede IDOR)
-  await getPortfolioById(input.portfolioId, user, tx);
+  // 1. Valida existência e titularidade da carteira (impede IDOR) e se não está congelada
+  const portfolio = await getPortfolioById(input.portfolioId, user, tx);
+  assertPortfolioWritable(portfolio);
 
   // 2. Lock pessimista na carteira para serializar operações
   await tx
@@ -280,8 +282,9 @@ export async function exerciseSubscriptionInTransaction(
   const input = exerciseSubscriptionInputSchema.parse(rawInput);
   const serverNowUtc = new Date();
 
-  // 1. Valida titularidade da carteira informada
-  await getPortfolioById(input.portfolioId, user, tx);
+  // 1. Valida titularidade da carteira informada e se não está congelada
+  const portfolio = await getPortfolioById(input.portfolioId, user, tx);
+  assertPortfolioWritable(portfolio);
 
   // 2. Bloqueia o lote com FOR UPDATE
   const [right] = await tx
@@ -626,8 +629,9 @@ export async function cancelSubscriptionRightInTransaction(
   const input = cancelSubscriptionRightSchema.parse(rawInput);
   const serverNowUtc = new Date();
 
-  // 1. Valida titularidade da carteira informada
-  await getPortfolioById(input.portfolioId, user, tx);
+  // 1. Valida titularidade da carteira informada e se não está congelada
+  const portfolio = await getPortfolioById(input.portfolioId, user, tx);
+  assertPortfolioWritable(portfolio);
 
   // 2. Bloqueia o lote com FOR UPDATE
   const [right] = await tx

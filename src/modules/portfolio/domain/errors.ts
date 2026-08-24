@@ -104,3 +104,10 @@ export class InvalidEvolutionPeriodError extends Error {
     this.name = 'InvalidEvolutionPeriodError';
   }
 }
+
+export {
+  PortfolioFrozenError,
+  PlanLimitExceededError,
+  PlanNotFoundError,
+  InvalidPortfolioStatusTransitionError,
+} from '../../plans/domain/errors';

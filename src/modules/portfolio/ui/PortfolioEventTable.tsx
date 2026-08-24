@@ -8,12 +8,14 @@ interface PortfolioEventTableProps {
   events: PortfolioEvent[];
   assetsMap?: Record<string, Asset>;
   onCancelEvent: (event: PortfolioEvent) => void;
+  isFrozen?: boolean;
 }
 
 export function PortfolioEventTable({
   events,
   assetsMap = {},
   onCancelEvent,
+  isFrozen = false,
 }: PortfolioEventTableProps) {
   if (events.length === 0) {
     return (
@@ -206,8 +208,14 @@ export function PortfolioEventTable({
                       <button
                         id={`cancel-event-${event.id}`}
                         type="button"
+                        disabled={isFrozen}
                         onClick={() => onCancelEvent(event)}
-                        className="text-xs text-text-secondary hover:text-negative-text bg-background hover:bg-surface-elevated px-2.5 py-1 rounded-md transition-colors border border-border-theme"
+                        title={isFrozen ? 'Operação não permitida: carteira congelada' : undefined}
+                        className={`text-xs px-2.5 py-1 rounded-md transition-colors border border-border-theme ${
+                          isFrozen
+                            ? 'text-text-secondary/40 bg-surface cursor-not-allowed opacity-50'
+                            : 'text-text-secondary hover:text-negative-text bg-background hover:bg-surface-elevated'
+                        }`}
                       >
                         Cancelar
                       </button>

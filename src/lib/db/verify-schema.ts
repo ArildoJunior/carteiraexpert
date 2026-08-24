@@ -433,6 +433,67 @@ export const EXPECTED_SCHEMA_MATRIX: Record<string, ExpectedTable> = {
       { name: 'updated_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: false, hasDefault: true },
     ],
   },
+  commercial_plans: {
+    name: 'commercial_plans',
+    primaryKey: 'id',
+    columns: [
+      { name: 'id', type: 'text', isNullable: false },
+      { name: 'name', type: 'text', isNullable: false },
+      { name: 'description', type: 'text', isNullable: true },
+      { name: 'max_active_portfolios', type: ['integer', 'int4'], isNullable: false },
+      { name: 'is_active', type: 'boolean', isNullable: false, hasDefault: true },
+      { name: 'created_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: false, hasDefault: true },
+      { name: 'updated_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: false, hasDefault: true },
+    ],
+  },
+  plan_entitlements: {
+    name: 'plan_entitlements',
+    primaryKey: 'id',
+    foreignKeys: [
+      {
+        column: 'plan_id',
+        foreignTable: 'commercial_plans',
+        foreignColumn: 'id',
+        deleteRule: 'RESTRICT',
+      },
+    ],
+    columns: [
+      { name: 'id', type: 'uuid', isNullable: false },
+      { name: 'plan_id', type: 'text', isNullable: false },
+      { name: 'feature_code', type: 'text', isNullable: false },
+      { name: 'feature_value', type: 'text', isNullable: false },
+      { name: 'created_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: false, hasDefault: true },
+    ],
+  },
+  user_plans: {
+    name: 'user_plans',
+    primaryKey: 'id',
+    uniqueConstraints: ['user_plans_user_id_unique'],
+    foreignKeys: [
+      {
+        column: 'user_id',
+        foreignTable: 'users',
+        foreignColumn: 'id',
+        deleteRule: 'RESTRICT',
+      },
+      {
+        column: 'plan_id',
+        foreignTable: 'commercial_plans',
+        foreignColumn: 'id',
+        deleteRule: 'RESTRICT',
+      },
+    ],
+    columns: [
+      { name: 'id', type: 'uuid', isNullable: false },
+      { name: 'user_id', type: 'uuid', isNullable: false },
+      { name: 'plan_id', type: 'text', isNullable: false },
+      { name: 'status', type: 'text', isNullable: false, hasDefault: true },
+      { name: 'starts_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: false, hasDefault: true },
+      { name: 'expires_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: true },
+      { name: 'created_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: false, hasDefault: true },
+      { name: 'updated_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: false, hasDefault: true },
+    ],
+  },
 };
 
 /**

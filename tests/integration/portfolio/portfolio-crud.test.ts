@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { db, type DatabaseTransaction } from '../../../src/lib/db';
 import { users } from '../../../src/lib/db/schema/identity';
 import { portfolios } from '../../../src/lib/db/schema/portfolio';
+import { userPlans } from '../../../src/lib/db/schema/plans';
 import { auditLogs } from '../../../src/lib/db/schema/audit';
 import * as auditModule from '../../../src/lib/db/audit';
 import {
@@ -52,6 +53,19 @@ describe('Integração: PortfolioService CRUD, Isolamento e Auditoria', () => {
       },
     ]);
 
+    // Atribui PRO para user1 para os múltiplos testes de CRUD e concorrência deste arquivo
+    await db.insert(userPlans).values([
+      {
+        id: crypto.randomUUID(),
+        userId: user1Id,
+        planId: 'pro',
+        status: 'active',
+        startsAt: now,
+        createdAt: now,
+        updatedAt: now,
+      },
+    ]);
+
     user1 = {
       id: user1Id,
       email: `crud_user1_${Date.now()}@carteiraexpert.test`,
@@ -77,6 +91,7 @@ describe('Integração: PortfolioService CRUD, Isolamento e Auditoria', () => {
       await db.delete(auditLogs).where(inArray(auditLogs.recordId, createdPortfolioIds));
       await db.delete(portfolios).where(inArray(portfolios.id, createdPortfolioIds));
     }
+    await db.delete(userPlans).where(inArray(userPlans.userId, [user1Id, user2Id]));
     await db.delete(auditLogs).where(inArray(auditLogs.actorId, [user1Id, user2Id]));
     await db.delete(users).where(inArray(users.id, [user1Id, user2Id]));
   });

@@ -61,6 +61,9 @@ import {
   PortfolioEventNotFoundError,
   InsufficientPositionError,
   RetroactiveInconsistencyError,
+  PortfolioFrozenError,
+  PlanLimitExceededError,
+  InvalidPortfolioStatusTransitionError,
 } from '../domain/errors';
 import { AuthorizationError } from '../../identity/domain/errors';
 import { ZodError } from 'zod';
@@ -166,6 +169,27 @@ function handleActionError<T = never>(err: unknown): ActionResult<T> {
     return {
       success: false,
       error: err.message || 'Operação não encontrada.',
+    };
+  }
+
+  if (err instanceof PortfolioFrozenError) {
+    return {
+      success: false,
+      error: err.message || 'Operação não permitida: a carteira está congelada (somente leitura).',
+    };
+  }
+
+  if (err instanceof PlanLimitExceededError) {
+    return {
+      success: false,
+      error: err.message || 'Limite de carteiras ativas para o plano atingido.',
+    };
+  }
+
+  if (err instanceof InvalidPortfolioStatusTransitionError) {
+    return {
+      success: false,
+      error: err.message || 'Transição de status de carteira inválida.',
     };
   }
 

@@ -59,6 +59,14 @@ export function PortfolioHeader({
                 Arquivada
               </span>
             )}
+            {portfolio.status === 'frozen' && (
+              <span
+                id="portfolio-status-badge-frozen"
+                className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/30"
+              >
+                Congelada (Somente Leitura)
+              </span>
+            )}
           </div>
           {portfolio.description && (
             <p
@@ -96,13 +104,36 @@ export function PortfolioHeader({
           <button
             id="btn-new-transaction"
             type="button"
+            disabled={portfolio.status === 'frozen'}
             onClick={onNewTransaction}
-            className="px-4 py-2 text-xs font-semibold text-action-primary-text bg-action-primary hover:opacity-90 rounded-xl shadow-sm transition-all flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary"
+            title={portfolio.status === 'frozen' ? 'Operação não permitida: carteira congelada' : undefined}
+            className={`px-4 py-2 text-xs font-semibold rounded-xl shadow-sm transition-all flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary ${
+              portfolio.status === 'frozen'
+                ? 'text-text-secondary bg-surface border border-border-theme cursor-not-allowed opacity-50'
+                : 'text-action-primary-text bg-action-primary hover:opacity-90'
+            }`}
           >
             <span>+</span> Nova Operação
           </button>
         </div>
       </div>
+
+      {/* Frozen Alert Banner */}
+      {portfolio.status === 'frozen' && (
+        <div
+          id="portfolio-frozen-banner"
+          role="alert"
+          className="bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-xs sm:text-sm rounded-xl p-3.5 flex items-start gap-2.5"
+        >
+          <span className="text-base">⚠️</span>
+          <div>
+            <strong className="font-semibold block">Carteira Congelada (Somente Leitura)</strong>
+            <span>
+              Esta carteira está congelada devido ao limite de quota do seu plano atual. O histórico permanece protegido e disponível para consulta, mas novas operações e edições estão bloqueadas no servidor.
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Edit Modal */}
       <PortfolioModal

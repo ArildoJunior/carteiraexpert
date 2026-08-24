@@ -14,7 +14,14 @@ import {
   type UpdatePortfolioOutput,
 } from '../domain/portfolio.schema';
 import type { Portfolio } from '../domain/portfolio.types';
-import { PortfolioNotFoundError } from '../domain/errors';
+import {
+  PortfolioNotFoundError,
+  InvalidPortfolioStatusTransitionError,
+} from '../domain/errors';
+import {
+  assertCanCreatePortfolio,
+  assertPortfolioWritable,
+} from '../../plans/server/plan.service';
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -29,6 +36,9 @@ export async function createPortfolioInTransaction(
   tx: DatabaseTransaction,
   auditLogger: typeof insertAuditLog = insertAuditLog
 ): Promise<Portfolio> {
+  // 1. Valida se o usuário pode criar uma nova carteira ativa de acordo com seu plano
+  await assertCanCreatePortfolio(user.id, tx);
+
   const id = crypto.randomUUID();
   const now = new Date();
 
@@ -163,6 +173,29 @@ export async function updatePortfolioInTransaction(
 
   await assertOwnership(existing.userId, user, 'portfolio', tx);
 
+  // 1. Rejeição server-side estrita de qualquer tentativa manual de transicionar para 'frozen' (ex: active -> frozen, archived -> frozen)
+  if ((input as unknown as { status?: string }).status === 'frozen') {
+    throw new InvalidPortfolioStatusTransitionError(
+      'Transição manual para o status congelado (frozen) não é permitida.'
+    );
+  }
+
+  // 2. Validações de estado a partir do status atual da carteira
+  if (existing.status === 'frozen') {
+    if (input.status === 'active') {
+      // Reativação de carteira congelada exige quota de carteiras ativas disponível
+      await assertCanCreatePortfolio(user.id, tx);
+    } else if (input.status === 'archived') {
+      // Transição frozen -> archived é permitida
+    } else {
+      // Qualquer outra alteração de atributos (nome, descrição) em carteira congelada é bloqueada
+      assertPortfolioWritable(existing);
+    }
+  } else if (existing.status === 'archived' && input.status === 'active') {
+    // Reativação de carteira arquivada exige quota de carteiras ativas disponível
+    await assertCanCreatePortfolio(user.id, tx);
+  }
+
   const updateData: {
     name?: string;
     description?: string | null;
@@ -239,6 +272,12 @@ export async function updatePortfolio(
 ): Promise<Portfolio> {
   if (!id || !UUID_REGEX.test(id)) {
     throw new PortfolioNotFoundError();
+  }
+
+  if ((rawInput as unknown as { status?: string })?.status === 'frozen') {
+    throw new InvalidPortfolioStatusTransitionError(
+      'Transição manual para o status congelado (frozen) não é permitida.'
+    );
   }
 
   const input = updatePortfolioSchema.parse(rawInput);

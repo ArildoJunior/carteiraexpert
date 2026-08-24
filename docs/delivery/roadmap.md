@@ -10,7 +10,7 @@ A visão de produto e engenharia do CarteiraExpert organiza a evolução do mon�
 | **02** | **Identidade, Acesso e Segurança** | Fase 01 | **Implementada nos fluxos comprovados** | Cadastro, Argon2id, sessões em banco (SHA-256), rate limit e consentimentos LGPD. |
 | **03** | **Núcleo de Carteiras e Posições** | Fases 01–02 | **Implementada nos fluxos comprovados** | Gestão de carteiras, lançamentos operacionais comprovados, motor de custo médio e PnL. |
 | **04** | **Ações Corporativas e Subscrições** | Fases 01–03 | **Implementada nos fluxos comprovados** | Split, grupamento, bonificação, proventos (dividendos/JCP) e subscrições em 3 entidades. |
-| **05** | **Planos, Entitlements e Compartilhamento** | Fases 02–04 | **Planejada, não implementada** | Regras aprovadas (ADR-004); sem tabelas comerciais ou gateways ativos. |
+| **05** | **Planos, Entitlements e Compartilhamento** | Fases 02–04 | **Parcialmente implementada (Pacote 05.01)** | Catálogo comercial, quotas de carteiras, downgrade com congelamento e bloqueio server-side. |
 | **06** | **Dados de Mercado e Gráficos** | Fases 03–04 | **Parcialmente implementada** | Banco local (`market_quotes`, `exchange_rates`), adaptadores, valuation, evolução e gráficos. |
 | **07** | **Importações Revisáveis** | Fases 03–04 | **Planejada, não implementada** | Upload e parsing de planilhas e PDFs com revisão humana obrigatória. |
 | **08** | **Ativos Globais e Criptoativos** | Fases 03, 06 | **Parcialmente implementada** | Multi-moeda, conversão cambial determinística e precisão `NUMERIC(28, 10)` no banco. |

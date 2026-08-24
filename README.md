@@ -15,9 +15,11 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
   - **Pacote 04.01 — Split e Grupamento de Ativos:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Processamento determinístico de desdobramentos e grupamentos, preservação do custo de aquisição invariante, identificação de frações em `Decimal`, recálculo automático de quantidade e custo médio, e extrato `/history` integrado).
   - **Pacote 04.02 — Bonificação, Dividendos e JCP:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Bonificação de ações com custo atribuído opcional, recebimento de proventos em dinheiro — dividendos isentos e Juros sobre Capital Próprio com apuração líquida e retenção de 15% de IRRF —, exigência mandatória de Data de Pagamento e Data-Com, totalização em `totalIncomeReceived`).
   - **Pacote 04.03 — Subscrições e Direitos Societários:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Modelo relacional de 3 entidades em `subscription_offers`, `subscription_rights` e `subscription_exercises`, controle de status do direito, liquidação financeira atômica gerando evento operacional `BUY` com controle de idempotência via `idempotencyKey`, 4 modais dedicados na interface e cobertura completa por testes unitários, integração e E2E).
+- **Fase 05 — Planos Comerciais e Entitlements:** **PARCIALMENTE IMPLEMENTADA E VALIDADA**
+  - **Pacote 05.01 — Entitlements e Quotas por Plano:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Catálogo comercial em `commercial_plans` com planos `free` e `pro`, fonte única da quota numérica em `max_active_portfolios`, associação vigente por usuário em `user_plans`, fallback puro sem efeitos colaterais em `getUserEffectivePlan`, bloqueio server-side via `assertCanCreatePortfolio` com lock pessimista `FOR UPDATE`, downgrade transacional com congelamento idempotente de excedentes em status `frozen`, bloqueio estrito de todas as mutações financeiras em carteiras congeladas via `assertPortfolioWritable`, permissão de soft delete para liberação de quota, auditoria em `audit_logs` e badge visual de quotas em `/portfolios`).
 - **Fase 06 — Dados de Mercado, Valuation e Gráficos:** **PARCIALMENTE IMPLEMENTADA** (Persistência relacional em `market_quotes` e `exchange_rates`, adaptadores `ManualPayloadAdapter`, `MockProviderAdapter` e `BrapiAdapter`, serviço de ingestão `MarketDataIngestionService` com ranking de qualidade, motores de valuation e evolução patrimonial diária, gráficos de alocação por ativo/classe e gráfico de evolução temporal "Mercado vs. Custo" com Recharts; sincronização automática em background e WebSockets permanecem planejados).
 - **Sistema Global de Tema e Identidade Visual:** Concluído (Suporte nativo aos temas Claro, Escuro e Automático com `prefers-color-scheme`, tokens semânticos, persistência em `localStorage` e script anti-FOUC no `<head>`).
-- **Próxima Fase Prevista:** **Fase 05 — Planos, Entitlements e Compartilhamento**.
+- **Próxima Fase Prevista:** **Fase 07 — Importações Revisáveis** (ou expansão da Fase 05 com gateways e compartilhamento).
 
 ---
 
@@ -76,13 +78,21 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 - **Motor de Valuation e Evolução Temporal:** Motor determinístico (`valuation-engine.ts` e `portfolio-evolution-engine.ts`) com política de tolerância a cotações obsoletas (até 7 dias civis UTC), identificação de ativos não cotados e conversão cambial multi-moeda.
 - **Gráficos e Visualizações:** Gráficos de alocação por ativo e por classe com Recharts, além de gráfico comparativo de evolução temporal "Mercado vs. Custo" com suporte a múltiplos períodos (`1M`, `3M`, `6M`, `YTD`, `1Y`, `ALL`) e fallback inicial `YTD`.
 
-### 8. Sistema Global de Tema e Identidade Visual
+### 8. Planos Comerciais, Quotas e Governança (Fase 05 — Pacote 05.01)
+- **Catálogo de Planos Comerciais:** Tabelas `commercial_plans` e `plan_entitlements` com os planos padrão `free` (2 carteiras ativas) e `pro` (10 carteiras ativas).
+- **Fonte Única de Quota:** Limite numérico de carteiras derivado exclusivamente de `commercial_plans.max_active_portfolios`, sem duplicações inconsistentes.
+- **Associação Vigente:** Tabela `user_plans` com vínculo único por usuário (`UNIQUE(user_id)`) e fallback em tempo de execução sem efeitos colaterais para o plano `free` quando inexistente.
+- **Enforcement Server-Side de Quotas:** Validação estrita antes de inserções via `assertCanCreatePortfolio` com bloqueio concorrente pessimista (`FOR UPDATE`) no usuário.
+- **Downgrade com Congelamento Seguro (`frozen`):** Operação transacional e idempotente (`applyPlanDowngradeInTransaction`) que congela carteiras excedentes sem exclusão de dados financeiros históricos, gerando trilha em `audit_logs`.
+- **Bloqueio Integral de Mutações em Carteiras Congeladas:** Centralizado em `assertPortfolioWritable`, impedindo criação/cancelamento de eventos operacionais, eventos corporativos, subscrições ou edições simples, enquanto permite soft delete para liberação voluntária de quota.
+
+### 9. Sistema Global de Tema e Identidade Visual
 - **Temas Disponíveis:** Suporte nativo aos modos **Claro** (paleta suave `#F8FAFC` com cards brancos), **Escuro** (fundo `#0B1120` com superfícies `#1E293B`) e **Automático/System** (sincronizado dinamicamente com o sistema operacional via `prefers-color-scheme`).
 - **Acessibilidade e Controle:** Componente `ThemeToggle` com teclado acessível (`Escape`, clique fora, `aria-expanded`), sem FOUC (flash de tema incorreto) via script síncrono injetado no `<head>` e persistência sob a chave `carteiraexpert_theme`.
 - **Tokens Semânticos:** Matriz padronizada de cores funcionais (textos, bordas, superfícies, ações, gráficos positivos/negativos e custos).
 
-### 9. Integridade de Schema, Contratos e Banco de Dados
-- **Schema Guardian:** Validação física em tempo de execução (`assertSchemaCompatible`) e via CLI (`db:verify`) inspecionando o catálogo PostgreSQL (14 tabelas oficiais validadas).
+### 10. Integridade de Schema, Contratos e Banco de Dados
+- **Schema Guardian:** Validação física em tempo de execução (`assertSchemaCompatible`) e via CLI (`db:verify`) inspecionando o catálogo PostgreSQL (17 tabelas oficiais validadas).
 - **Contratos Drizzle Tipados:** Exportação canônica de `Database`, `DatabaseTransaction`, `DbExecutor`, `SchemaQueryExecutor` e `AuditExecutor`, com eliminação de `any` em assinaturas e callbacks.
 - **Fixture Estática de Tipos:** Arquivo `tests/types/database-contracts.test-d.ts` validando compatibilidade estrutural e rejeição em tempo de compilação via `@ts-expect-error`.
 - **Migrações Versionadas:** Script de migração (`scripts/migrate.ts`) com pre-flight check e trava de segurança exigindo `ALLOW_DATABASE_MUTATION=true` para o banco principal.
@@ -110,7 +120,7 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 
 ```text
 carteiraexpert/
-├── drizzle/                     # Migrações versionadas SQL (0000 a 0006)
+├── drizzle/                     # Migrações versionadas SQL (0000 a 0007)
 │   └── migrations/
 ├── scripts/                     # Scripts de manutenção e infraestrutura
 │   ├── ingest-market-data.ts    # Ingestão administrativa de dados de mercado (BRAPI / Manual)
@@ -133,14 +143,15 @@ carteiraexpert/
 │   ├── middleware.ts            # Proteção de rotas no Edge
 │   └── modules/
 │       ├── identity/            # Módulo de autenticação, sessões, segurança e termos LGPD
+│       ├── plans/               # Módulo de planos comerciais, entitlements, quotas e downgrade
 │       ├── portfolio/           # Módulo de carteiras, ativos, motor de posições, valuation e gráficos
 │       ├── corporate-actions/   # Módulo de ações corporativas (split, grupamento, bonificação, proventos e subscrições)
 │       └── market-data/         # Módulo de cotações, câmbio, adaptadores (Manual, Mock, BRAPI) e ingestão
 ├── tests/
-│   ├── unit/                    # Testes unitários puros (motores, schemas, tema, adaptadores)
-│   ├── integration/             # Testes de integração com PostgreSQL real (carteiras, market data, subscrições)
+│   ├── unit/                    # Testes unitários puros (motores, schemas, tema, planos, adaptadores)
+│   ├── integration/             # Testes de integração com PostgreSQL real (carteiras, planos, market data, subscrições)
 │   └── types/                   # Fixtures de tipagem estática (database-contracts.test-d.ts)
-├── e2e/                         # Testes end-to-end com Playwright (autenticação, termos, subscrições)
+├── e2e/                         # Testes end-to-end com Playwright (autenticação, termos, carteiras, planos, subscrições)
 └── docs/                        # Documentação técnica, arquitetura, ADRs e status de entrega
 ```
 
@@ -187,7 +198,7 @@ pnpm test:integration # Testes de integração com PostgreSQL (Vitest)
 pnpm test:e2e         # Testes End-to-End no Chromium, Firefox e WebKit (Playwright)
 
 # Banco de Dados e Migrações
-pnpm db:verify        # Inspecionar catálogo físico no banco principal (14 tabelas)
+pnpm db:verify        # Inspecionar catálogo físico no banco principal (17 tabelas)
 pnpm db:verify -- --test # Inspecionar catálogo físico no banco de testes
 pnpm db:migrate       # Executar migrações no banco principal (exige ALLOW_DATABASE_MUTATION=true)
 pnpm db:migrate -- --test # Executar migrações no banco de testes
@@ -203,7 +214,7 @@ pnpm market:ingest    # Executar script administrativo de ingestão de dados de 
 
 As seguintes funcionalidades representam direcionamentos no roadmap e permanecem como capacidades planejadas para fases futuras:
 
-1. **Fase 05 — Planos Comerciais e Entitlements:** Catálogo comercial de assinaturas, limites de carteiras por plano (2 no Free, 10 em planos superiores), gateways de pagamento e gestão de grupos compartilhados (ADR-004).
+1. **Fase 05 (Expansão) — Pagamentos e Compartilhamento:** Gateways de pagamento (Stripe/Asaas/MercadoPago), webhooks, cron jobs de expiração de assinatura e gestão de grupos compartilhados com faturamento unificado e segregação estrita de dados financeiros (ADR-004).
 2. **Fase 07 — Importações de Arquivos:** Upload e parsing de planilhas CSV/XLSX, extração assíncrona de notas de corretagem em PDF e armazenamento em bucket privado com URLs assinadas.
 3. **Fase 09 — Opções e Módulo Fiscal Dedicado:** Cadastro e acompanhamento de contratos de opções, modelos teóricos de valuation (Bazin, Graham, Lynch, DCF), simulações de aportes futuros, módulo fiscal dedicado (`src/modules/tax/`) e relatórios anuais auxiliares para IRPF.
 4. **Fase 10 — IA Editorial Interna:** Pipeline editorial interno com apoio de IA e revisão humana mandatória para elaboração de resumos corporativos.

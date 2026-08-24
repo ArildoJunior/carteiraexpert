@@ -6,6 +6,7 @@ import { insertAuditLog } from '@/lib/db/audit';
 import { portfolios, portfolioEvents } from '@/lib/db/schema';
 import { getPortfolioById } from '@/modules/portfolio/server/portfolio.service';
 import { getAssetById } from '@/modules/portfolio/server/asset.service';
+import { assertPortfolioWritable } from '@/modules/plans/server/plan.service';
 import {
   validateTimelineConsistency,
   type TimelineEvent,
@@ -34,7 +35,8 @@ export async function createCorporateActionEventInTransaction(
   auditLogger: typeof insertAuditLog = insertAuditLog
 ): Promise<PortfolioEvent> {
   // 1. Valida existência e titularidade da carteira (aciona assertOwnership em caso de IDOR)
-  await getPortfolioById(input.portfolioId, user, tx);
+  const portfolio = await getPortfolioById(input.portfolioId, user, tx);
+  assertPortfolioWritable(portfolio);
 
   // 2. Valida existência e visibilidade do ativo
   const asset = await getAssetById(input.assetId, user, tx);
@@ -185,7 +187,8 @@ export async function createBonusEventInTransaction(
   auditLogger: typeof insertAuditLog = insertAuditLog
 ): Promise<PortfolioEvent> {
   // 1. Valida existência e titularidade da carteira
-  await getPortfolioById(input.portfolioId, user, tx);
+  const portfolio = await getPortfolioById(input.portfolioId, user, tx);
+  assertPortfolioWritable(portfolio);
 
   // 2. Valida existência e acesso ao ativo
   const asset = await getAssetById(input.assetId, user, tx);
@@ -320,7 +323,8 @@ export async function createIncomeEventInTransaction(
   auditLogger: typeof insertAuditLog = insertAuditLog
 ): Promise<PortfolioEvent> {
   // 1. Valida existência e titularidade da carteira
-  await getPortfolioById(input.portfolioId, user, tx);
+  const portfolio = await getPortfolioById(input.portfolioId, user, tx);
+  assertPortfolioWritable(portfolio);
 
   // 2. Valida existência e acesso ao ativo
   const asset = await getAssetById(input.assetId, user, tx);

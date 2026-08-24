@@ -94,6 +94,7 @@ export function PortfolioDetailView({
           events={events}
           assetsMap={assetsMap}
           onCancelEvent={(event) => setEventToCancel(event)}
+          isFrozen={portfolio.status === 'frozen'}
         />
       </div>
 

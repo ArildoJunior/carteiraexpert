@@ -5,7 +5,10 @@ import {
   updatePortfolio,
   deletePortfolio,
 } from '../../../src/modules/portfolio/server/portfolio.service';
-import { PortfolioNotFoundError } from '../../../src/modules/portfolio/domain/errors';
+import {
+  PortfolioNotFoundError,
+  InvalidPortfolioStatusTransitionError,
+} from '../../../src/modules/portfolio/domain/errors';
 import type { SafeUser } from '../../../src/modules/identity/domain/user.types';
 import crypto from 'node:crypto';
 
@@ -58,6 +61,13 @@ describe('Unidade: PortfolioService (Validações de Entrada e Formato)', () => 
       await expect(
         updatePortfolio('nao-eh-uuid', { name: 'Novo Nome' }, user1)
       ).rejects.toThrow(PortfolioNotFoundError);
+    });
+
+    it('deve lançar InvalidPortfolioStatusTransitionError para tentativa manual de status = frozen', async () => {
+      const validUuid = crypto.randomUUID();
+      await expect(
+        updatePortfolio(validUuid, { status: 'frozen' as any }, user1)
+      ).rejects.toThrow(InvalidPortfolioStatusTransitionError);
     });
   });
 

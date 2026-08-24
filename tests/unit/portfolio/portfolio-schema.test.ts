@@ -93,13 +93,27 @@ describe('Portfolio Domain Schemas (Unit Tests)', () => {
       expect(result.data.status).toBeUndefined();
     });
 
-    it('deve permitir arquivar a carteira alterando status', () => {
-      const result = updatePortfolioSchema.safeParse({
+    it('deve permitir arquivar ou ativar a carteira alterando status', () => {
+      const resultArchived = updatePortfolioSchema.safeParse({
         status: 'archived',
       });
-      expect(result.success).toBe(true);
-      if (!result.success) return;
-      expect(result.data.status).toBe('archived');
+      expect(resultArchived.success).toBe(true);
+      if (!resultArchived.success) return;
+      expect(resultArchived.data.status).toBe('archived');
+
+      const resultActive = updatePortfolioSchema.safeParse({
+        status: 'active',
+      });
+      expect(resultActive.success).toBe(true);
+      if (!resultActive.success) return;
+      expect(resultActive.data.status).toBe('active');
+    });
+
+    it('deve REJEITAR explicitamente status "frozen" no schema de atualização pública', () => {
+      const result = updatePortfolioSchema.safeParse({
+        status: 'frozen',
+      });
+      expect(result.success).toBe(false);
     });
 
     it('deve rejeitar status desconhecido', () => {

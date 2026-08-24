@@ -34,6 +34,7 @@ import {
 import { validateTimelineConsistency, type TimelineEvent } from '../domain/position-engine';
 import { getPortfolioById } from './portfolio.service';
 import { getAssetById } from './asset.service';
+import { assertPortfolioWritable } from '../../plans/server/plan.service';
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -48,8 +49,9 @@ export async function createPortfolioEventInTransaction(
   tx: DatabaseTransaction,
   auditLogger: typeof insertAuditLog = insertAuditLog
 ): Promise<PortfolioEvent> {
-  // 1. Valida que a carteira existe e pertence ao usuário
-  await getPortfolioById(input.portfolioId, user, tx);
+  // 1. Valida que a carteira existe, pertence ao usuário e não está congelada
+  const portfolio = await getPortfolioById(input.portfolioId, user, tx);
+  assertPortfolioWritable(portfolio);
 
   // 2. Valida que o ativo existe e é acessível ao usuário (global ou customizado próprio)
   await getAssetById(input.assetId, user, tx);
@@ -308,18 +310,9 @@ export async function cancelPortfolioEventInTransaction(
     throw new PortfolioEventNotFoundError();
   }
 
-  // 2. Valida titularidade da carteira
-  const [portfolio] = await tx
-    .select({ userId: portfolios.userId })
-    .from(portfolios)
-    .where(eq(portfolios.id, existing.portfolioId))
-    .limit(1);
-
-  if (!portfolio) {
-    throw new PortfolioEventNotFoundError();
-  }
-
-  await assertOwnership(portfolio.userId, user, 'portfolio_event', tx);
+  // 2. Valida titularidade da carteira e se não está congelada
+  const portfolio = await getPortfolioById(existing.portfolioId, user, tx);
+  assertPortfolioWritable(portfolio);
 
   // 3. Adquire lock pessimista na carteira
   await tx

@@ -5,20 +5,29 @@ import { users } from './identity';
 // ─── portfolios ───────────────────────────────────────────────────────────────
 // Armazena as carteiras patrimoniais pertencentes individualmente a cada usuário.
 // O isolamento por usuário é garantido pelo user_id obrigatório com FK.
-export const portfolios = pgTable('portfolios', {
-  id: uuid('id').primaryKey(),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'restrict' }),
-  name: text('name').notNull(),
-  description: text('description'),
-  baseCurrency: text('base_currency').notNull().default('BRL'),
-  // 'active' | 'archived'
-  status: text('status').notNull().default('active'),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-  deletedAt: timestamp('deleted_at', { withTimezone: true }),
-});
+export const portfolios = pgTable(
+  'portfolios',
+  {
+    id: uuid('id').primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'restrict' }),
+    name: text('name').notNull(),
+    description: text('description'),
+    baseCurrency: text('base_currency').notNull().default('BRL'),
+    // 'active' | 'archived' | 'frozen'
+    status: text('status').notNull().default('active'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (table) => [
+    check(
+      'chk_portfolios_status',
+      sql`${table.status} IN ('active', 'archived', 'frozen')`
+    ),
+  ]
+);
 
 // ─── assets ───────────────────────────────────────────────────────────────────
 // Catálogo canônico de ativos. Suporta ativos globais curados pelo sistema (user_id IS NULL)

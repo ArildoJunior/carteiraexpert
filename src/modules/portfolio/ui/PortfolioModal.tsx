@@ -25,7 +25,7 @@ export function PortfolioModal({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [baseCurrency, setBaseCurrency] = useState('BRL');
-  const [status, setStatus] = useState<'active' | 'archived'>('active');
+  const [status, setStatus] = useState<'active' | 'archived' | ''>('active');
   const [pending, setPending] = useState(false);
   const [state, setState] = useState<ActionResult<Portfolio>>({ success: false });
 
@@ -34,7 +34,11 @@ export function PortfolioModal({
       setName(portfolioToEdit.name || '');
       setDescription(portfolioToEdit.description || '');
       setBaseCurrency(portfolioToEdit.baseCurrency || 'BRL');
-      setStatus((portfolioToEdit.status as 'active' | 'archived') || 'active');
+      if (portfolioToEdit.status === 'frozen') {
+        setStatus('');
+      } else {
+        setStatus((portfolioToEdit.status as 'active' | 'archived') || 'active');
+      }
     } else {
       setName('');
       setDescription('');
@@ -57,7 +61,9 @@ export function PortfolioModal({
         formData.set('id', portfolioToEdit.id);
         formData.set('name', name);
         formData.set('description', description);
-        formData.set('status', status);
+        if (status === 'active' || status === 'archived') {
+          formData.set('status', status);
+        }
         const res = await updatePortfolioAction(null, formData);
         setState(res);
         if (res.success) {
@@ -210,11 +216,18 @@ export function PortfolioModal({
                 name="status"
                 value={status}
                 onChange={(e) =>
-                  setStatus(e.target.value as 'active' | 'archived')
+                  setStatus(e.target.value as 'active' | 'archived' | '')
                 }
                 className="w-full bg-background border border-border-theme rounded-lg px-3 py-2.5 text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-action-primary focus:border-transparent transition-all"
               >
-                <option value="active">Ativa</option>
+                {portfolioToEdit?.status === 'frozen' && (
+                  <option value="" disabled>
+                    Congelada (Somente Leitura)
+                  </option>
+                )}
+                <option value="active">
+                  {portfolioToEdit?.status === 'frozen' ? 'Reativar (Ativa)' : 'Ativa'}
+                </option>
                 <option value="archived">Arquivada</option>
               </select>
             </div>
