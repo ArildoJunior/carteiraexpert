@@ -4,6 +4,8 @@ import { db, type Database, type DatabaseTransaction, type DbExecutor } from '..
 import { users } from '../../../lib/db/schema/identity';
 import { portfolios } from '../../../lib/db/schema/portfolio';
 import { commercialPlans, userPlans } from '../../../lib/db/schema/plans';
+import { billingSubscriptions } from '../../../lib/db/schema/billing';
+import { billingGroups, billingGroupMembers } from '../../../lib/db/schema/groups';
 import { insertAuditLog } from '../../../lib/db/audit';
 import type {
   CommercialPlan,
@@ -33,73 +35,183 @@ export function assertPortfolioWritable(portfolio: { id: string; status: string 
 
 /**
  * Resolve o plano efetivo do usuário sem efeitos colaterais (leitura pura).
- * Se o usuário não possuir registro em user_plans ou estiver expirado/inadimplente,
- * aplica o fallback gracioso para o plano 'free'.
+ * Aplica a Matriz de Precedência Formal:
+ * 1. Assinatura Pro individual própria ativa/trialing (prevalece sobre benefício de grupo).
+ * 2. Assinatura própria do Plano Compartilhado ativa/trialing.
+ * 3. Benefício de membro ativo em grupo compartilhado elegível.
+ * 4. Registro direto vigente em user_plans (legado/cortesia).
+ * 5. Fallback gracioso para o Plano Free.
  */
 export async function getUserEffectivePlan(
   userId: string,
   executor: DbExecutor = db
 ): Promise<UserEffectivePlan> {
+  const now = new Date();
+
+  // 1. Assinatura Própria PRO Direta (Ativa ou Trialing e não expirada - Prioridade Máxima)
+  const [proSubscription] = await executor
+    .select()
+    .from(billingSubscriptions)
+    .where(
+      and(
+        eq(billingSubscriptions.userId, userId),
+        eq(billingSubscriptions.planId, 'pro'),
+        inArray(billingSubscriptions.status, ['active', 'trialing'])
+      )
+    )
+    .orderBy(desc(billingSubscriptions.createdAt))
+    .limit(1);
+
+  if (proSubscription) {
+    const isExpired =
+      proSubscription.currentPeriodEnd < now &&
+      (!proSubscription.gracePeriodEndsAt || proSubscription.gracePeriodEndsAt < now);
+
+    if (!isExpired) {
+      const [plan] = await executor
+        .select()
+        .from(commercialPlans)
+        .where(and(eq(commercialPlans.id, 'pro'), eq(commercialPlans.isActive, true)))
+        .limit(1);
+
+      if (plan) {
+        return {
+          planId: 'pro',
+          name: plan.name,
+          maxActivePortfolios: plan.maxActivePortfolios,
+          status: 'active',
+          isFallback: false,
+          expiresAt: proSubscription.currentPeriodEnd,
+          source: 'direct',
+        };
+      }
+    }
+  }
+
+  // 2. Assinatura Própria SHARED Direta do Titular (Ativa ou Trialing e não expirada)
+  const [sharedSubscription] = await executor
+    .select()
+    .from(billingSubscriptions)
+    .where(
+      and(
+        eq(billingSubscriptions.userId, userId),
+        eq(billingSubscriptions.planId, 'shared'),
+        inArray(billingSubscriptions.status, ['active', 'trialing'])
+      )
+    )
+    .orderBy(desc(billingSubscriptions.createdAt))
+    .limit(1);
+
+  if (sharedSubscription) {
+    const isExpired =
+      sharedSubscription.currentPeriodEnd < now &&
+      (!sharedSubscription.gracePeriodEndsAt || sharedSubscription.gracePeriodEndsAt < now);
+
+    if (!isExpired) {
+      const [plan] = await executor
+        .select()
+        .from(commercialPlans)
+        .where(and(eq(commercialPlans.id, 'shared'), eq(commercialPlans.isActive, true)))
+        .limit(1);
+
+      if (plan) {
+        return {
+          planId: 'shared',
+          name: plan.name,
+          maxActivePortfolios: plan.maxActivePortfolios,
+          status: 'active',
+          isFallback: false,
+          expiresAt: sharedSubscription.currentPeriodEnd,
+          source: 'direct',
+        };
+      }
+    }
+  }
+
+  // 2. Benefício Ativo de Membro em Grupo Compartilhado
+  const [activeGroupMember] = await executor
+    .select({
+      memberId: billingGroupMembers.id,
+      groupId: billingGroupMembers.groupId,
+      groupStatus: billingGroups.status,
+      groupPlanId: billingGroups.planId,
+      ownerUserId: billingGroups.ownerUserId,
+    })
+    .from(billingGroupMembers)
+    .innerJoin(billingGroups, eq(billingGroupMembers.groupId, billingGroups.id))
+    .where(
+      and(
+        eq(billingGroupMembers.userId, userId),
+        eq(billingGroupMembers.status, 'active'),
+        eq(billingGroups.status, 'active')
+      )
+    )
+    .limit(1);
+
+  if (activeGroupMember) {
+    const [groupPlan] = await executor
+      .select()
+      .from(commercialPlans)
+      .where(and(eq(commercialPlans.id, activeGroupMember.groupPlanId), eq(commercialPlans.isActive, true)))
+      .limit(1);
+
+    if (groupPlan) {
+      return {
+        planId: groupPlan.id as CommercialPlanId,
+        name: groupPlan.name,
+        maxActivePortfolios: groupPlan.maxActivePortfolios,
+        status: 'active',
+        isFallback: false,
+        expiresAt: null,
+        source: 'group',
+      };
+    }
+  }
+
+  // 3. Registro Direto em user_plans (legado/cortesia)
   const [userPlanRow] = await executor
     .select()
     .from(userPlans)
     .where(eq(userPlans.userId, userId))
     .limit(1);
 
-  // Fallback padrão se não houver linha de plano
-  if (!userPlanRow) {
-    return {
-      planId: 'free',
-      name: 'Plano Free',
-      maxActivePortfolios: 2,
-      status: 'active',
-      isFallback: true,
-      expiresAt: null,
-    };
+  if (userPlanRow) {
+    const isPastDue = userPlanRow.status === 'past_due';
+    const isExpired = userPlanRow.expiresAt !== null && userPlanRow.expiresAt < now;
+    const isCancelledAndExpired =
+      userPlanRow.status === 'cancelled' &&
+      (userPlanRow.expiresAt === null || userPlanRow.expiresAt < now);
+
+    if (!isPastDue && !isExpired && !isCancelledAndExpired) {
+      const [commercialPlan] = await executor
+        .select()
+        .from(commercialPlans)
+        .where(and(eq(commercialPlans.id, userPlanRow.planId), eq(commercialPlans.isActive, true)))
+        .limit(1);
+
+      if (commercialPlan) {
+        return {
+          planId: commercialPlan.id as CommercialPlanId,
+          name: commercialPlan.name,
+          maxActivePortfolios: commercialPlan.maxActivePortfolios,
+          status: userPlanRow.status as UserPlanStatus,
+          isFallback: false,
+          expiresAt: userPlanRow.expiresAt,
+          source: 'direct',
+        };
+      }
+    }
   }
 
-  const now = new Date();
-  const isPastDue = userPlanRow.status === 'past_due';
-  const isExpired = userPlanRow.expiresAt !== null && userPlanRow.expiresAt < now;
-  const isCancelledAndExpired = userPlanRow.status === 'cancelled' && (userPlanRow.expiresAt === null || userPlanRow.expiresAt < now);
-
-  // Se estiver cancelado/expirado ou inadimplente, o plano efetivo rebaixa para free
-  if (isPastDue || isExpired || isCancelledAndExpired) {
-    return {
-      planId: 'free',
-      name: 'Plano Free',
-      maxActivePortfolios: 2,
-      status: userPlanRow.status as UserPlanStatus,
-      isFallback: true,
-      expiresAt: userPlanRow.expiresAt,
-    };
-  }
-
-  // Busca o plano comercial cadastrado
-  const [commercialPlan] = await executor
-    .select()
-    .from(commercialPlans)
-    .where(and(eq(commercialPlans.id, userPlanRow.planId), eq(commercialPlans.isActive, true)))
-    .limit(1);
-
-  if (!commercialPlan) {
-    return {
-      planId: 'free',
-      name: 'Plano Free',
-      maxActivePortfolios: 2,
-      status: userPlanRow.status as UserPlanStatus,
-      isFallback: true,
-      expiresAt: userPlanRow.expiresAt,
-    };
-  }
-
+  // 4. Fallback Padrão: Plano Free
   return {
-    planId: commercialPlan.id as CommercialPlanId,
-    name: commercialPlan.name,
-    maxActivePortfolios: commercialPlan.maxActivePortfolios,
-    status: userPlanRow.status as UserPlanStatus,
-    isFallback: false,
-    expiresAt: userPlanRow.expiresAt,
+    planId: 'free',
+    name: 'Plano Free',
+    maxActivePortfolios: 2,
+    status: userPlanRow?.status === 'past_due' ? 'past_due' : 'active',
+    isFallback: true,
+    expiresAt: null,
+    source: 'fallback',
   };
 }
 
@@ -130,8 +242,13 @@ export async function getPlanQuotaSummary(
     else if (p.status === 'archived') archivedCount++;
   }
 
-  const availableSlots = Math.max(0, effectivePlan.maxActivePortfolios - activeCount);
-  const canCreateMore = activeCount < effectivePlan.maxActivePortfolios;
+  const hasDefinedQuota = effectivePlan.maxActivePortfolios !== null;
+  const availableSlots = hasDefinedQuota
+    ? Math.max(0, effectivePlan.maxActivePortfolios! - activeCount)
+    : 0;
+  const canCreateMore = hasDefinedQuota
+    ? activeCount < effectivePlan.maxActivePortfolios!
+    : false;
 
   return {
     planId: effectivePlan.planId,
@@ -176,6 +293,17 @@ export async function assertCanCreatePortfolio(
     );
 
   const currentCount = Number(activeCountRow?.total ?? 0);
+
+  if (effectivePlan.maxActivePortfolios === null) {
+    throw new PlanLimitExceededError(
+      `A quota de carteiras do ${effectivePlan.name} ainda não foi definida. Não é possível criar novas carteiras nesta modalidade até a definição comercial da quota.`,
+      {
+        planId: effectivePlan.planId,
+        maxAllowed: 0,
+        currentCount,
+      }
+    );
+  }
 
   if (currentCount >= effectivePlan.maxActivePortfolios) {
     throw new PlanLimitExceededError(

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/modules/identity/server/current-user';
 import { listCommercialPlans, getPlanQuotaSummary } from '@/modules/plans/server/plan.service';
+import { getBillingGroupOverview } from '@/modules/plans/server/group.service';
 import { getUserBillingSummary } from '@/modules/billing/server/billing.service';
 import { PlansView } from '@/modules/plans/ui/PlansView';
 
@@ -14,10 +15,11 @@ export default async function PlansPage() {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  const [plans, quotaSummary, billingSummary] = await Promise.all([
+  const [plans, quotaSummary, billingSummary, groupOverview] = await Promise.all([
     listCommercialPlans(),
     getPlanQuotaSummary(user.id),
     getUserBillingSummary(user.id),
+    getBillingGroupOverview(user.id, user.email),
   ]);
 
   return (
@@ -25,6 +27,7 @@ export default async function PlansPage() {
       plans={plans}
       quotaSummary={quotaSummary}
       billingSummary={billingSummary}
+      groupOverview={groupOverview}
     />
   );
 }

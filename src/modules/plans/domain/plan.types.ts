@@ -1,10 +1,10 @@
-export type CommercialPlanId = 'free' | 'pro';
+export type CommercialPlanId = 'free' | 'pro' | 'shared';
 
 export interface CommercialPlan {
   id: CommercialPlanId;
   name: string;
   description: string | null;
-  maxActivePortfolios: number;
+  maxActivePortfolios: number | null;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -26,16 +26,17 @@ export interface UserPlan {
 export interface UserEffectivePlan {
   planId: CommercialPlanId;
   name: string;
-  maxActivePortfolios: number;
+  maxActivePortfolios: number | null;
   status: UserPlanStatus;
   isFallback: boolean;
   expiresAt: Date | null;
+  source?: 'direct' | 'group' | 'fallback';
 }
 
 export interface PlanQuotaSummary {
   planId: CommercialPlanId;
   planName: string;
-  maxActivePortfolios: number;
+  maxActivePortfolios: number | null;
   activePortfoliosCount: number;
   frozenPortfoliosCount: number;
   archivedPortfoliosCount: number;

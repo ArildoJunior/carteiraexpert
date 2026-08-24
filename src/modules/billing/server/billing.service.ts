@@ -4,9 +4,11 @@ import { db, type Database, type DatabaseTransaction, type DbExecutor } from '..
 import { users } from '../../../lib/db/schema/identity';
 import { commercialPlans, userPlans } from '../../../lib/db/schema/plans';
 import { billingSubscriptions, paymentEvents } from '../../../lib/db/schema/billing';
+import { billingGroups } from '../../../lib/db/schema/groups';
 import { insertAuditLog } from '../../../lib/db/audit';
 import { Decimal } from '../../../lib/decimal';
 import { getUserEffectivePlan, applyPlanDowngradeInTransaction } from '../../plans/server/plan.service';
+import { applyGroupSuspensionInTransaction } from '../../plans/server/group.service';
 import type {
   BillingSubscription,
   PaymentEvent,
@@ -87,15 +89,34 @@ export async function getUserActiveBillingSubscription(
   userId: string,
   executor: DbExecutor = db
 ): Promise<BillingSubscription | null> {
-  const [row] = await executor
+  const subscriptions = await executor
     .select()
     .from(billingSubscriptions)
     .where(eq(billingSubscriptions.userId, userId))
-    .orderBy(desc(billingSubscriptions.createdAt))
-    .limit(1);
+    .orderBy(desc(billingSubscriptions.createdAt));
 
-  if (!row) return null;
-  return mapBillingSubscriptionRow(row);
+  if (subscriptions.length === 0) return null;
+
+  // Prioriza Pro ativo/trialing
+  const proSub = subscriptions.find(
+    (s) => s.planId === 'pro' && (s.status === 'active' || s.status === 'trialing')
+  );
+  if (proSub) return mapBillingSubscriptionRow(proSub);
+
+  // Prioriza Shared ativo/trialing
+  const sharedSub = subscriptions.find(
+    (s) => s.planId === 'shared' && (s.status === 'active' || s.status === 'trialing')
+  );
+  if (sharedSub) return mapBillingSubscriptionRow(sharedSub);
+
+  // Outra ativa/trialing
+  const otherActive = subscriptions.find(
+    (s) => s.status === 'active' || s.status === 'trialing'
+  );
+  if (otherActive) return mapBillingSubscriptionRow(otherActive);
+
+  // Fallback: mais recente
+  return mapBillingSubscriptionRow(subscriptions[0]);
 }
 
 /**
@@ -272,6 +293,21 @@ export async function synchronizeUserPlanFromSubscriptionInTransaction(
   // Se o usuário foi rebaixado para FREE, aplica congelamento idempotente de carteiras excedentes
   if (shouldTriggerDowngrade) {
     await applyPlanDowngradeInTransaction(userId, undefined, tx, auditLogger);
+
+    // Se o usuário possuir um grupo compartilhado ativo, suspende o grupo e rebaixa os membros
+    const [ownedGroup] = await tx
+      .select()
+      .from(billingGroups)
+      .where(and(eq(billingGroups.ownerUserId, userId), eq(billingGroups.status, 'active')))
+      .limit(1);
+
+    if (ownedGroup) {
+      await applyGroupSuspensionInTransaction(
+        ownedGroup.id,
+        'titular_subscription_downgrade',
+        tx
+      );
+    }
   }
 }
 

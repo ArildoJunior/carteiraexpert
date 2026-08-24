@@ -35,6 +35,12 @@ if (!connectionString) {
 
   beforeEach(async () => {
     // Limpeza completa entre testes
+    await db.delete(schema.billingGroupInvitations);
+    await db.delete(schema.billingGroupMembers);
+    await db.delete(schema.billingGroups);
+    await db.delete(schema.paymentEvents);
+    await db.delete(schema.billingSubscriptions);
+    await db.delete(schema.userPlans);
     await db.delete(portfolioEvents);
     await db.delete(portfolios);
     await db.delete(assets);

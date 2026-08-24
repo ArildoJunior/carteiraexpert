@@ -21,7 +21,7 @@ export const paymentEventStatusEnum = z.enum([
 
 export const createBillingSubscriptionSchema = z.object({
   userId: z.string().uuid({ message: 'userId deve ser um UUID válido.' }),
-  planId: z.enum(['free', 'pro']),
+  planId: z.enum(['free', 'pro', 'shared']),
   status: billingSubscriptionStatusEnum.default('active'),
   billingCycle: billingCycleEnum.default('monthly'),
   currentPeriodStart: z.coerce.date().optional(),

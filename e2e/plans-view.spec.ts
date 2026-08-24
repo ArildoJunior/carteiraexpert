@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('E2E: Experiência Comercial de Planos (Pacote 05.03)', () => {
+test.describe('E2E: Experiência Comercial de Planos e Grupos Compartilhados (Pacotes 05.03 e 05.04)', () => {
   const userEmail = `e2e-plans-view-${Date.now()}@test.com`;
 
-  test('deve navegar até /plans, exibir quotas, planos e ausência de checkout funcional', async ({
+  test('deve navegar até /plans, exibir quotas, planos (Free, Pro, Shared) e ausência de checkout funcional', async ({
     page,
   }) => {
     // 1. Cadastro de novo usuário
@@ -40,7 +40,7 @@ test.describe('E2E: Experiência Comercial de Planos (Pacote 05.03)', () => {
     await expect(quotaIndicator).toBeVisible();
     await expect(quotaIndicator).toContainText('0 de 2 ativas (2 disponíveis)');
 
-    // 5. Verificação dos cards de planos Free e Pro
+    // 5. Verificação dos 3 cards de planos comerciais (Free, Pro, Shared)
     const freeCard = page.locator('#card-plan-free');
     await expect(freeCard).toBeVisible();
     await expect(freeCard).toContainText('Plano Free');
@@ -53,26 +53,41 @@ test.describe('E2E: Experiência Comercial de Planos (Pacote 05.03)', () => {
     await expect(proCard).toContainText('Preço a definir');
     await expect(proCard).toContainText('Até 10 carteiras ativas');
 
-    // 6. Verificação do botão de upgrade desabilitado com aviso explicativo
-    const upgradeBtn = page.locator('#btn-upgrade-pro');
-    await expect(upgradeBtn).toBeVisible();
-    await expect(upgradeBtn).toBeDisabled();
-    await expect(upgradeBtn).toContainText('Upgrade Automatizado Indisponível');
-    await expect(proCard).toContainText('Pagamentos e upgrade automatizado ainda não estão disponíveis.');
+    const sharedCard = page.locator('#card-plan-shared');
+    await expect(sharedCard).toBeVisible();
+    await expect(sharedCard).toContainText('Plano Compartilhado');
+    await expect(sharedCard).toContainText('Preço a definir');
+    await expect(sharedCard).toContainText('1 Titular + até 4 Membros');
+    await expect(sharedCard).toContainText('Quota individual de carteiras: A definir');
+    await expect(sharedCard).not.toContainText('99,99');
 
-    // 7. Não deve existir formulário ou campos de pagamento/cartão de crédito
+    // 6. Verificação dos botões de contratação desabilitados
+    const upgradeProBtn = page.locator('#btn-upgrade-pro');
+    await expect(upgradeProBtn).toBeVisible();
+    await expect(upgradeProBtn).toBeDisabled();
+
+    const upgradeSharedBtn = page.locator('#btn-upgrade-shared');
+    await expect(upgradeSharedBtn).toBeVisible();
+    await expect(upgradeSharedBtn).toBeDisabled();
+
+    // 7. Verificação da seção de Grupo Compartilhado com card educativo para usuário Free
+    const sharedGroupSection = page.locator('#section-shared-group');
+    await expect(sharedGroupSection).toBeVisible();
+    await expect(page.locator('#group-educational-card')).toBeVisible();
+
+    // 8. Não deve existir formulário ou campos de pagamento/cartão de crédito
     await expect(page.locator('input[type="payment"]')).toHaveCount(0);
     await expect(page.locator('input[name="cardNumber"]')).toHaveCount(0);
     await expect(page.locator('input[name="cvv"]')).toHaveCount(0);
 
-    // 8. Retorno para carteiras via botão ← Voltar para Carteiras
+    // 9. Retorno para carteiras via botão ← Voltar para Carteiras
     const backBtn = page.locator('#link-back-to-portfolios');
     await expect(backBtn).toBeVisible();
     await backBtn.click();
     await page.waitForURL('**/portfolios');
     await expect(page.locator('h1')).toContainText('Minhas Carteiras');
 
-    // 9. No card de faturamento de /portfolios, link direto para /plans deve funcionar
+    // 10. No card de faturamento de /portfolios, link direto para /plans deve funcionar
     const linkViewPlans = page.locator('#link-view-plans');
     await expect(linkViewPlans).toBeVisible();
     await linkViewPlans.click();

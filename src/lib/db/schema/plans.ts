@@ -20,13 +20,16 @@ export const commercialPlans = pgTable(
     id: text('id').primaryKey(), // 'free' | 'pro'
     name: text('name').notNull(),
     description: text('description'),
-    maxActivePortfolios: integer('max_active_portfolios').notNull(),
+    maxActivePortfolios: integer('max_active_portfolios'),
     isActive: boolean('is_active').notNull().default(true),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    check('chk_commercial_plans_max_portfolios', sql`${table.maxActivePortfolios} > 0`),
+    check(
+      'chk_commercial_plans_max_portfolios',
+      sql`${table.maxActivePortfolios} IS NULL OR ${table.maxActivePortfolios} > 0`
+    ),
   ]
 );
 

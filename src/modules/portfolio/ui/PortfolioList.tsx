@@ -34,7 +34,7 @@ export function PortfolioList({ portfolios, quotaSummary, billingSummary }: Port
                 id="plan-quota-badge"
                 className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-surface-elevated text-text-secondary border border-border-theme"
               >
-                {quotaSummary.planName}: {quotaSummary.activePortfoliosCount}/{quotaSummary.maxActivePortfolios} ativas
+                {quotaSummary.planName}: {quotaSummary.activePortfoliosCount}/{quotaSummary.maxActivePortfolios ?? 'A definir'} ativas
                 {quotaSummary.frozenPortfoliosCount > 0 && ` • ${quotaSummary.frozenPortfoliosCount} congelada${quotaSummary.frozenPortfoliosCount > 1 ? 's' : ''}`}
               </span>
             )}

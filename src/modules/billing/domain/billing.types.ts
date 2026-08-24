@@ -62,7 +62,7 @@ export interface UserBillingSummary {
   subscription: BillingSubscription | null;
   effectivePlanId: CommercialPlanId;
   effectivePlanName: string;
-  maxActivePortfolios: number;
+  maxActivePortfolios: number | null;
   status: BillingSubscriptionStatus | 'no_subscription';
   isPastDue: boolean;
   isCanceled: boolean;

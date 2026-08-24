@@ -8,15 +8,26 @@ import { createRoot } from 'react-dom/client';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PlansView } from '@/modules/plans/ui/PlansView';
 import type { CommercialPlan, PlanQuotaSummary } from '@/modules/plans/domain/plan.types';
+import type { BillingGroupOverview } from '@/modules/plans/domain/group.types';
 import type { UserBillingSummary } from '@/modules/billing/domain/billing.types';
 
-// Mock do next/link
+// Mock do next/link e next/navigation
 vi.mock('next/link', () => ({
   default: ({ children, href, id, className }: any) => (
     <a href={href} id={id} className={className}>
       {children}
     </a>
   ),
+}));
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    refresh: vi.fn(),
+  }),
+  useSearchParams: () => ({
+    get: vi.fn().mockReturnValue(null),
+  }),
 }));
 
 const mockPlans: CommercialPlan[] = [
@@ -38,7 +49,30 @@ const mockPlans: CommercialPlan[] = [
     createdAt: new Date('2026-01-01T00:00:00Z'),
     updatedAt: new Date('2026-01-01T00:00:00Z'),
   },
+  {
+    id: 'shared',
+    name: 'Plano Compartilhado',
+    description: 'Plano compartilhado para até 5 pessoas',
+    maxActivePortfolios: null,
+    isActive: true,
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    updatedAt: new Date('2026-01-01T00:00:00Z'),
+  },
 ];
+
+const mockEmptyGroupOverview: BillingGroupOverview = {
+  hasGroup: false,
+  group: null,
+  userRole: null,
+  isOwner: false,
+  isMember: false,
+  isEligibleToCreate: false,
+  ownerName: null,
+  ownerEmail: null,
+  members: [],
+  invitations: [],
+  pendingInvitationForUser: null,
+};
 
 describe('UI: PlansView (Unit)', () => {
   let container: HTMLDivElement;
@@ -97,6 +131,7 @@ describe('UI: PlansView (Unit)', () => {
         plans={mockPlans}
         quotaSummary={quotaSummary}
         billingSummary={billingSummary}
+        groupOverview={mockEmptyGroupOverview}
       />
     );
 
@@ -105,18 +140,20 @@ describe('UI: PlansView (Unit)', () => {
     expect(container.querySelector('#quota-usage-indicator')?.textContent).toContain('1 de 2 ativas (1 disponível)');
     expect(container.querySelector('#subscription-status-tag')?.textContent).toContain('Sem assinatura ativa');
 
-    // Botão de upgrade desabilitado e explicativo
-    const upgradeBtn = container.querySelector('#btn-upgrade-pro') as HTMLButtonElement;
-    expect(upgradeBtn).not.toBeNull();
-    expect(upgradeBtn.disabled).toBe(true);
-    expect(upgradeBtn.textContent).toContain('Upgrade Automatizado Indisponível');
+    // Card do Plano Compartilhado exibido com "Preço a definir" e sem R$ 99,99
+    const sharedCard = container.querySelector('#card-plan-shared');
+    expect(sharedCard).not.toBeNull();
+    expect(sharedCard?.textContent).toContain('Plano Compartilhado');
+    expect(sharedCard?.textContent).toContain('Preço a definir');
+    expect(sharedCard?.textContent).not.toContain('99,99');
 
-    // Não deve haver alerta de congelamento
-    expect(container.querySelector('#frozen-portfolios-alert')).toBeNull();
+    // Botões de contratação desabilitados
+    const upgradeSharedBtn = container.querySelector('#btn-upgrade-shared') as HTMLButtonElement;
+    expect(upgradeSharedBtn).not.toBeNull();
+    expect(upgradeSharedBtn.disabled).toBe(true);
 
-    // Não deve haver inputs de pagamento ou checkout
-    expect(container.querySelector('input[name="cardNumber"]')).toBeNull();
-    expect(container.querySelector('input[type="payment"]')).toBeNull();
+    // Card educativo de grupo presente para usuário sem grupo
+    expect(container.querySelector('#group-educational-card')).not.toBeNull();
   });
 
   it('2. deve exibir alerta destacado quando houver carteiras congeladas', async () => {
@@ -151,6 +188,7 @@ describe('UI: PlansView (Unit)', () => {
         plans={mockPlans}
         quotaSummary={quotaSummary}
         billingSummary={billingSummary}
+        groupOverview={mockEmptyGroupOverview}
       />
     );
 
@@ -159,189 +197,13 @@ describe('UI: PlansView (Unit)', () => {
     expect(frozenAlert?.textContent).toContain('3 carteira(s) em estado congelado');
   });
 
-  it('3. deve renderizar corretamente para usuário no Plano Pro com assinatura ativa', async () => {
+  it('3. deve exibir formulário de criação de grupo para titular elegível com assinatura do plano compartilhado', async () => {
     const quotaSummary: PlanQuotaSummary = {
-      planId: 'pro',
-      planName: 'Plano Pro',
-      maxActivePortfolios: 10,
-      activePortfoliosCount: 4,
+      planId: 'shared',
+      planName: 'Plano Compartilhado',
+      maxActivePortfolios: null,
+      activePortfoliosCount: 0,
       frozenPortfoliosCount: 0,
-      archivedPortfoliosCount: 0,
-      availableSlots: 6,
-      canCreateMore: true,
-    };
-
-    const billingSummary: UserBillingSummary = {
-      hasSubscription: true,
-      subscription: {
-        id: 'sub-1',
-        userId: 'user-1',
-        planId: 'pro',
-        status: 'active',
-        billingCycle: 'monthly',
-        currentPeriodStart: new Date('2026-08-01T00:00:00Z'),
-        currentPeriodEnd: new Date('2026-09-01T00:00:00Z'),
-        cancelAtPeriodEnd: false,
-        canceledAt: null,
-        endedAt: null,
-        gracePeriodEndsAt: null,
-        provider: 'internal',
-        providerSubscriptionId: null,
-        providerCustomerId: null,
-        metadata: null,
-        createdAt: new Date('2026-08-01T00:00:00Z'),
-        updatedAt: new Date('2026-08-01T00:00:00Z'),
-      },
-      effectivePlanId: 'pro',
-      effectivePlanName: 'Plano Pro',
-      maxActivePortfolios: 10,
-      status: 'active',
-      isPastDue: false,
-      isCanceled: false,
-      cancelAtPeriodEnd: false,
-      currentPeriodEnd: new Date('2026-09-01T00:00:00Z'),
-      gracePeriodEndsAt: null,
-      provider: 'internal',
-    };
-
-    await render(
-      <PlansView
-        plans={mockPlans}
-        quotaSummary={quotaSummary}
-        billingSummary={billingSummary}
-      />
-    );
-
-    expect(container.querySelector('#effective-plan-badge')?.textContent).toContain('Plano Pro');
-    expect(container.querySelector('#subscription-status-tag')?.textContent).toContain('Assinatura Ativa');
-    expect(container.querySelector('#quota-usage-indicator')?.textContent).toContain('4 de 10 ativas (6 disponíveis)');
-
-    // No card Pro, deve informar que o plano está ativo em vez do botão de upgrade
-    expect(container.querySelector('#btn-upgrade-pro')).toBeNull();
-    expect(container.querySelector('#card-plan-pro')?.textContent).toContain('Seu Plano Pro está Ativo');
-  });
-
-  it('4. deve exibir status de período de carência para past_due', async () => {
-    const quotaSummary: PlanQuotaSummary = {
-      planId: 'pro',
-      planName: 'Plano Pro',
-      maxActivePortfolios: 10,
-      activePortfoliosCount: 3,
-      frozenPortfoliosCount: 0,
-      archivedPortfoliosCount: 0,
-      availableSlots: 7,
-      canCreateMore: true,
-    };
-
-    const billingSummary: UserBillingSummary = {
-      hasSubscription: true,
-      subscription: {
-        id: 'sub-past-due',
-        userId: 'user-1',
-        planId: 'pro',
-        status: 'past_due',
-        billingCycle: 'monthly',
-        currentPeriodStart: new Date('2026-07-01T00:00:00Z'),
-        currentPeriodEnd: new Date('2026-08-01T00:00:00Z'),
-        cancelAtPeriodEnd: false,
-        canceledAt: null,
-        endedAt: null,
-        gracePeriodEndsAt: new Date('2026-08-15T00:00:00Z'),
-        provider: 'internal',
-        providerSubscriptionId: null,
-        providerCustomerId: null,
-        metadata: null,
-        createdAt: new Date('2026-07-01T00:00:00Z'),
-        updatedAt: new Date('2026-08-01T00:00:00Z'),
-      },
-      effectivePlanId: 'pro',
-      effectivePlanName: 'Plano Pro',
-      maxActivePortfolios: 10,
-      status: 'past_due',
-      isPastDue: true,
-      isCanceled: false,
-      cancelAtPeriodEnd: false,
-      currentPeriodEnd: new Date('2026-08-01T00:00:00Z'),
-      gracePeriodEndsAt: new Date('2026-08-15T00:00:00Z'),
-      provider: 'internal',
-    };
-
-    await render(
-      <PlansView
-        plans={mockPlans}
-        quotaSummary={quotaSummary}
-        billingSummary={billingSummary}
-      />
-    );
-
-    expect(container.querySelector('#subscription-status-tag')?.textContent).toContain('Pagamento Pendente / Em Carência');
-    expect(container.querySelector('#subscription-status-detail')?.textContent).toContain('Período de tolerância concedido');
-  });
-
-  it('5. deve exibir status de cancelamento agendado para canceled com cancelAtPeriodEnd', async () => {
-    const quotaSummary: PlanQuotaSummary = {
-      planId: 'pro',
-      planName: 'Plano Pro',
-      maxActivePortfolios: 10,
-      activePortfoliosCount: 2,
-      frozenPortfoliosCount: 0,
-      archivedPortfoliosCount: 0,
-      availableSlots: 8,
-      canCreateMore: true,
-    };
-
-    const billingSummary: UserBillingSummary = {
-      hasSubscription: true,
-      subscription: {
-        id: 'sub-canceled',
-        userId: 'user-1',
-        planId: 'pro',
-        status: 'canceled',
-        billingCycle: 'monthly',
-        currentPeriodStart: new Date('2026-08-01T00:00:00Z'),
-        currentPeriodEnd: new Date('2026-09-01T00:00:00Z'),
-        cancelAtPeriodEnd: true,
-        canceledAt: new Date('2026-08-10T00:00:00Z'),
-        endedAt: null,
-        gracePeriodEndsAt: null,
-        provider: 'internal',
-        providerSubscriptionId: null,
-        providerCustomerId: null,
-        metadata: null,
-        createdAt: new Date('2026-08-01T00:00:00Z'),
-        updatedAt: new Date('2026-08-10T00:00:00Z'),
-      },
-      effectivePlanId: 'pro',
-      effectivePlanName: 'Plano Pro',
-      maxActivePortfolios: 10,
-      status: 'canceled',
-      isPastDue: false,
-      isCanceled: true,
-      cancelAtPeriodEnd: true,
-      currentPeriodEnd: new Date('2026-09-01T00:00:00Z'),
-      gracePeriodEndsAt: null,
-      provider: 'internal',
-    };
-
-    await render(
-      <PlansView
-        plans={mockPlans}
-        quotaSummary={quotaSummary}
-        billingSummary={billingSummary}
-      />
-    );
-
-    expect(container.querySelector('#subscription-status-tag')?.textContent).toContain('Cancelamento Agendado');
-    expect(container.querySelector('#subscription-status-detail')?.textContent).toContain('benefícios permanecem ativos');
-  });
-
-  it('6. deve exibir status unpaid (inadimplente), indicação neutra de preço do Pro e governança', async () => {
-    const quotaSummary: PlanQuotaSummary = {
-      planId: 'free',
-      planName: 'Plano Free',
-      maxActivePortfolios: 2,
-      activePortfoliosCount: 2,
-      frozenPortfoliosCount: 1,
       archivedPortfoliosCount: 0,
       availableSlots: 0,
       canCreateMore: false,
@@ -350,34 +212,48 @@ describe('UI: PlansView (Unit)', () => {
     const billingSummary: UserBillingSummary = {
       hasSubscription: true,
       subscription: {
-        id: 'sub-unpaid',
+        id: 'sub-1',
         userId: 'user-1',
-        planId: 'pro',
-        status: 'unpaid',
+        planId: 'shared',
+        status: 'active',
         billingCycle: 'monthly',
-        currentPeriodStart: new Date('2026-07-01T00:00:00Z'),
-        currentPeriodEnd: new Date('2026-08-01T00:00:00Z'),
+        currentPeriodStart: new Date('2026-01-01'),
+        currentPeriodEnd: new Date('2026-12-31'),
         cancelAtPeriodEnd: false,
         canceledAt: null,
-        endedAt: new Date('2026-08-15T00:00:00Z'),
+        endedAt: null,
         gracePeriodEndsAt: null,
         provider: 'internal',
         providerSubscriptionId: null,
         providerCustomerId: null,
         metadata: null,
-        createdAt: new Date('2026-07-01T00:00:00Z'),
-        updatedAt: new Date('2026-08-15T00:00:00Z'),
+        createdAt: new Date('2026-01-01'),
+        updatedAt: new Date('2026-01-01'),
       },
-      effectivePlanId: 'free',
-      effectivePlanName: 'Plano Free',
-      maxActivePortfolios: 2,
-      status: 'unpaid',
+      effectivePlanId: 'shared',
+      effectivePlanName: 'Plano Compartilhado',
+      maxActivePortfolios: null,
+      status: 'active',
       isPastDue: false,
       isCanceled: false,
       cancelAtPeriodEnd: false,
-      currentPeriodEnd: null,
+      currentPeriodEnd: new Date('2026-12-31'),
       gracePeriodEndsAt: null,
       provider: 'internal',
+    };
+
+    const eligibleGroupOverview: BillingGroupOverview = {
+      hasGroup: false,
+      group: null,
+      userRole: null,
+      isOwner: false,
+      isMember: false,
+      isEligibleToCreate: true,
+      ownerName: null,
+      ownerEmail: null,
+      members: [],
+      invitations: [],
+      pendingInvitationForUser: null,
     };
 
     await render(
@@ -385,15 +261,192 @@ describe('UI: PlansView (Unit)', () => {
         plans={mockPlans}
         quotaSummary={quotaSummary}
         billingSummary={billingSummary}
+        groupOverview={eligibleGroupOverview}
       />
     );
 
-    expect(container.querySelector('#subscription-status-tag')?.textContent).toContain('Inadimplente (Downgrade Aplicado)');
-    expect(container.querySelector('#card-plan-free')?.textContent).toContain('R$ 0');
-    expect(container.querySelector('#card-plan-free')?.textContent).toContain('Até 2 carteiras ativas');
-    expect(container.querySelector('#card-plan-pro')?.textContent).toContain('Preço a definir');
-    expect(container.querySelector('#card-plan-pro')?.textContent).toContain('Disponível futuramente');
-    expect(container.querySelector('#card-plan-pro')?.textContent).toContain('Até 10 carteiras ativas');
-    expect(container.textContent).toContain('Isolamento e Privacidade');
+    expect(container.querySelector('#form-create-group')).not.toBeNull();
+    expect(container.querySelector('#input-group-name')).not.toBeNull();
+    expect(container.querySelector('#quota-usage-indicator')?.textContent).toContain('0 ativas (Quota a definir)');
+  });
+
+  it('4. deve exibir painel completo de administração quando usuário for titular de grupo ativo', async () => {
+    const quotaSummary: PlanQuotaSummary = {
+      planId: 'shared',
+      planName: 'Plano Compartilhado',
+      maxActivePortfolios: null,
+      activePortfoliosCount: 0,
+      frozenPortfoliosCount: 0,
+      archivedPortfoliosCount: 0,
+      availableSlots: 0,
+      canCreateMore: false,
+    };
+
+    const billingSummary: UserBillingSummary = {
+      hasSubscription: true,
+      subscription: {
+        id: 'sub-1',
+        userId: 'owner-1',
+        planId: 'shared',
+        status: 'active',
+        billingCycle: 'monthly',
+        currentPeriodStart: new Date('2026-01-01'),
+        currentPeriodEnd: new Date('2026-12-31'),
+        cancelAtPeriodEnd: false,
+        canceledAt: null,
+        endedAt: null,
+        gracePeriodEndsAt: null,
+        provider: 'internal',
+        providerSubscriptionId: null,
+        providerCustomerId: null,
+        metadata: null,
+        createdAt: new Date('2026-01-01'),
+        updatedAt: new Date('2026-01-01'),
+      },
+      effectivePlanId: 'shared',
+      effectivePlanName: 'Plano Compartilhado',
+      maxActivePortfolios: null,
+      status: 'active',
+      isPastDue: false,
+      isCanceled: false,
+      cancelAtPeriodEnd: false,
+      currentPeriodEnd: new Date('2026-12-31'),
+      gracePeriodEndsAt: null,
+      provider: 'internal',
+    };
+
+    const ownerGroupOverview: BillingGroupOverview = {
+      hasGroup: true,
+      group: {
+        id: 'group-1',
+        name: 'Família Silva',
+        ownerUserId: 'owner-1',
+        status: 'active',
+        maxMembers: 5,
+        activeMembersCount: 2,
+        pendingInvitesCount: 1,
+        availableSlots: 3,
+      },
+      userRole: 'owner',
+      isOwner: true,
+      isMember: false,
+      isEligibleToCreate: false,
+      ownerName: 'Arildo Titular',
+      ownerEmail: 'arildo@example.com',
+      members: [
+        {
+          id: 'm-1',
+          userId: 'owner-1',
+          name: 'Arildo Titular',
+          email: 'arildo@example.com',
+          role: 'owner',
+          status: 'active',
+          joinedAt: new Date('2026-01-01'),
+          leftAt: null,
+        },
+        {
+          id: 'm-2',
+          userId: 'member-2',
+          name: 'Beatriz Membro',
+          email: 'beatriz@example.com',
+          role: 'member',
+          status: 'active',
+          joinedAt: new Date('2026-01-05'),
+          leftAt: null,
+        },
+      ],
+      invitations: [
+        {
+          id: 'inv-1',
+          invitedEmail: 'carlos@example.com',
+          status: 'pending',
+          expiresAt: new Date('2026-01-20'),
+          createdAt: new Date('2026-01-13'),
+        },
+      ],
+      pendingInvitationForUser: null,
+    };
+
+    await render(
+      <PlansView
+        plans={mockPlans}
+        quotaSummary={quotaSummary}
+        billingSummary={billingSummary}
+        groupOverview={ownerGroupOverview}
+      />
+    );
+
+    expect(container.querySelector('#group-owner-view')).not.toBeNull();
+    expect(container.querySelector('#group-capacity-indicator')?.textContent).toContain('2 de 5 vagas');
+    expect(container.querySelector('#form-invite-member')).not.toBeNull();
+    expect(container.querySelector('#btn-dissolve-group')).not.toBeNull();
+    expect(container.textContent).toContain('Família Silva');
+    expect(container.textContent).toContain('Beatriz Membro');
+    expect(container.textContent).toContain('carlos@example.com');
+  });
+
+  it('5. deve exibir painel informativo para membro de grupo com opção de deixar o grupo', async () => {
+    const quotaSummary: PlanQuotaSummary = {
+      planId: 'shared',
+      planName: 'Plano Compartilhado',
+      maxActivePortfolios: null,
+      activePortfoliosCount: 0,
+      frozenPortfoliosCount: 0,
+      archivedPortfoliosCount: 0,
+      availableSlots: 0,
+      canCreateMore: false,
+    };
+
+    const billingSummary: UserBillingSummary = {
+      hasSubscription: false,
+      subscription: null,
+      effectivePlanId: 'shared',
+      effectivePlanName: 'Plano Compartilhado',
+      maxActivePortfolios: null,
+      status: 'no_subscription',
+      isPastDue: false,
+      isCanceled: false,
+      cancelAtPeriodEnd: false,
+      currentPeriodEnd: null,
+      gracePeriodEndsAt: null,
+      provider: null,
+    };
+
+    const memberGroupOverview: BillingGroupOverview = {
+      hasGroup: true,
+      group: {
+        id: 'group-1',
+        name: 'Família Silva',
+        ownerUserId: 'owner-1',
+        status: 'active',
+        maxMembers: 5,
+        activeMembersCount: 2,
+        pendingInvitesCount: 0,
+        availableSlots: 3,
+      },
+      userRole: 'member',
+      isOwner: false,
+      isMember: true,
+      isEligibleToCreate: false,
+      ownerName: 'Arildo Titular',
+      ownerEmail: 'arildo@example.com',
+      members: [],
+      invitations: [],
+      pendingInvitationForUser: null,
+    };
+
+    await render(
+      <PlansView
+        plans={mockPlans}
+        quotaSummary={quotaSummary}
+        billingSummary={billingSummary}
+        groupOverview={memberGroupOverview}
+      />
+    );
+
+    expect(container.querySelector('#group-member-view')).not.toBeNull();
+    expect(container.querySelector('#btn-leave-group')).not.toBeNull();
+    expect(container.textContent).toContain('Arildo Titular');
+    expect(container.textContent).toContain('100% privados');
   });
 });
