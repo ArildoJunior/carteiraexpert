@@ -33,6 +33,7 @@ Os planos superiores ao Free ampliam a capacidade analítica e operacional da pl
 
 - **Limite de Carteiras:** até **10 carteiras ativas** no total (combinação livre entre carteiras `REAL`, `ESTUDO` e `ANALISE`). *Implementado e validado no código para o plano Pro via commercial_plans e user_plans.*
 - **Estrutura de Assinaturas e Eventos:** ciclo de vida em `billing_subscriptions`, eventos em `payment_events` com idempotência estrita e adaptação agnóstica de gateways (*Implementado e validado no código*).
+- **Gestão Visual e Transparência Comercial:** página `/plans` com exibição de quotas, limites, status de vigência e aviso de preparação de pagamentos sem cobrança real (*Implementado e validado no código*).
 - **Comparação entre Carteiras:** ferramenta analítica para comparação explícita de métricas entre carteiras (*Planejado, não implementado*).
 - **Importações Avançadas:** processamento de planilhas e importação assistida de notas de corretagem em PDF com tela de conferência (*Planejado, não implementado*).
 - **Projeções e Simulações:** modelagem de cenários hipotéticos sem afetar a carteira real (*Planejado, não implementado*).

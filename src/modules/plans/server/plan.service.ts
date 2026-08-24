@@ -6,6 +6,7 @@ import { portfolios } from '../../../lib/db/schema/portfolio';
 import { commercialPlans, userPlans } from '../../../lib/db/schema/plans';
 import { insertAuditLog } from '../../../lib/db/audit';
 import type {
+  CommercialPlan,
   CommercialPlanId,
   UserEffectivePlan,
   PlanQuotaSummary,
@@ -437,4 +438,27 @@ export async function changeUserPlan(
       auditLogger
     );
   });
+}
+
+/**
+ * Lista todos os planos comerciais ativos cadastrados no catálogo.
+ */
+export async function listCommercialPlans(
+  executor: DbExecutor = db
+): Promise<CommercialPlan[]> {
+  const rows = await executor
+    .select()
+    .from(commercialPlans)
+    .where(eq(commercialPlans.isActive, true))
+    .orderBy(commercialPlans.maxActivePortfolios);
+
+  return rows.map((r) => ({
+    id: r.id as CommercialPlanId,
+    name: r.name,
+    description: r.description,
+    maxActivePortfolios: r.maxActivePortfolios,
+    isActive: r.isActive,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+  }));
 }

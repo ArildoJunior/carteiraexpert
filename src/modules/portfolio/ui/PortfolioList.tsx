@@ -82,6 +82,13 @@ export function PortfolioList({ portfolios, quotaSummary, billingSummary }: Port
               </p>
             </div>
           </div>
+          <Link
+            id="link-view-plans"
+            href="/plans"
+            className="text-xs font-semibold text-action-primary hover:underline flex items-center gap-1 shrink-0"
+          >
+            Ver Planos e Quotas →
+          </Link>
         </div>
       )}
 

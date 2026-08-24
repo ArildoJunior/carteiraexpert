@@ -27,6 +27,7 @@ import {
   getPlanQuotaSummary,
   changeUserPlan,
   applyPlanDowngradeInTransaction,
+  listCommercialPlans,
 } from '../../../src/modules/plans/server/plan.service';
 import {
   PlanLimitExceededError,
@@ -506,6 +507,27 @@ describe('Integração: Planos Comerciais, Quotas e Carteiras Congeladas', () =>
       const summaryAfter = await getPlanQuotaSummary(userB.id);
       expect(summaryAfter.activePortfoliosCount).toBe(2);
       expect(summaryAfter.canCreateMore).toBe(false);
+    });
+
+    it('deve listar os planos comerciais ativos com ordenação correta por maxActivePortfolios', async () => {
+      const plans = await listCommercialPlans(db);
+      expect(plans.length).toBeGreaterThanOrEqual(2);
+
+      const freePlan = plans.find((p) => p.id === 'free');
+      const proPlan = plans.find((p) => p.id === 'pro');
+
+      expect(freePlan).toBeDefined();
+      expect(freePlan?.maxActivePortfolios).toBe(2);
+      expect(freePlan?.isActive).toBe(true);
+
+      expect(proPlan).toBeDefined();
+      expect(proPlan?.maxActivePortfolios).toBe(10);
+      expect(proPlan?.isActive).toBe(true);
+
+      // Free deve vir antes de Pro pela ordenação de maxActivePortfolios
+      const freeIdx = plans.findIndex((p) => p.id === 'free');
+      const proIdx = plans.findIndex((p) => p.id === 'pro');
+      expect(freeIdx).toBeLessThan(proIdx);
     });
   });
 });

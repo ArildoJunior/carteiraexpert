@@ -18,6 +18,7 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 - **Fase 05 — Planos Comerciais, Assinaturas e Entitlements:** **PARCIALMENTE IMPLEMENTADA E VALIDADA**
   - **Pacote 05.01 — Entitlements e Quotas por Plano:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Catálogo comercial em `commercial_plans` com planos `free` e `pro`, fonte única da quota numérica em `max_active_portfolios`, associação vigente por usuário em `user_plans`, fallback puro sem efeitos colaterais em `getUserEffectivePlan`, bloqueio server-side via `assertCanCreatePortfolio` com lock pessimista `FOR UPDATE`, downgrade transacional com congelamento idempotente de excedentes em status `frozen`, bloqueio estrito de todas as mutações financeiras em carteiras congeladas via `assertPortfolioWritable`, permissão de soft delete para liberação de quota, auditoria em `audit_logs` e badge visual de quotas em `/portfolios`).
   - **Pacote 05.02 — Estrutura de Assinaturas e Pagamentos:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Tabelas `billing_subscriptions` e `payment_events` com migração `0008`, máquina de estados de faturamento, idempotência estrita por `idempotency_key`, sincronização atômica e transacional com `user_plans`, fallback e congelamento automático em caso de inadimplência (`unpaid`), interface agnóstica `PaymentGatewayAdapter` e adaptador `MockPaymentGatewayAdapter` para testes sem chamadas externas, e resumo de faturamento seguro na UI).
+  - **Pacote 05.03 — Experiência Comercial de Planos:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Página dedicada `/plans` no dashboard, visão comparativa transparente de recursos entre Free e Pro, uso de quotas em tempo real, alertas contextuais para carteiras congeladas e períodos de carência, ausência de checkout falso ou formulários de pagamento, e botão de upgrade desabilitado com aviso informativo de que pagamentos automáticos estão em desenvolvimento).
 - **Fase 06 — Dados de Mercado, Valuation e Gráficos:** **PARCIALMENTE IMPLEMENTADA** (Persistência relacional em `market_quotes` e `exchange_rates`, adaptadores `ManualPayloadAdapter`, `MockProviderAdapter` e `BrapiAdapter`, serviço de ingestão `MarketDataIngestionService` com ranking de qualidade, motores de valuation e evolução patrimonial diária, gráficos de alocação por ativo/classe e gráfico de evolução temporal "Mercado vs. Custo" com Recharts; sincronização automática em background e WebSockets permanecem planejados).
 - **Sistema Global de Tema e Identidade Visual:** Concluído (Suporte nativo aos temas Claro, Escuro e Automático com `prefers-color-scheme`, tokens semânticos, persistência em `localStorage` e script anti-FOUC no `<head>`).
 - **Próxima Fase Prevista:** **Fase 07 — Importações Revisáveis** (ou expansão da Fase 05 com gateways e compartilhamento).
@@ -79,7 +80,7 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 - **Motor de Valuation e Evolução Temporal:** Motor determinístico (`valuation-engine.ts` e `portfolio-evolution-engine.ts`) com política de tolerância a cotações obsoletas (até 7 dias civis UTC), identificação de ativos não cotados e conversão cambial multi-moeda.
 - **Gráficos e Visualizações:** Gráficos de alocação por ativo e por classe com Recharts, além de gráfico comparativo de evolução temporal "Mercado vs. Custo" com suporte a múltiplos períodos (`1M`, `3M`, `6M`, `YTD`, `1Y`, `ALL`) e fallback inicial `YTD`.
 
-### 8. Planos Comerciais, Quotas e Assinaturas (Fase 05 — Pacotes 05.01 e 05.02)
+### 8. Planos Comerciais, Quotas e Assinaturas (Fase 05 — Pacotes 05.01, 05.02 e 05.03)
 - **Catálogo de Planos Comerciais:** Tabelas `commercial_plans` e `plan_entitlements` com os planos padrão `free` (2 carteiras ativas) e `pro` (10 carteiras ativas).
 - **Fonte Única de Quota:** Limite numérico de carteiras derivado exclusivamente de `commercial_plans.max_active_portfolios`, sem duplicações inconsistentes.
 - **Associação Vigente:** Tabela `user_plans` com vínculo único por usuário (`UNIQUE(user_id)`) e fallback em tempo de execução sem efeitos colaterais para o plano `free` quando inexistente.
@@ -87,6 +88,7 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 - **Downgrade com Congelamento Seguro (`frozen`):** Operação transacional e idempotente (`applyPlanDowngradeInTransaction`) que congela carteiras excedentes sem exclusão de dados financeiros históricos, gerando trilha em `audit_logs`.
 - **Bloqueio Integral de Mutações em Carteiras Congeladas:** Centralizado em `assertPortfolioWritable`, impedindo criação/cancelamento de eventos operacionais, eventos corporativos, subscrições ou edições simples, enquanto permite soft delete para liberação voluntária de quota.
 - **Estrutura de Assinaturas e Eventos de Pagamento:** Tabelas `billing_subscriptions` e `payment_events`, controle de status do ciclo de vida, idempotência estrita por `idempotency_key`, sincronização transacional com `user_plans` e interface agnóstica de gateways (`PaymentGatewayAdapter`).
+- **Experiência Comercial e Gestão de Planos:** Página dedicada `/plans` com visão comparativa de recursos, quotas em tempo real, status da assinatura e governança transparente sem cobrança real.
 
 ### 9. Sistema Global de Tema e Identidade Visual
 - **Temas Disponíveis:** Suporte nativo aos modos **Claro** (paleta suave `#F8FAFC` com cards brancos), **Escuro** (fundo `#0B1120` com superfícies `#1E293B`) e **Automático/System** (sincronizado dinamicamente com o sistema operacional via `prefers-color-scheme`).
@@ -135,6 +137,7 @@ carteiraexpert/
 │   │   ├── (dashboard)/         # Área autenticada protegida com verificação de termos
 │   │   │   ├── dashboard/       # Dashboard consolidado de carteiras
 │   │   │   ├── history/         # Extrato cronológico paginado com filtros avançados
+│   │   │   ├── plans/           # Página de planos, quotas e transparência comercial
 │   │   │   └── portfolios/      # Listagem (/portfolios) e detalhes (/portfolios/[id])
 │   │   ├── terms-acceptance/    # Tela isolada de consentimentos pendentes LGPD
 │   │   ├── layout.tsx           # Layout raiz com script anti-FOUC e ThemeProvider
@@ -145,7 +148,7 @@ carteiraexpert/
 │   ├── middleware.ts            # Proteção de rotas no Edge
 │   └── modules/
 │       ├── identity/            # Módulo de autenticação, sessões, segurança e termos LGPD
-│       ├── plans/               # Módulo de planos comerciais, entitlements, quotas e downgrade
+│       ├── plans/               # Módulo de planos comerciais, entitlements, quotas e interface
 │       ├── billing/             # Módulo de assinaturas comerciais, eventos de pagamento e gateways
 │       ├── portfolio/           # Módulo de carteiras, ativos, motor de posições, valuation e gráficos
 │       ├── corporate-actions/   # Módulo de ações corporativas (split, grupamento, bonificação, proventos e subscrições)

@@ -56,6 +56,13 @@ export default async function DashboardLayout({
                 >
                   Histórico
                 </a>
+                <a
+                  id="nav-link-plans"
+                  href="/plans"
+                  className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors px-3 py-1.5 rounded-lg hover:bg-surface-elevated"
+                >
+                  Planos
+                </a>
               </div>
             </div>
 

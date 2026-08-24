@@ -6,10 +6,11 @@ Implementar o modelo comercial de planos (Free e Pro), catálogo de entitlements
 
 ## Estado Atual da Fase
 
-> **Classificação:** **Parcialmente implementada e validada nos Pacotes 05.01 e 05.02.**
+> **Classificação:** **Parcialmente implementada e validada nos Pacotes 05.01, 05.02 e 05.03.**
 > - Pacote 05.01: Catálogo comercial (`commercial_plans`, `plan_entitlements`, `user_plans`), quotas por plano e congelamento em downgrade (`frozen`).
 > - Pacote 05.02: Estrutura de assinaturas (`billing_subscriptions`), eventos de pagamento (`payment_events`), idempotência estrita e adaptação agnóstica de gateways.
-> - Pacote 05.03 (Grupo Compartilhado — ADR-004) e Integração de Gateways Reais: Planejados para evolução futura.
+> - Pacote 05.03: Experiência comercial e gestão de planos com interface dedicada `/plans`, quotas em tempo real e transparência sem cobrança real.
+> - Pacote 05.04 (Grupo Compartilhado — ADR-004) e Integração de Gateways Reais: Planejados para evolução futura.
 
 *Nota de Desambiguação:* As tabelas `subscription_offers`, `subscription_rights` e `subscription_exercises` tratam exclusivamente de direitos societários de renda variável (subscrição de ações) e **não possuem relação com planos comerciais SaaS**. As assinaturas SaaS são gerenciadas em `billing_subscriptions` e `payment_events`.
 
@@ -52,7 +53,28 @@ Implementar o modelo comercial de planos (Free e Pro), catálogo de entitlements
 - [x] Zero chamadas externas de rede, sem SDKs de gateway instalados e sem rotas públicas de webhook ativo;
 - [x] 19 tabelas físicas validadas pelo Schema Guardian e testes unitários e de integração aprovados.
 
-## Pacote 05.03 — Grupo Compartilhado e Isolamento (ADR-004)
+## Pacote 05.03 — Experiência Comercial de Planos
+
+### Entregue e Homologado (`PASS`)
+
+- Página visual dedicada `/plans` com visão comparativa e transparente de recursos entre Free e Pro;
+- Indicador em tempo real de quotas (carteiras ativas, disponíveis e congeladas);
+- Status de assinatura descritivo com períodos de vigência e carência;
+- Alerta contextual destacado para carteiras congeladas após downgrade;
+- Botão de upgrade desabilitado com aviso explicativo informando que pagamentos automatizados estão em preparação;
+- Ausência total de formulários de pagamento, dados de cartão ou botões falsos de checkout;
+- Cobertura por testes unitários (`plans-view-ui.test.tsx`) e E2E no Playwright (`plans-view.spec.ts`).
+
+### Critérios de Aceite
+
+- [x] Página `/plans` acessível no dashboard e protegida por autenticação;
+- [x] Exibição fidedigna do plano Free e plano Pro com seus respectivos limites;
+- [x] Quota e status de faturamento consultados de forma segura a partir do servidor;
+- [x] Tratamento de estados `active`, `trialing`, `past_due`, `canceled` e `unpaid`;
+- [x] Nenhuma chamada a gateways externos ou endpoints de pagamento;
+- [x] Suíte completa de testes aprovada.
+
+## Pacote 05.04 — Grupo Compartilhado e Isolamento (ADR-004)
 
 ### Planejado
 
