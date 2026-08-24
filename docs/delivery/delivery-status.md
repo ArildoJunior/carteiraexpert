@@ -24,8 +24,9 @@ A fundação técnica, a camada de identidade, segurança, governança, o módul
   - **Pacote 04.01 — Split e Grupamento de Ativos:** Processamento determinístico de desdobramentos (`SPLIT`) e grupamentos (`GROUPING`), preservação do custo total de aquisição invariante, identificação de frações em `Decimal`, validação temporal e integração à interface e extrato.
   - **Pacote 04.02 — Bonificação, Dividendos e JCP:** Processamento de bonificação de ações (`BONUS_SHARE`) com custo atribuído opcional e recálculo de custo médio, proventos em dinheiro — dividendos isentos (`DIVIDEND`) e Juros sobre Capital Próprio (`JCP`) com retenção de 15% de IRRF —, exigência de Data de Pagamento (`settlementDate`), validação de custódia na Data-Com (`tradeDate`) e totalização em `totalIncomeReceived`.
   - **Pacote 04.03 — Subscrições e Direitos Societários:** Modelo relacional composto por 3 tabelas (`subscription_offers`, `subscription_rights`, `subscription_exercises`), controle de prazos e direitos por carteira, liquidação financeira com geração atômica de evento operacional `BUY` com chave `idempotencyKey`, 4 modais de UI e cobertura comprovada por testes unitários, integração e E2E (`e2e/subscription.spec.ts`).
-- **Fase 05 — Planos, Entitlements e Compartilhamento:** **PARCIALMENTE IMPLEMENTADA E VALIDADA**
+- **Fase 05 — Planos, Entitlements e Assinaturas:** **PARCIALMENTE IMPLEMENTADA E VALIDADA**
   - **Pacote 05.01 — Entitlements e Quotas por Plano:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Catálogo comercial com tabelas `commercial_plans`, `plan_entitlements` e `user_plans`, planos `free` (2 carteiras) e `pro` (10 carteiras) via migração `0007_add_commercial_plans_and_entitlements.sql`, fonte única de quota em `max_active_portfolios`, fallback sem efeitos colaterais em `getUserEffectivePlan`, bloqueio server-side via `assertCanCreatePortfolio` com lock concorrente `FOR UPDATE`, downgrade transacional com congelamento de excedentes em `frozen` e auditoria em `audit_logs`, bloqueio integral de mutações financeiras em carteiras congeladas via `assertPortfolioWritable`, permissão de soft delete para liberação voluntária de quota, badge visual e desabilitação na UI `/portfolios`, testes unitários, integração e E2E Playwright).
+  - **Pacote 05.02 — Estrutura de Assinaturas e Pagamentos:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Estrutura de assinaturas comerciais com tabelas `billing_subscriptions` e `payment_events` via migração `0008_add_billing_subscriptions_and_payment_events.sql`, máquina de estados de ciclo de vida de faturamento, idempotência estrita por `idempotency_key`, sincronização atômica transacional com `user_plans`, fallback automático para FREE com congelamento de carteiras excedentes em caso de inadimplência/cancelamento imediato, interface abstrata `PaymentGatewayAdapter`, adaptador `MockPaymentGatewayAdapter`, Server Action segura `getUserBillingSummaryAction` e painel informativo na UI `/portfolios`, testes unitários e de integração em PostgreSQL real).
 - **Fase 06 — Dados de Mercado e Gráficos:** **PARCIALMENTE IMPLEMENTADA** (Infraestrutura interna entregue: tabelas `market_quotes` e `exchange_rates`, adaptadores `ManualPayloadAdapter`, `MockProviderAdapter` e conector externo público `BrapiAdapter`, script CLI `scripts/ingest-market-data.ts`, serviço de ingestão `MarketDataIngestionService` com ranking de qualidade, motores de valuation, evolução temporal diária e gráficos Recharts; sincronização automática em background / cron jobs agendados e WebSockets permanecem planejados).
 - **Fase 07 — Importações Revisáveis:** **PLANEJADA, NÃO IMPLEMENTADA** (Upload, parsing de planilhas CSV/XLSX, extração assistida de notas em PDF e storage privado permanecem no roadmap).
 - **Fase 08 — Ativos Internacionais e Criptoativos:** **PARCIALMENTE IMPLEMENTADA** (Multi-moeda, `exchange_rates`, conversão cambial determinística no valuation e precisão `NUMERIC(28, 10)` para criptoativos entregues; swaps, exchanges via API e custódia on-chain permanecem planejados).
@@ -35,9 +36,9 @@ A fundação técnica, a camada de identidade, segurança, governança, o módul
 
 ---
 
-## Catálogo Físico de Tabelas Validadas no PostgreSQL (17 tabelas)
+## Catálogo Físico de Tabelas Validadas no PostgreSQL (19 tabelas)
 
-O banco de dados relacional oficial do CarteiraExpert é composto exatamente pelas seguintes 17 tabelas físicas:
+O banco de dados relacional oficial do CarteiraExpert é composto exatamente pelas seguintes 19 tabelas físicas:
 
 1. `audit_logs`: Trilha de auditoria e registro de alterações sensíveis;
 2. `users`: Contas de usuários autenticados;
@@ -55,7 +56,9 @@ O banco de dados relacional oficial do CarteiraExpert é composto exatamente pel
 14. `exchange_rates`: Histórico e taxas de conversão cambial UTC;
 15. `commercial_plans`: Catálogo de planos comerciais e quotas numéricas (`max_active_portfolios`);
 16. `plan_entitlements`: Chaves de autorização funcional (flags) por plano;
-17. `user_plans`: Associação vigente do usuário ao plano comercial com suporte a status (`active`, `past_due`, `cancelled`).
+17. `user_plans`: Associação vigente do usuário ao plano comercial com suporte a status (`active`, `past_due`, `cancelled`);
+18. `billing_subscriptions`: Ciclo de vida e estado contratual de assinaturas pagas com integridade relacional;
+19. `payment_events`: Registro auditável de eventos de pagamento com chave de idempotência única (`idempotency_key`).
 
 ---
 
@@ -63,7 +66,7 @@ O banco de dados relacional oficial do CarteiraExpert é composto exatamente pel
 
 Permanecem como regras de negócio aprovadas ou capacidades planejadas:
 
-- **Expansão de Planos:** Gateways de pagamento (Stripe/Asaas/MercadoPago), webhooks, cron jobs de expiração e grupos compartilhados com faturamento unificado (ADR-004);
+- **Expansão de Gateways e Pagamentos:** Conexão de gateways reais (Stripe/Asaas), webhooks ativos com verificação de assinatura criptográfica, rotinas em background de expiração e grupos compartilhados com faturamento unificado (ADR-004);
 - **Gestão de Caixa e Contas Bancárias:** Saldos em moeda, depósitos, saques, aportes em dinheiro e liquidação de caixa;
 - **Custódia Institucional:** Vinculação formal de corretoras, contas institucionais e custodiantes;
 - **Finalidades Formais de Carteira:** Atributo formal `purpose` (`REAL`, `ESTUDO`, `ANALISE`) e suporte a múltiplas carteiras `REAL`;
@@ -79,8 +82,8 @@ Permanecem como regras de negócio aprovadas ou capacidades planejadas:
 
 - [x] **Typecheck:** Arquitetura TypeScript em Strict Mode (`pnpm typecheck` aprovado com zero erros).
 - [x] **Lint:** Configuração Biome integrada para linting e formatação (`pnpm lint` aprovado com zero erros).
-- [x] **Testes Unitários:** Comprovados no repositório (**38 arquivos e 556 testes**, incluindo testes de schema e regras puras de planos em `plan-schema.test.ts` e `plan-service-pure.test.ts`).
-- [x] **Testes de Integração:** Comprovados no repositório (**23 arquivos e 242 testes** em PostgreSQL real, incluindo catálogo de planos, quotas, downgrade e bloqueio de carteiras congeladas em `plan-quotas-and-downgrades.test.ts`).
+- [x] **Testes Unitários:** Comprovados no repositório (**40 arquivos e 580 testes**, incluindo testes de schema e transições de billing em `billing-schema.test.ts` e `billing-transitions.test.ts`).
+- [x] **Testes de Integração:** Comprovados no repositório (**26 arquivos e 258 testes** em PostgreSQL real, incluindo serviço de billing, idempotência de eventos e fallback de planos em `billing-service.test.ts`, `payment-events-idempotency.test.ts` e `billing-plan-fallback.test.ts`).
 - [x] **Testes End-to-End (E2E):** Suítes Playwright estruturadas (**69 testes aprovados** cobrindo autenticação, consentimento LGPD, carteiras, quotas de planos e subscrições em Chromium, Firefox e WebKit).
-- [x] **Verificação Física do Schema:** 17 tabelas físicas catalogadas e validadas pelo Schema Guardian (incluindo migração `0007_add_commercial_plans_and_entitlements.sql`).
+- [x] **Verificação Física do Schema:** 19 tabelas físicas catalogadas e validadas pelo Schema Guardian (incluindo migração `0008_add_billing_subscriptions_and_payment_events.sql`).
 - [x] **Build de Produção:** Next.js 16 compilado com sucesso com 12 páginas estáticas/dinâmicas geradas.

@@ -59,7 +59,7 @@ Para garantir desempenho e evitar inconsistências, posições e métricas anal�
 
 ## 5. Estrutura Física do Banco de Dados
 
-O banco de dados relacional é composto exatamente por **14 tabelas físicas oficiais**:
+O banco de dados relacional é composto exatamente por **19 tabelas físicas oficiais**:
 1. `audit_logs`
 2. `users`
 3. `sessions`
@@ -74,3 +74,8 @@ O banco de dados relacional é composto exatamente por **14 tabelas físicas ofi
 12. `subscription_exercises`
 13. `market_quotes`
 14. `exchange_rates`
+15. `commercial_plans`
+16. `plan_entitlements`
+17. `user_plans`
+18. `billing_subscriptions`
+19. `payment_events`

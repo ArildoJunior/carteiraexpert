@@ -56,16 +56,34 @@ Este documento define os limites de responsabilidade, fronteiras arquiteturais e
   - *Integração Externa Real:* Não implementada ou não verificada (sem chamadas HTTP a provedores externos);
   - *Camada de Cache:* As consultas são atendidas diretamente pelo banco PostgreSQL; não há camada de cache externo Redis confirmada.
 
+### 1.5. `plans`
+- **Estado:** *Implementado e validado*.
+- **Código Principal:** `src/modules/plans/` e `src/lib/db/schema/plans.ts`.
+- **Responsabilidades:**
+  - Catálogo de planos comerciais e quotas de carteiras (`commercial_plans`);
+  - Entitlements por feature (`plan_entitlements`);
+  - Associação e vigência por usuário (`user_plans`);
+  - Resolução de plano efetivo e quotas (`getUserEffectivePlan`, `getPlanQuotaSummary`);
+  - Enforcement server-side de limites (`assertCanCreatePortfolio`);
+  - Downgrade transacional com congelamento de carteiras excedentes (`applyPlanDowngradeInTransaction`).
+
+### 1.6. `billing`
+- **Estado:** *Implementado e validado como estrutura interna*.
+- **Código Principal:** `src/modules/billing/` e `src/lib/db/schema/billing.ts`.
+- **Responsabilidades:**
+  - Ciclo de vida e estados de assinaturas pagas (`billing_subscriptions`);
+  - Registro e processamento idempotente de eventos de pagamento (`payment_events`);
+  - Sincronização atômica com `user_plans` e acionamento de downgrade/congelamento em caso de inadimplência (`unpaid`);
+  - Contrato abstrato e agnóstico de provedores (`PaymentGatewayAdapter`) e mock para testes (`MockPaymentGatewayAdapter`);
+  - Consulta segura de resumo de faturamento (`getUserBillingSummaryAction`).
+- **Limitações:**
+  - Não faz chamadas de rede externas, não integra SDKs de terceiros (Stripe, Asaas) e não expõe webhooks ativos no momento.
+
 ## 2. Módulos Planejados (Sem Implementação Efetiva)
 
 Os módulos abaixo possuem diretórios estruturais reservados em `src/modules/`, mas encontram-se sem código ou tabelas ativas no estado atual:
 
-### 2.1. `subscriptions` (Planos e Assinaturas SaaS)
-- **Estado:** *Planejado, não implementado*.
-- **Escopo Previsto:** Gestão de planos comerciais (Free, planos superiores, plano compartilhado), controle de faturamento/assinaturas, atribuição de entitlements técnicos e gestão de convites do grupo compartilhado.
-- **Ressalva:** A tabela `subscription_offers`/`subscription_rights` existente no banco refere-se a subscrição de ativos societários, não a assinaturas comerciais de software.
-
-### 2.2. `imports` (Importações e Documentos)
+### 2.1. `imports` (Importações e Documentos)
 - **Estado:** *Planejado, não implementado*.
 - **Escopo Previsto:** Upload de extratos (CSV, XLSX) e notas de corretagem em PDF, processamento assíncrono de arquivos, tela de conferência/revisão antes da efetivação e rastreamento de documentos de origem.
 

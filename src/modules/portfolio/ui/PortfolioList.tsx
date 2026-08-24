@@ -4,15 +4,17 @@ import { useState } from 'react';
 import Link from 'next/link';
 import type { Portfolio } from '../domain/portfolio.types';
 import type { PlanQuotaSummary } from '@/modules/plans/domain/plan.types';
+import type { UserBillingSummary } from '@/modules/billing/domain/billing.types';
 import { PortfolioModal } from './PortfolioModal';
 import { useRouter } from 'next/navigation';
 
 interface PortfolioListProps {
   portfolios: Portfolio[];
   quotaSummary?: PlanQuotaSummary;
+  billingSummary?: UserBillingSummary;
 }
 
-export function PortfolioList({ portfolios, quotaSummary }: PortfolioListProps) {
+export function PortfolioList({ portfolios, quotaSummary, billingSummary }: PortfolioListProps) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const router = useRouter();
 
@@ -56,6 +58,33 @@ export function PortfolioList({ portfolios, quotaSummary }: PortfolioListProps) 
           <span>+</span> Nova Carteira
         </button>
       </div>
+
+      {/* Seção Informativa de Plano e Assinatura */}
+      {billingSummary && (
+        <div
+          id="billing-summary-card"
+          className="bg-surface border border-border-theme rounded-xl p-4 text-xs text-text-secondary flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm"
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="text-base">💳</span>
+            <div>
+              <span className="font-medium text-text-primary">
+                Plano Atual: <strong className="text-action-primary font-semibold">{billingSummary.effectivePlanName}</strong>
+              </span>
+              {billingSummary.hasSubscription && billingSummary.subscription && (
+                <span className="ml-2 font-mono text-[11px] px-2 py-0.5 rounded bg-surface-elevated border border-border-theme">
+                  Status: {billingSummary.status === 'active' ? 'Ativa' : billingSummary.status === 'past_due' ? 'Em atraso' : billingSummary.status}
+                  {billingSummary.subscription.billingCycle && ` • ${billingSummary.subscription.billingCycle === 'monthly' ? 'Mensal' : 'Anual'}`}
+                </span>
+              )}
+              <p className="text-[11px] text-text-secondary/80 mt-0.5">
+                Estrutura de assinaturas comerciais gerenciada internamente. Integração de pagamentos com cartão/Pix em desenvolvimento.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* Grid of portfolios */}
       {portfolios.length === 0 ? (

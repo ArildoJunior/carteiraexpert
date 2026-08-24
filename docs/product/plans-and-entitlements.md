@@ -15,7 +15,7 @@ As regras abaixo representam decisões de produto aprovadas. O enforcement técn
 
 O Plano Free oferece a experiência central de gestão e controle patrimonial com limites adequados ao uso individual:
 
-- **Limite de Carteiras:** até **2 carteiras ativas** no total (combinação livre entre carteiras `REAL`, `ESTUDO` e `ANALISE`). *Regra de produto aprovada. O enforcement técnico do limite ainda não está implementado no código atual.*
+- **Limite de Carteiras:** até **2 carteiras ativas** no total (combinação livre entre carteiras `REAL`, `ESTUDO` e `ANALISE`). *Implementado e validado no código com enforcement server-side via assertCanCreatePortfolio.*
 - **Lançamentos e Operações:** registro manual de compras, vendas e taxas operacionais (*Implementado e validado no código*).
 - **Gestão Patrimonial:** cálculo determinístico de posição, custo médio ponderado e PnL realizado (*Implementado e validado no código*).
 - **Eventos Corporativos e Subscrições:** processamento de splits, grupamentos, bonificações, proventos em dinheiro (dividendos e JCP) e subscrições (*Implementado e validado no código*).
@@ -25,13 +25,14 @@ O Plano Free oferece a experiência central de gestão e controle patrimonial co
 - **Dados de Mercado:** cotações e taxas de câmbio servidas pelo banco interno a partir de ingestão com defasagem informada (*Implementado e validado no código*).
 - **Visualização Gráfica:** gráficos de alocação e evolução temporal por carteira em `/portfolios/[id]` (*Implementado e validado no código*).
 - **Apoio Tributário:** base factual parcialmente disponível por meio de PnL realizado, eventos de proventos e dados operacionais. Relatórios tributários específicos e exportações fiscais estruturadas são planejados ou ainda estão pendentes (*Parcialmente implementado*).
-- **Governança:** preservação total de dados e regras de congelamento seguro em caso de downgrade (*Regra de produto aprovada, implementação pendente*).
+- **Governança:** preservação total de dados e regras de congelamento seguro em caso de downgrade (*Implementado e validado no código*).
 
 ## 3. Planos Superiores ao Free
 
 Os planos superiores ao Free ampliam a capacidade analítica e operacional da plataforma:
 
-- **Limite de Carteiras:** até **10 carteiras ativas** no total (combinação livre entre carteiras `REAL`, `ESTUDO` e `ANALISE`). *Regra de produto aprovada. O enforcement técnico e comercial ainda não está implementado.*
+- **Limite de Carteiras:** até **10 carteiras ativas** no total (combinação livre entre carteiras `REAL`, `ESTUDO` e `ANALISE`). *Implementado e validado no código para o plano Pro via commercial_plans e user_plans.*
+- **Estrutura de Assinaturas e Eventos:** ciclo de vida em `billing_subscriptions`, eventos em `payment_events` com idempotência estrita e adaptação agnóstica de gateways (*Implementado e validado no código*).
 - **Comparação entre Carteiras:** ferramenta analítica para comparação explícita de métricas entre carteiras (*Planejado, não implementado*).
 - **Importações Avançadas:** processamento de planilhas e importação assistida de notas de corretagem em PDF com tela de conferência (*Planejado, não implementado*).
 - **Projeções e Simulações:** modelagem de cenários hipotéticos sem afetar a carteira real (*Planejado, não implementado*).
@@ -62,7 +63,7 @@ Caso uma assinatura paga expire, seja cancelada ou o usuário deixe um grupo com
    - Carteiras congeladas não participam do contexto operacional ativo nem de novos cálculos de evolução.
 5. **Reativação:** carteiras congeladas poderão ser reativadas caso o usuário assine novamente um plano superior ou após a desativação ou remoção lógica explicitamente confirmada pelo usuário, observadas as regras de retenção histórica.
 6. **Formulação Resumida:** *"Free: até 2 carteiras ativas. Carteiras excedentes: preservadas, congeladas e somente leitura."*
-7. **Estado da Implementação:** essas regras estão aprovadas no produto, mas a infraestrutura de planos, downgrade, congelamento e reativação ainda não está implementada no código atual (*Regra de produto aprovada, implementação pendente*).
+7. **Estado da Implementação:** *Implementado e validado no código através do serviço applyPlanDowngradeInTransaction e sincronização de assinaturas unpaid/canceled.*
 
 ## 6. Regra Permanente de Segurança e Privacidade
 

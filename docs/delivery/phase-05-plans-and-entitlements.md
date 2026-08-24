@@ -1,34 +1,58 @@
-# Fase 05 — Planos, Entitlements e Compartilhamento
+# Fase 05 — Planos, Entitlements e Assinaturas
 
 ## Objetivo
 
-Implementar o modelo comercial de planos (Free e superiores), catálogo de entitlements técnicos e gestão de grupos compartilhados com preservação do isolamento estrito de dados financeiros.
+Implementar o modelo comercial de planos (Free e Pro), catálogo de entitlements técnicos, estrutura de assinaturas e ciclo de vida de faturamento, e gestão de grupos compartilhados com preservação do isolamento estrito de dados financeiros.
 
 ## Estado Atual da Fase
 
-> **Classificação:** **Planejada, não implementada.**  
-> O diretório `src/modules/subscriptions/` encontra-se atualmente vazio. Não existem no banco de dados tabelas de planos comerciais, assinaturas SaaS, entitlements ou gateways de pagamento integrados.
+> **Classificação:** **Parcialmente implementada e validada nos Pacotes 05.01 e 05.02.**
+> - Pacote 05.01: Catálogo comercial (`commercial_plans`, `plan_entitlements`, `user_plans`), quotas por plano e congelamento em downgrade (`frozen`).
+> - Pacote 05.02: Estrutura de assinaturas (`billing_subscriptions`), eventos de pagamento (`payment_events`), idempotência estrita e adaptação agnóstica de gateways.
+> - Pacote 05.03 (Grupo Compartilhado — ADR-004) e Integração de Gateways Reais: Planejados para evolução futura.
 
-*Nota de Desambiguação:* As tabelas existentes `subscription_offers`, `subscription_rights` e `subscription_exercises` tratam exclusivamente de direitos societários de renda variável (subscrição de ações) e **não possuem relação com planos comerciais SaaS**.
+*Nota de Desambiguação:* As tabelas `subscription_offers`, `subscription_rights` e `subscription_exercises` tratam exclusivamente de direitos societários de renda variável (subscrição de ações) e **não possuem relação com planos comerciais SaaS**. As assinaturas SaaS são gerenciadas em `billing_subscriptions` e `payment_events`.
 
 ## Pacote 05.01 — Entitlements e Quotas por Plano
 
-### Planejado
+### Entregue e Homologado (`PASS`)
 
-- Catálogo de recursos e entitlements técnicos;
-- Plano Free (limite de 2 carteiras ativas) e planos superiores (até 10 carteiras);
-- Middleware no servidor para validação de entitlements e limites;
-- Regras de downgrade com preservação de dados e congelamento de carteiras excedentes (`status = 'frozen'`).
+- Catálogo de recursos e entitlements técnicos (`commercial_plans`, `plan_entitlements`, `user_plans`);
+- Plano Free (limite de 2 carteiras ativas) e plano Pro (até 10 carteiras ativas);
+- Enforcement server-side via `assertCanCreatePortfolio` com lock pessimista (`FOR UPDATE`);
+- Regras de downgrade com preservação total de dados e congelamento de carteiras excedentes (`status = 'frozen'`);
+- Bloqueio estrito de escrita em carteiras congeladas via `assertPortfolioWritable`.
 
-### Critérios de Aceite (Não Concluídos)
+### Critérios de Aceite
 
-- [ ] Usuário Free acessa exclusivamente recursos autorizados para seu plano;
-- [ ] Usuário de plano superior tem acesso aos recursos expandidos;
-- [ ] Downgrade preserva integralmente os dados financeiros do usuário, sem exclusões automáticas;
-- [ ] Carteiras excedentes em downgrade entram no estado `frozen` (apenas leitura);
-- [ ] Testes de validação de permissões e quotas por plano implementados.
+- [x] Usuário Free acessa exclusivamente recursos autorizados para seu plano (máximo 2 carteiras ativas);
+- [x] Usuário de plano Pro tem acesso aos recursos expandidos (até 10 carteiras ativas);
+- [x] Downgrade preserva integralmente os dados financeiros do usuário, sem exclusões automáticas;
+- [x] Carteiras excedentes em downgrade entram no estado `frozen` (apenas leitura);
+- [x] Testes de validação de permissões e quotas por plano implementados e aprovados (unitários, integração e E2E).
 
-## Pacote 05.02 — Grupo Compartilhado e Isolamento (ADR-004)
+## Pacote 05.02 — Estrutura de Assinaturas e Pagamentos
+
+### Entregue e Homologado (`PASS`)
+
+- Tabelas relacionais `billing_subscriptions` e `payment_events` com migração `0008`;
+- Máquina de estados de assinatura: `incomplete`, `trialing`, `active`, `past_due`, `canceled`, `unpaid`;
+- Idempotência estrita em eventos de pagamento via `idempotency_key` único;
+- Sincronização atômica e transacional com `user_plans`;
+- Fallback automático para o plano Free e congelamento de excedentes em inadimplência (`unpaid`);
+- Interface agnóstica `PaymentGatewayAdapter` e adaptador `MockPaymentGatewayAdapter` para testes sem chamadas de rede;
+- Server Action segura `getUserBillingSummaryAction` e seção informativa em `/portfolios`.
+
+### Critérios de Aceite
+
+- [x] Criação, atualização e cancelamento de assinaturas com validação Zod e auditoria;
+- [x] Cancelamento com `cancelAtPeriodEnd = true` mantém benefícios até o término do ciclo contratado;
+- [x] Inadimplência (`unpaid`) e cancelamento imediato rebaixam para Free e acionam congelamento transacional;
+- [x] Processamento de eventos de pagamento idempotente por chave única sem duplicações;
+- [x] Zero chamadas externas de rede, sem SDKs de gateway instalados e sem rotas públicas de webhook ativo;
+- [x] 19 tabelas físicas validadas pelo Schema Guardian e testes unitários e de integração aprovados.
+
+## Pacote 05.03 — Grupo Compartilhado e Isolamento (ADR-004)
 
 ### Planejado
 
@@ -42,7 +66,7 @@ Implementar o modelo comercial de planos (Free e superiores), catálogo de entit
 - Carteira compartilhada ou cotitularidade de patrimônio;
 - Consolidação automática de investimentos entre membros familiares.
 
-### Critérios de Aceite (Não Concluídos)
+### Critérios de Aceite (Pendentes)
 
 - [ ] Titular gerencia convites e composição do grupo;
 - [ ] Membros recebem entitlements sem acesso aos dados financeiros do titular;

@@ -4,3 +4,4 @@ export * from './portfolio';
 export * from './subscription';
 export * from './market-data';
 export * from './plans';
+export * from './billing';

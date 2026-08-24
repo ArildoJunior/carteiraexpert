@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/modules/identity/server/current-user';
 import { listPortfolios } from '@/modules/portfolio/server/portfolio.service';
 import { getPlanQuotaSummary } from '@/modules/plans/server/plan.service';
+import { getUserBillingSummary } from '@/modules/billing/server/billing.service';
 import { PortfolioList } from '@/modules/portfolio/ui/PortfolioList';
 
 export const metadata: Metadata = {
@@ -14,14 +15,19 @@ export default async function PortfoliosPage() {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  const [portfolios, quotaSummary] = await Promise.all([
+  const [portfolios, quotaSummary, billingSummary] = await Promise.all([
     listPortfolios(user),
     getPlanQuotaSummary(user.id),
+    getUserBillingSummary(user.id),
   ]);
 
   return (
     <div className="space-y-6">
-      <PortfolioList portfolios={portfolios} quotaSummary={quotaSummary} />
+      <PortfolioList
+        portfolios={portfolios}
+        quotaSummary={quotaSummary}
+        billingSummary={billingSummary}
+      />
     </div>
   );
 }
