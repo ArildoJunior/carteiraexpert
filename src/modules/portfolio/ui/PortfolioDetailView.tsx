@@ -6,6 +6,7 @@ import type { PortfolioEvent } from '../domain/portfolio-event.types';
 import type { Asset } from '../domain/asset.types';
 import type { SerializedPortfolioPositionsSummary } from '../domain/position.types';
 import type { SerializedPortfolioEvolutionSummary } from '../domain/portfolio-evolution.types';
+import type { UserChartPreferencesMap } from '../domain/chart-preferences.types';
 import type {
   SubscriptionRightWithOfferAndAssets,
   SubscriptionOfferWithAssets,
@@ -28,6 +29,7 @@ interface PortfolioDetailViewProps {
   evolutionSummary?: SerializedPortfolioEvolutionSummary;
   subscriptions?: SubscriptionRightWithOfferAndAssets[];
   availableOffers?: SubscriptionOfferWithAssets[];
+  chartPreferences?: UserChartPreferencesMap;
 }
 
 export function PortfolioDetailView({
@@ -38,6 +40,7 @@ export function PortfolioDetailView({
   evolutionSummary,
   subscriptions = [],
   availableOffers = [],
+  chartPreferences,
 }: PortfolioDetailViewProps) {
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
   const [eventToCancel, setEventToCancel] = useState<PortfolioEvent | null>(null);
@@ -59,8 +62,11 @@ export function PortfolioDetailView({
       />
 
       {/* 3. Bloco de Gráficos de Evolução Patrimonial Histórica */}
-      {evolutionSummary && (positionsSummary.positions.length > 0 || events.length > 0) && (
-        <PortfolioEvolutionChart initialSummary={evolutionSummary} />
+      {evolutionSummary && (
+        <PortfolioEvolutionChart
+          initialSummary={evolutionSummary}
+          initialPreference={chartPreferences?.portfolio_evolution}
+        />
       )}
 
       {/* 4. Bloco de Gráficos de Alocação e Composição Patrimonial */}
@@ -68,6 +74,7 @@ export function PortfolioDetailView({
         <PortfolioAllocationCharts
           positions={positionsSummary.positions}
           baseCurrency={portfolio.baseCurrency}
+          initialPreference={chartPreferences?.portfolio_allocation}
         />
       )}
 

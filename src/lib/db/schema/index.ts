@@ -6,3 +6,4 @@ export * from './market-data';
 export * from './plans';
 export * from './billing';
 export * from './groups';
+export * from './chart-preferences';

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { getCurrentUser } from '@/modules/identity/server/current-user';
 import { getSerializedUserDashboardData } from '@/modules/portfolio/server/dashboard.service';
+import { getUserChartPreferences } from '@/modules/portfolio/server/chart-preferences.service';
 import { DashboardMetricsCards } from '@/modules/portfolio/ui/DashboardMetricsCards';
 import { DashboardAllocationCharts } from '@/modules/portfolio/ui/DashboardAllocationCharts';
 import { RecentActivityFeed } from '@/modules/portfolio/ui/RecentActivityFeed';
@@ -29,7 +30,10 @@ export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  const data = await getSerializedUserDashboardData(user);
+  const [data, chartPreferences] = await Promise.all([
+    getSerializedUserDashboardData(user),
+    getUserChartPreferences(user),
+  ]);
 
   return (
     <div className="space-y-8 text-text-primary" id="dashboard-page-container">
@@ -63,6 +67,7 @@ export default async function DashboardPage() {
       {data.totalActivePositions > 0 && (
         <DashboardAllocationCharts
           portfolioSummaries={data.portfolioSummaries}
+          initialPreference={chartPreferences.dashboard_allocation}
         />
       )}
 

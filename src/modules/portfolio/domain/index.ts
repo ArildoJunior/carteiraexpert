@@ -10,6 +10,8 @@ export * from './dashboard.types';
 export * from './dashboard.schema';
 export * from './chart.types';
 export * from './chart-engine';
+export * from './chart-preferences.types';
+export * from './chart-preferences.schema';
 export * from './portfolio-evolution.types';
 export * from './portfolio-evolution.schema';
 export * from './portfolio-evolution-engine';

@@ -14,6 +14,8 @@ import {
   createBonusEventAction,
   createIncomeEventAction,
   cancelPortfolioEventAction,
+  saveChartPreferenceAction,
+  getUserChartPreferencesAction,
 } from '../../../src/modules/portfolio/server/portfolio.actions';
 import type { SafeUser } from '../../../src/modules/identity/domain/user.types';
 import { inArray, eq } from 'drizzle-orm';
@@ -462,6 +464,54 @@ describe('Integração: Portfolio Server Actions e Isolamento Multiusuário', ()
       if (jcpRes.data?.id) {
         createdEventIds.push(jcpRes.data.id);
       }
+    });
+  });
+
+  // ─── 5. PREFERÊNCIAS DE GRÁFICOS (SERVER ACTIONS) ──────────────────────────
+  describe('5. Preferências de Gráficos (Server Actions)', () => {
+    it('deve rejeitar chamadas não autenticadas', async () => {
+      activeUser = null;
+
+      const saveRes = await saveChartPreferenceAction({
+        chartArea: 'portfolio_evolution',
+        period: '1M',
+        viewMode: 'market_value',
+      });
+      expect(saveRes.success).toBe(false);
+      expect(saveRes.error).toContain('Sessão expirada ou usuário não autenticado');
+
+      const getRes = await getUserChartPreferencesAction();
+      expect(getRes.success).toBe(false);
+      expect(getRes.error).toContain('Sessão expirada ou usuário não autenticado');
+    });
+
+    it('deve salvar e recuperar preferências derivando o usuário exclusivamente da sessão autenticada', async () => {
+      activeUser = user1;
+
+      // Tentar enviar userId malicioso no payload não deve afetar a persistência
+      const saveRes = await saveChartPreferenceAction({
+        chartArea: 'portfolio_evolution',
+        period: '3M',
+        viewMode: 'cost_basis',
+        userId: user2Id, // Deve ser ignorado pelo schema e pelo servidor
+      });
+
+      expect(saveRes.success).toBe(true);
+      expect(saveRes.data?.chartArea).toBe('portfolio_evolution');
+      expect(saveRes.data?.period).toBe('3M');
+      expect(saveRes.data?.viewMode).toBe('cost_basis');
+
+      // Recupera preferências do user1
+      const getRes = await getUserChartPreferencesAction();
+      expect(getRes.success).toBe(true);
+      expect(getRes.data?.portfolio_evolution?.period).toBe('3M');
+      expect(getRes.data?.portfolio_evolution?.viewMode).toBe('cost_basis');
+
+      // Troca para user2 e verifica que ele não possui a preferência do user1
+      activeUser = user2;
+      const getResUser2 = await getUserChartPreferencesAction();
+      expect(getResUser2.success).toBe(true);
+      expect(getResUser2.data?.portfolio_evolution).toBeUndefined();
     });
   });
 });

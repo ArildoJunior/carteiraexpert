@@ -671,6 +671,30 @@ export const EXPECTED_SCHEMA_MATRIX: Record<string, ExpectedTable> = {
       { name: 'updated_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: false, hasDefault: true },
     ],
   },
+  user_chart_preferences: {
+    name: 'user_chart_preferences',
+    primaryKey: 'id',
+    uniqueConstraints: ['uq_user_chart_preferences_user_area'],
+    foreignKeys: [
+      {
+        column: 'user_id',
+        foreignTable: 'users',
+        foreignColumn: 'id',
+        deleteRule: 'CASCADE',
+      },
+    ],
+    columns: [
+      { name: 'id', type: 'uuid', isNullable: false },
+      { name: 'user_id', type: 'uuid', isNullable: false },
+      { name: 'chart_area', type: 'text', isNullable: false },
+      { name: 'period', type: 'text', isNullable: true },
+      { name: 'view_mode', type: 'text', isNullable: true },
+      { name: 'grouping_type', type: 'text', isNullable: true },
+      { name: 'basis', type: 'text', isNullable: true },
+      { name: 'created_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: false, hasDefault: true },
+      { name: 'updated_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: false, hasDefault: true },
+    ],
+  },
 };
 
 /**

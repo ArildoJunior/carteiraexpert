@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import {
   ResponsiveContainer,
   PieChart,
@@ -10,12 +10,15 @@ import {
 } from 'recharts';
 import type { SerializedAssetPosition } from '../domain/position.types';
 import type { AllocationBasis, ChartGroupingType } from '../domain/chart.types';
+import type { SerializedUserChartPreference } from '../domain/chart-preferences.types';
 import { calculatePortfolioAllocation } from '../domain/chart-engine';
+import { useChartPreferenceSync } from './useChartPreferenceSync';
 import { useTheme } from '@/lib/theme/ThemeContext';
 
 interface PortfolioAllocationChartsProps {
   positions: SerializedAssetPosition[];
   baseCurrency?: string;
+  initialPreference?: SerializedUserChartPreference;
 }
 
 interface CustomTooltipProps {
@@ -68,19 +71,83 @@ function ChartCustomTooltip({ active, payload }: CustomTooltipProps) {
   );
 }
 
+export interface PortfolioAllocationPreferenceSnapshot {
+  chartArea: 'portfolio_allocation';
+  groupingType: ChartGroupingType;
+  basis: AllocationBasis;
+}
+
 export function PortfolioAllocationCharts({
   positions,
   baseCurrency = 'BRL',
+  initialPreference,
 }: PortfolioAllocationChartsProps) {
   const { tokens } = useTheme();
-  const [basis, setBasis] = useState<AllocationBasis>('market_value');
-  const [groupingType, setGroupingType] = useState<ChartGroupingType>('asset');
+  const initialGrouping = (initialPreference?.groupingType as ChartGroupingType) || 'asset';
+  const initialBasis = initialPreference?.basis || 'market_value';
+
+  const [basis, setBasis] = useState<AllocationBasis>(initialBasis);
+  const [groupingType, setGroupingType] = useState<ChartGroupingType>(initialGrouping);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [isMounted, setIsMounted] = useState(false);
+  const { syncPreference, syncStatus } = useChartPreferenceSync();
+
+  const preferenceRef = useRef<PortfolioAllocationPreferenceSnapshot>({
+    chartArea: 'portfolio_allocation',
+    groupingType: initialGrouping,
+    basis: initialBasis,
+  });
+  const hasLocalPreferenceChangeRef = useRef(false);
+  const lastPropPreferenceRef = useRef(initialPreference);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (initialPreference !== lastPropPreferenceRef.current) {
+      lastPropPreferenceRef.current = initialPreference;
+      if (!hasLocalPreferenceChangeRef.current && initialPreference) {
+        const g = (initialPreference.groupingType as ChartGroupingType) || 'asset';
+        const b = initialPreference.basis || 'market_value';
+        preferenceRef.current = {
+          chartArea: 'portfolio_allocation',
+          groupingType: g,
+          basis: b,
+        };
+        setGroupingType(g);
+        setBasis(b);
+      }
+    }
+  }, [initialPreference]);
+
+  const applyPreferenceChange = (
+    change: Partial<Omit<PortfolioAllocationPreferenceSnapshot, 'chartArea'>>
+  ) => {
+    hasLocalPreferenceChangeRef.current = true;
+    const next: PortfolioAllocationPreferenceSnapshot = {
+      ...preferenceRef.current,
+      ...change,
+    };
+    preferenceRef.current = next;
+
+    if (change.groupingType !== undefined) {
+      setGroupingType(next.groupingType);
+    }
+    if (change.basis !== undefined) {
+      setBasis(next.basis);
+    }
+
+    syncPreference(next);
+  };
+
+  const handleGroupingChange = (type: ChartGroupingType) => {
+    applyPreferenceChange({ groupingType: type });
+  };
+
+  const handleBasisChange = (b: AllocationBasis) => {
+    applyPreferenceChange({ basis: b });
+  };
 
   // Calcula a alocação de forma determinística (100% Decimal no domínio)
   const chartData = useMemo(() => {
@@ -108,6 +175,7 @@ export function PortfolioAllocationCharts({
   return (
     <div
       id="portfolio-allocation-charts-container"
+      data-sync-status={syncStatus}
       className="bg-surface border border-border-theme rounded-2xl p-5 sm:p-6 shadow-sm space-y-6 text-text-primary"
     >
       {/* ─── Header do Gráfico ────────────────────────────────────────────── */}
@@ -136,7 +204,7 @@ export function PortfolioAllocationCharts({
               id="chart-grouping-tab-asset"
               type="button"
               aria-pressed={groupingType === 'asset'}
-              onClick={() => setGroupingType('asset')}
+              onClick={() => handleGroupingChange('asset')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
                 groupingType === 'asset'
                   ? 'bg-action-primary text-action-primary-text shadow-sm'
@@ -149,7 +217,7 @@ export function PortfolioAllocationCharts({
               id="chart-grouping-tab-asset_type"
               type="button"
               aria-pressed={groupingType === 'asset_type'}
-              onClick={() => setGroupingType('asset_type')}
+              onClick={() => handleGroupingChange('asset_type')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
                 groupingType === 'asset_type'
                   ? 'bg-action-primary text-action-primary-text shadow-sm'
@@ -162,7 +230,7 @@ export function PortfolioAllocationCharts({
               id="chart-grouping-tab-currency"
               type="button"
               aria-pressed={groupingType === 'currency'}
-              onClick={() => setGroupingType('currency')}
+              onClick={() => handleGroupingChange('currency')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
                 groupingType === 'currency'
                   ? 'bg-action-primary text-action-primary-text shadow-sm'
@@ -179,7 +247,7 @@ export function PortfolioAllocationCharts({
               id="chart-basis-market_value"
               type="button"
               aria-pressed={basis === 'market_value'}
-              onClick={() => setBasis('market_value')}
+              onClick={() => handleBasisChange('market_value')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
                 basis === 'market_value'
                   ? 'bg-action-primary text-action-primary-text shadow-sm'
@@ -192,7 +260,7 @@ export function PortfolioAllocationCharts({
               id="chart-basis-cost_basis"
               type="button"
               aria-pressed={basis === 'cost_basis'}
-              onClick={() => setBasis('cost_basis')}
+              onClick={() => handleBasisChange('cost_basis')}
               className={`px-3 py-1.5 rounded-lg transition-all ${
                 basis === 'cost_basis'
                   ? 'bg-action-primary text-action-primary-text shadow-sm'
@@ -223,7 +291,7 @@ export function PortfolioAllocationCharts({
           </div>
           <button
             type="button"
-            onClick={() => setBasis('cost_basis')}
+            onClick={() => handleBasisChange('cost_basis')}
             className="text-amber-700 dark:text-amber-200 underline font-semibold hover:opacity-80 shrink-0 self-start sm:self-auto"
           >
             Ver por Custo de Aquisição →
@@ -249,7 +317,7 @@ export function PortfolioAllocationCharts({
           <button
             id="chart-switch-to-cost-btn"
             type="button"
-            onClick={() => setBasis('cost_basis')}
+            onClick={() => handleBasisChange('cost_basis')}
             className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-action-primary-text bg-action-primary hover:opacity-90 rounded-xl transition-all shadow-sm"
           >
             Visualizar por Custo de Aquisição

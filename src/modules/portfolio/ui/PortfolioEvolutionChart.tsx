@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -17,11 +17,16 @@ import type {
   EvolutionPeriod,
   EvolutionViewMode,
 } from '../domain/portfolio-evolution.types';
-import { getPortfolioEvolutionAction } from '../server/portfolio.actions';
+import type { SerializedUserChartPreference } from '../domain/chart-preferences.types';
+import {
+  getPortfolioEvolutionAction,
+} from '../server/portfolio.actions';
+import { useChartPreferenceSync } from './useChartPreferenceSync';
 import { useTheme } from '@/lib/theme';
 
 interface PortfolioEvolutionChartProps {
   initialSummary: SerializedPortfolioEvolutionSummary;
+  initialPreference?: SerializedUserChartPreference;
   onPeriodChange?: (period: EvolutionPeriod) => void;
   isLoading?: boolean;
 }
@@ -143,19 +148,36 @@ function EvolutionCustomTooltip({ active, payload }: CustomTooltipProps) {
   );
 }
 
+export interface PortfolioEvolutionPreferenceSnapshot {
+  chartArea: 'portfolio_evolution';
+  period: EvolutionPeriod;
+  viewMode: EvolutionViewMode;
+}
+
 export function PortfolioEvolutionChart({
   initialSummary,
+  initialPreference,
   onPeriodChange,
   isLoading: externalLoading = false,
 }: PortfolioEvolutionChartProps) {
   const { tokens } = useTheme();
+  const initialPeriod = initialPreference?.period || initialSummary.period || 'YTD';
+  const initialViewMode = initialPreference?.viewMode || 'comparison';
+
   const [summary, setSummary] = useState<SerializedPortfolioEvolutionSummary>(initialSummary);
-  const [selectedPeriod, setSelectedPeriod] = useState<EvolutionPeriod>(
-    initialSummary.period || 'YTD'
-  );
-  const [viewMode, setViewMode] = useState<EvolutionViewMode>('comparison');
+  const [selectedPeriod, setSelectedPeriod] = useState<EvolutionPeriod>(initialPeriod);
+  const [viewMode, setViewMode] = useState<EvolutionViewMode>(initialViewMode);
   const [isMounted, setIsMounted] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
+  const { syncPreference, syncStatus } = useChartPreferenceSync();
+
+  const preferenceRef = useRef<PortfolioEvolutionPreferenceSnapshot>({
+    chartArea: 'portfolio_evolution',
+    period: initialPeriod,
+    viewMode: initialViewMode,
+  });
+  const hasLocalPreferenceChangeRef = useRef(false);
+  const lastPropPreferenceRef = useRef(initialPreference);
 
   useEffect(() => {
     setIsMounted(true);
@@ -163,14 +185,50 @@ export function PortfolioEvolutionChart({
 
   useEffect(() => {
     setSummary(initialSummary);
-    if (initialSummary.period) {
-      setSelectedPeriod(initialSummary.period);
-    }
   }, [initialSummary]);
 
+  useEffect(() => {
+    if (initialPreference !== lastPropPreferenceRef.current) {
+      lastPropPreferenceRef.current = initialPreference;
+      if (!hasLocalPreferenceChangeRef.current && initialPreference) {
+        const p = initialPreference.period || initialSummary.period || 'YTD';
+        const v = initialPreference.viewMode || 'comparison';
+        preferenceRef.current = {
+          chartArea: 'portfolio_evolution',
+          period: p,
+          viewMode: v,
+        };
+        setSelectedPeriod(p);
+        setViewMode(v);
+      }
+    }
+  }, [initialPreference]);
+
+  const applyPreferenceChange = (
+    change: Partial<Omit<PortfolioEvolutionPreferenceSnapshot, 'chartArea'>>
+  ) => {
+    hasLocalPreferenceChangeRef.current = true;
+    const next: PortfolioEvolutionPreferenceSnapshot = {
+      ...preferenceRef.current,
+      ...change,
+    };
+    preferenceRef.current = next;
+
+    if (change.period !== undefined) {
+      setSelectedPeriod(next.period);
+    }
+    if (change.viewMode !== undefined) {
+      setViewMode(next.viewMode);
+    }
+
+    syncPreference(next);
+  };
+
   const handlePeriodClick = async (p: EvolutionPeriod) => {
-    if (p === selectedPeriod && summary.period === p) return;
-    setSelectedPeriod(p);
+    if (p === preferenceRef.current.period && summary.period === p) return;
+
+    applyPreferenceChange({ period: p });
+
     if (onPeriodChange) {
       onPeriodChange(p);
     }
@@ -185,6 +243,10 @@ export function PortfolioEvolutionChart({
     } finally {
       setIsFetching(false);
     }
+  };
+
+  const handleViewModeChange = (mode: EvolutionViewMode) => {
+    applyPreferenceChange({ viewMode: mode });
   };
 
   const isLoading = externalLoading || isFetching;
@@ -283,6 +345,7 @@ export function PortfolioEvolutionChart({
   return (
     <div
       id="portfolio-evolution-card"
+      data-sync-status={syncStatus}
       className="bg-surface border border-border-theme rounded-2xl p-6 shadow-sm space-y-5"
     >
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-border-theme pb-5">
@@ -495,7 +558,7 @@ export function PortfolioEvolutionChart({
               type="button"
               id={`view-mode-btn-${mode.key}`}
               aria-pressed={viewMode === mode.key}
-              onClick={() => setViewMode(mode.key)}
+              onClick={() => handleViewModeChange(mode.key)}
               className={`px-3 py-1.5 font-semibold rounded-lg transition-all ${
                 viewMode === mode.key
                   ? 'bg-action-primary text-action-primary-text shadow-sm'

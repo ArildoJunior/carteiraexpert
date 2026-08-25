@@ -33,11 +33,23 @@ import {
   getSerializedUserHistoryData,
 } from './dashboard.service';
 import { getSerializedPortfolioEvolutionData } from './portfolio-evolution.service';
+import {
+  getUserChartPreferences,
+  saveUserChartPreference,
+} from './chart-preferences.service';
 import type {
   EvolutionPeriod,
   SerializedPortfolioEvolutionSummary,
 } from '../domain/portfolio-evolution.types';
 import { evolutionPeriodSchema } from '../domain/portfolio-evolution.schema';
+import {
+  saveChartPreferenceSchema,
+  type SaveChartPreferenceInput,
+} from '../domain/chart-preferences.schema';
+import type {
+  SerializedUserChartPreference,
+  UserChartPreferencesMap,
+} from '../domain/chart-preferences.types';
 import {
   createPortfolioSchema,
   updatePortfolioSchema,
@@ -584,6 +596,48 @@ export async function getPortfolioEvolutionAction(
     return {
       success: true,
       data,
+    };
+  } catch (err) {
+    return handleActionError(err);
+  }
+}
+
+// ─── 8. PREFERÊNCIAS VISUAIS DE GRÁFICOS ─────────────────────────────────────
+
+/**
+ * Salva ou atualiza a preferência de exibição de gráfico para o usuário autenticado.
+ * Garante que o userId seja obtido exclusivamente da sessão no servidor.
+ */
+export async function saveChartPreferenceAction(
+  input: unknown
+): Promise<ActionResult<SerializedUserChartPreference>> {
+  try {
+    const user = await requireAuth();
+    const parsed = saveChartPreferenceSchema.parse(input);
+    const result = await saveUserChartPreference(user, parsed);
+
+    return {
+      success: true,
+      data: result,
+    };
+  } catch (err) {
+    return handleActionError(err);
+  }
+}
+
+/**
+ * Recupera o mapa de todas as preferências de exibição de gráficos do usuário autenticado.
+ */
+export async function getUserChartPreferencesAction(): Promise<
+  ActionResult<UserChartPreferencesMap>
+> {
+  try {
+    const user = await requireAuth();
+    const map = await getUserChartPreferences(user);
+
+    return {
+      success: true,
+      data: map,
     };
   } catch (err) {
     return handleActionError(err);

@@ -2,7 +2,7 @@
 
 ## Última atualização
 
-2026-08-24
+2026-08-25
 
 ---
 
@@ -15,7 +15,7 @@
 
 ## Estado Geral
 
-A fundação técnica, a camada de identidade, segurança, governança, o módulo de carteiras com operações manuais e ajustes, motor de posições, dashboard consolidado, extrato de histórico, o suporte completo a eventos corporativos (Split, Grupamento, Bonificação, Dividendos, JCP e Subscrições), a camada comercial e de quotas por plano (Pacote 05.01), a infraestrutura de dados de mercado com adaptador BRAPI e o sistema global de temas encontram-se no seguinte status:
+A fundação técnica, a camada de identidade, segurança, governança, o módulo de carteiras com operações manuais e ajustes, motor de posições, dashboard consolidado, extrato de histórico, o suporte completo a eventos corporativos (Split, Grupamento, Bonificação, Dividendos, JCP e Subscrições), a camada comercial e de quotas por plano (Pacote 05.01), a infraestrutura de dados de mercado com adaptador BRAPI, a persistência de preferências de gráficos e o sistema global de temas encontram-se no seguinte status:
 
 - **Fase 01 — Fundação Técnica:** **IMPLEMENTADA E VALIDADA** (Arquitetura modular monolítica, motor financeiro determinístico baseado em `Decimal`, persistência `NUMERIC`, infraestrutura de testes unitários, integração e E2E, e registro em `audit_logs` nos fluxos auditados).
 - **Fase 02 — Identidade, Acesso e Segurança:** **IMPLEMENTADA E VALIDADA NOS FLUXOS COMPROVADOS** (Cadastro, login com hash Argon2id com parâmetros seguros, sessões com hash SHA-256 no banco, controle de taxa stateless com HMAC-SHA256, redefinição atômica de senha, logout auditado, consentimentos versionados LGPD com trigger append-only em `user_consents`. As rotas e operações analisadas utilizam o identificador autenticado do usuário para restringir o acesso aos dados, com a cobertura completa de todas as rotas e serviços sujeita à validação contínua).
@@ -28,7 +28,7 @@ A fundação técnica, a camada de identidade, segurança, governança, o módul
   - **Pacote 05.01 — Entitlements e Quotas por Plano:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Catálogo comercial com tabelas `commercial_plans`, `plan_entitlements` e `user_plans`, planos `free` (2 carteiras) e `pro` (10 carteiras) via migração `0007_add_commercial_plans_and_entitlements.sql`, fonte única de quota em `max_active_portfolios`, fallback sem efeitos colaterais em `getUserEffectivePlan`, bloqueio server-side via `assertCanCreatePortfolio` com lock concorrente `FOR UPDATE`, downgrade transacional com congelamento de excedentes em `frozen` e auditoria em `audit_logs`, bloqueio integral de mutações financeiras em carteiras congeladas via `assertPortfolioWritable`, permissão de soft delete para liberação voluntária de quota, badge visual e desabilitação na UI `/portfolios`, testes unitários, integração e E2E Playwright).
   - **Pacote 05.02 — Estrutura de Assinaturas e Pagamentos:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Estrutura de assinaturas comerciais com tabelas `billing_subscriptions` e `payment_events` via migração `0008_add_billing_subscriptions_and_payment_events.sql`, máquina de estados de ciclo de vida de faturamento, idempotência estrita por `idempotency_key`, sincronização atômica transacional com `user_plans`, fallback automático para FREE com congelamento de carteiras excedentes em caso de inadimplência/cancelamento imediato, interface abstrata `PaymentGatewayAdapter`, adaptador `MockPaymentGatewayAdapter`, Server Action segura `getUserBillingSummaryAction` e painel informativo na UI `/portfolios`, testes unitários e de integração em PostgreSQL real).
   - **Pacote 05.03 — Experiência Comercial de Planos:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Página dedicada `/plans` no dashboard, visão comparativa de recursos, quotas e carteiras ativas/congeladas em tempo real, status da assinatura com períodos de carência, ausência de checkout falso ou formulários de pagamento, botão de upgrade desabilitado com aviso explicativo e testes automatizados unitários, integração e E2E Playwright).
-- **Fase 06 — Dados de Mercado e Gráficos:** **PARCIALMENTE IMPLEMENTADA** (Infraestrutura interna entregue: tabelas `market_quotes` e `exchange_rates`, adaptadores `ManualPayloadAdapter`, `MockProviderAdapter` e conector externo público `BrapiAdapter`, script CLI `scripts/ingest-market-data.ts`, serviço de ingestão `MarketDataIngestionService` com ranking de qualidade, motores de valuation, evolução temporal diária e gráficos Recharts; sincronização automática em background / cron jobs agendados e WebSockets permanecem planejados).
+- **Fase 06 — Dados de Mercado, Valuation e Gráficos:** **HOMOLOGADA COM SUCESSO (`PASS`)** (Infraestrutura interna entregue: tabelas `market_quotes`, `exchange_rates` e `user_chart_preferences` via migrações `0005` e `0010`, adaptadores `ManualPayloadAdapter`, `MockProviderAdapter` e conector externo público `BrapiAdapter`, script CLI `scripts/ingest-market-data.ts`, serviço de ingestão `MarketDataIngestionService` com ranking de qualidade, motores determinísticos de valuation e evolução temporal diária "Mercado vs. Custo", gráficos Recharts de alocação por ativo/classe/moeda e evolução temporal com seletores interativos, persistência atômica de preferências visuais por usuário e área no PostgreSQL com fila serializada anti-concorrência `ChartPreferenceSyncQueue`, coalescência, proteção de estado local contra `router.refresh()` e isolamento multitenant estrito; automação agendada em background / cron jobs agendados e WebSockets permanecem como capacidades planejadas de infraestrutura futura).
 - **Fase 07 — Importações Revisáveis:** **PLANEJADA, NÃO IMPLEMENTADA** (Upload, parsing de planilhas CSV/XLSX, extração assistida de notas em PDF e storage privado permanecem no roadmap).
 - **Fase 08 — Ativos Internacionais e Criptoativos:** **PARCIALMENTE IMPLEMENTADA** (Multi-moeda, `exchange_rates`, conversão cambial determinística no valuation e precisão `NUMERIC(28, 10)` para criptoativos entregues; swaps, exchanges via API e custódia on-chain permanecem planejados).
 - **Fase 09 — Projeções, Opções e Apoio Tributário:** **PARCIALMENTE IMPLEMENTADA NAS BASES** (Bases factuais de PnL realizado e IRRF sobre JCP entregues nos motores existentes; modelos teóricos Bazin/Graham/DCF, módulo operacional de opções e módulo fiscal dedicado permanecem planejados; DARF e IRPF completo estão fora do escopo permanente).
@@ -37,9 +37,9 @@ A fundação técnica, a camada de identidade, segurança, governança, o módul
 
 ---
 
-## Catálogo Físico de Tabelas Validadas no PostgreSQL (19 tabelas)
+## Catálogo Físico de Tabelas Validadas no PostgreSQL (23 tabelas)
 
-O banco de dados relacional oficial do CarteiraExpert é composto exatamente pelas seguintes 19 tabelas físicas:
+O banco de dados relacional oficial do CarteiraExpert é composto exatamente pelas seguintes 23 tabelas físicas:
 
 1. `audit_logs`: Trilha de auditoria e registro de alterações sensíveis;
 2. `users`: Contas de usuários autenticados;
@@ -59,7 +59,11 @@ O banco de dados relacional oficial do CarteiraExpert é composto exatamente pel
 16. `plan_entitlements`: Chaves de autorização funcional (flags) por plano;
 17. `user_plans`: Associação vigente do usuário ao plano comercial com suporte a status (`active`, `past_due`, `cancelled`);
 18. `billing_subscriptions`: Ciclo de vida e estado contratual de assinaturas pagas com integridade relacional;
-19. `payment_events`: Registro auditável de eventos de pagamento com chave de idempotência única (`idempotency_key`).
+19. `payment_events`: Registro auditável de eventos de pagamento com chave de idempotência única (`idempotency_key`);
+20. `billing_groups`: Grupos familiares e comerciais de faturamento compartilhado;
+21. `billing_group_members`: Membros vinculados a planos compartilhados com isolamento estrito de carteiras e dados patrimoniais;
+22. `billing_group_invitations`: Convites de membros para planos compartilhados com expiração e token único;
+23. `user_chart_preferences`: Preferências de visualização de gráficos por usuário e área (`portfolio_evolution`, `dashboard_allocation`, `portfolio_allocation`).
 
 ---
 
@@ -67,7 +71,7 @@ O banco de dados relacional oficial do CarteiraExpert é composto exatamente pel
 
 Permanecem como regras de negócio aprovadas ou capacidades planejadas:
 
-- **Expansão de Gateways e Pagamentos:** Conexão de gateways reais (Stripe/Asaas), webhooks ativos com verificação de assinatura criptográfica, rotinas em background de expiração e grupos compartilhados com faturamento unificado (ADR-004);
+- **Expansão de Gateways e Pagamentos:** Conexão de gateways reais (Stripe/Asaas), webhooks ativos com verificação de assinatura criptográfica e rotinas em background de expiração;
 - **Gestão de Caixa e Contas Bancárias:** Saldos em moeda, depósitos, saques, aportes em dinheiro e liquidação de caixa;
 - **Custódia Institucional:** Vinculação formal de corretoras, contas institucionais e custodiantes;
 - **Finalidades Formais de Carteira:** Atributo formal `purpose` (`REAL`, `ESTUDO`, `ANALISE`) e suporte a múltiplas carteiras `REAL`;
@@ -83,8 +87,8 @@ Permanecem como regras de negócio aprovadas ou capacidades planejadas:
 
 - [x] **Typecheck:** Arquitetura TypeScript em Strict Mode (`pnpm typecheck` aprovado com zero erros).
 - [x] **Lint:** Configuração Biome integrada para linting e formatação (`pnpm lint` aprovado com zero erros).
-- [x] **Testes Unitários:** Comprovados no repositório (**40 arquivos e 580 testes**, incluindo testes de schema e transições de billing em `billing-schema.test.ts` e `billing-transitions.test.ts`).
-- [x] **Testes de Integração:** Comprovados no repositório (**26 arquivos e 258 testes** em PostgreSQL real, incluindo serviço de billing, idempotência de eventos e fallback de planos em `billing-service.test.ts`, `payment-events-idempotency.test.ts` e `billing-plan-fallback.test.ts`).
-- [x] **Testes End-to-End (E2E):** Suítes Playwright estruturadas (**69 testes aprovados** cobrindo autenticação, consentimento LGPD, carteiras, quotas de planos e subscrições em Chromium, Firefox e WebKit).
-- [x] **Verificação Física do Schema:** 19 tabelas físicas catalogadas e validadas pelo Schema Guardian (incluindo migração `0008_add_billing_subscriptions_and_payment_events.sql`).
-- [x] **Build de Produção:** Next.js 16 compilado com sucesso com 12 páginas estáticas/dinâmicas geradas.
+- [x] **Testes Unitários:** Comprovados no repositório (**45 arquivos e 614 testes**, cobrindo motores, schemas, gráficos, preferências, billing, quotas e planos).
+- [x] **Testes de Integração:** Comprovados no repositório (**28 arquivos e 286 testes** em PostgreSQL real, cobrindo carteiras, preferências de gráficos, market data, planos e billing).
+- [x] **Testes End-to-End (E2E):** Suítes Playwright estruturadas (**78 testes aprovados** cobrindo autenticação, consentimento LGPD, carteiras, quotas de planos, subscrições e preferências de gráficos em Chromium, Firefox e WebKit).
+- [x] **Verificação Física do Schema:** 23 tabelas físicas catalogadas e 100% validadas pelo Schema Guardian no banco de testes e no banco de desenvolvimento (`pnpm db:verify`).
+- [x] **Build de Produção:** Next.js 16 compilado com sucesso (Turbopack) com páginas estáticas/dinâmicas geradas.

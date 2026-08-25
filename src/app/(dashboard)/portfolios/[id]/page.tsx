@@ -7,6 +7,7 @@ import { getAssetById } from '@/modules/portfolio/server/asset.service';
 import {
   getSerializedPortfolioPositions,
   getSerializedPortfolioEvolutionData,
+  getUserChartPreferences,
 } from '@/modules/portfolio/server';
 import { listActiveSubscriptionsByPortfolio, listAvailableOffers } from '@/modules/corporate-actions/server/subscription.service';
 import { PortfolioDetailView } from '@/modules/portfolio/ui/PortfolioDetailView';
@@ -60,6 +61,9 @@ export default async function PortfolioDetailPage({
     notFound();
   }
 
+  const chartPreferences = await getUserChartPreferences(user);
+  const preferredPeriod = chartPreferences.portfolio_evolution?.period || 'YTD';
+
   const [
     events,
     positionsSummary,
@@ -69,7 +73,7 @@ export default async function PortfolioDetailPage({
   ] = await Promise.all([
     listPortfolioEventsByPortfolio(id, user),
     getSerializedPortfolioPositions(id, user),
-    getSerializedPortfolioEvolutionData(id, user, { period: 'YTD' }),
+    getSerializedPortfolioEvolutionData(id, user, { period: preferredPeriod }),
     listActiveSubscriptionsByPortfolio(id, user),
     listAvailableOffers(user),
   ]);
@@ -99,6 +103,7 @@ export default async function PortfolioDetailPage({
         evolutionSummary={evolutionSummary}
         subscriptions={subscriptions}
         availableOffers={availableOffers}
+        chartPreferences={chartPreferences}
       />
     </div>
   );

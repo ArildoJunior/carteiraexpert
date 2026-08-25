@@ -19,7 +19,7 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
   - **Pacote 05.01 — Entitlements e Quotas por Plano:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Catálogo comercial em `commercial_plans` com planos `free` e `pro`, fonte única da quota numérica em `max_active_portfolios`, associação vigente por usuário em `user_plans`, fallback puro sem efeitos colaterais em `getUserEffectivePlan`, bloqueio server-side via `assertCanCreatePortfolio` com lock pessimista `FOR UPDATE`, downgrade transacional com congelamento idempotente de excedentes em status `frozen`, bloqueio estrito de todas as mutações financeiras em carteiras congeladas via `assertPortfolioWritable`, permissão de soft delete para liberação de quota, auditoria em `audit_logs` e badge visual de quotas em `/portfolios`).
   - **Pacote 05.02 — Estrutura de Assinaturas e Pagamentos:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Tabelas `billing_subscriptions` e `payment_events` com migração `0008`, máquina de estados de faturamento, idempotência estrita por `idempotency_key`, sincronização atômica e transacional com `user_plans`, fallback e congelamento automático em caso de inadimplência (`unpaid`), interface agnóstica `PaymentGatewayAdapter` e adaptador `MockPaymentGatewayAdapter` para testes sem chamadas externas, e resumo de faturamento seguro na UI).
   - **Pacote 05.03 — Experiência Comercial de Planos:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Página dedicada `/plans` no dashboard, visão comparativa transparente de recursos entre Free e Pro, uso de quotas em tempo real, alertas contextuais para carteiras congeladas e períodos de carência, ausência de checkout falso ou formulários de pagamento, e botão de upgrade desabilitado com aviso informativo de que pagamentos automáticos estão em desenvolvimento).
-- **Fase 06 — Dados de Mercado, Valuation e Gráficos:** **PARCIALMENTE IMPLEMENTADA** (Persistência relacional em `market_quotes` e `exchange_rates`, adaptadores `ManualPayloadAdapter`, `MockProviderAdapter` e `BrapiAdapter`, serviço de ingestão `MarketDataIngestionService` com ranking de qualidade, motores de valuation e evolução patrimonial diária, gráficos de alocação por ativo/classe e gráfico de evolução temporal "Mercado vs. Custo" com Recharts; sincronização automática em background e WebSockets permanecem planejados).
+- **Fase 06 — Dados de Mercado, Valuation e Gráficos:** **HOMOLOGADA COM SUCESSO (`PASS`)** (Persistência relacional em `market_quotes` e `exchange_rates`, adaptadores `ManualPayloadAdapter`, `MockProviderAdapter` e conector externo público `BrapiAdapter`, serviço de ingestão `MarketDataIngestionService` com ranking de qualidade, motores de valuation e evolução patrimonial diária, gráficos Recharts de alocação por ativo/classe/moeda e evolução temporal "Mercado vs. Custo", e persistência atômica de preferências visuais por usuário e área na tabela `user_chart_preferences` via migração `0010` com fila serializada anti-concorrência `ChartPreferenceSyncQueue`, coalescência e isolamento rigoroso entre dados financeiros e preferências visuais; sincronização automática em background / cron jobs agendados e WebSockets permanecem como capacidades planejadas de infraestrutura futura).
 - **Sistema Global de Tema e Identidade Visual:** Concluído (Suporte nativo aos temas Claro, Escuro e Automático com `prefers-color-scheme`, tokens semânticos, persistência em `localStorage` e script anti-FOUC no `<head>`).
 - **Próxima Fase Prevista:** **Fase 07 — Importações Revisáveis** (ou expansão da Fase 05 com gateways e compartilhamento).
 
@@ -73,12 +73,16 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 - **Proventos em Dinheiro (DIVIDEND e JCP):** Dividendos isentos e Juros sobre Capital Próprio com retenção de 15% de IRRF, validação de Data-Com e exigência obrigatória de Data de Pagamento (`settlementDate`).
 - **Ofertas e Direitos de Subscrição:** Gestão de ofertas (`subscription_offers`), custódia de direitos alocada por carteira (`subscription_rights`), controle de status (`ACTIVE`, `PARTIALLY_EXERCISED`, `FULLY_EXERCISED`, `EXPIRED`, `CANCELLED`) e liquidação do exercício (`subscription_exercises`) gerando atomicamente evento operacional `BUY` com chave `idempotencyKey`.
 
-### 7. Dados de Mercado, Valuation e Séries Temporais (Fase 06)
+### 7. Dados de Mercado, Valuation, Séries Temporais e Preferências de Gráficos (Fase 06)
 - **Banco Interno de Mercado:** Tabelas dedicadas `market_quotes` (cotações de ativos) e `exchange_rates` (taxas de conversão cambial) consultadas localmente sem sobrecarga de rede durante a navegação.
 - **Adaptadores de Ingestão:** Contrato abstrato `MarketDataProviderAdapter` com implementações funcionais para `ManualPayloadAdapter`, `MockProviderAdapter` (testes/desenvolvimento) e `BrapiAdapter` (provedor externo público para cotações brasileiras via API).
 - **Ranking de Qualidade de Dados:** Hierarquia `DELAY_STATUS_QUALITY_RANK` (`realtime` > `delayed_15m` > `eod` > `manual` > `unknown`) garantindo que apenas dados de qualidade igual ou superior substituam cotações existentes.
 - **Motor de Valuation e Evolução Temporal:** Motor determinístico (`valuation-engine.ts` e `portfolio-evolution-engine.ts`) com política de tolerância a cotações obsoletas (até 7 dias civis UTC), identificação de ativos não cotados e conversão cambial multi-moeda.
-- **Gráficos e Visualizações:** Gráficos de alocação por ativo e por classe com Recharts, além de gráfico comparativo de evolução temporal "Mercado vs. Custo" com suporte a múltiplos períodos (`1M`, `3M`, `6M`, `YTD`, `1Y`, `ALL`) e fallback inicial `YTD`.
+- **Gráficos e Visualizações:** Gráficos de alocação por ativo, por classe e por moeda com Recharts, além de gráfico comparativo de evolução temporal "Mercado vs. Custo" com suporte a múltiplos períodos (`1M`, `3M`, `6M`, `YTD`, `1Y`, `ALL`) e fallback inicial `YTD`.
+- **Persistência de Preferências por Usuário e Área:** Tabela dedicada `user_chart_preferences` (migração `0010_add_user_chart_preferences.sql`) armazenando preferências visuais do usuário para `portfolio_evolution` (`period`, `view_mode`), `dashboard_allocation` (`grouping_type`, `basis`) e `portfolio_allocation` (`grouping_type`, `basis`).
+- **Arquitetura Anti-Concorrência e Coalescência:** Sincronização assíncrona orientada a fila (`ChartPreferenceSyncQueue` / `useChartPreferenceSync`) que consolida cliques rápidos, elimina race conditions de closure e garante que a última escolha do usuário seja gravada atomicamente via upsert no PostgreSQL (`saveUserChartPreference`).
+- **Segregação entre Dados Financeiros e Escolhas Visuais:** Atualizações de dados derivados e mutações de carteira (compras, vendas, cancelamentos) acionam `router.refresh()` e atualizam o resumo financeiro (`initialSummary`) sem jamais reverter os seletores visuais locais escolhidos pelo usuário.
+- **Isolamento Multitenant Estrito:** As preferências são vinculadas e consultadas exclusivamente pelo `userId` derivado da sessão autenticada no servidor (`requireAuth()`), com proteção IDOR total.
 
 ### 8. Planos Comerciais, Quotas e Assinaturas (Fase 05 — Pacotes 05.01, 05.02 e 05.03)
 - **Catálogo de Planos Comerciais:** Tabelas `commercial_plans` e `plan_entitlements` com os planos padrão `free` (2 carteiras ativas) e `pro` (10 carteiras ativas).
@@ -96,7 +100,7 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 - **Tokens Semânticos:** Matriz padronizada de cores funcionais (textos, bordas, superfícies, ações, gráficos positivos/negativos e custos).
 
 ### 10. Integridade de Schema, Contratos e Banco de Dados
-- **Schema Guardian:** Validação física em tempo de execução (`assertSchemaCompatible`) e via CLI (`db:verify`) inspecionando o catálogo PostgreSQL (19 tabelas oficiais validadas).
+- **Schema Guardian:** Validação física em tempo de execução (`assertSchemaCompatible`) e via CLI (`db:verify`) inspecionando o catálogo PostgreSQL (**23 tabelas oficiais validadas**).
 - **Contratos Drizzle Tipados:** Exportação canônica de `Database`, `DatabaseTransaction`, `DbExecutor`, `SchemaQueryExecutor` e `AuditExecutor`, com eliminação de `any` em assinaturas e callbacks.
 - **Fixture Estática de Tipos:** Arquivo `tests/types/database-contracts.test-d.ts` validando compatibilidade estrutural e rejeição em tempo de compilação via `@ts-expect-error`.
 - **Migrações Versionadas:** Script de migração (`scripts/migrate.ts`) com pre-flight check e trava de segurança exigindo `ALLOW_DATABASE_MUTATION=true` para o banco principal.
@@ -124,7 +128,7 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 
 ```text
 carteiraexpert/
-├── drizzle/                     # Migrações versionadas SQL (0000 a 0008)
+├── drizzle/                     # Migrações versionadas SQL (0000 a 0010)
 │   └── migrations/
 ├── scripts/                     # Scripts de manutenção e infraestrutura
 │   ├── ingest-market-data.ts    # Ingestão administrativa de dados de mercado (BRAPI / Manual)
@@ -150,14 +154,14 @@ carteiraexpert/
 │       ├── identity/            # Módulo de autenticação, sessões, segurança e termos LGPD
 │       ├── plans/               # Módulo de planos comerciais, entitlements, quotas e interface
 │       ├── billing/             # Módulo de assinaturas comerciais, eventos de pagamento e gateways
-│       ├── portfolio/           # Módulo de carteiras, ativos, motor de posições, valuation e gráficos
+│       ├── portfolio/           # Módulo de carteiras, ativos, motor de posições, valuation, gráficos e preferências
 │       ├── corporate-actions/   # Módulo de ações corporativas (split, grupamento, bonificação, proventos e subscrições)
 │       └── market-data/         # Módulo de cotações, câmbio, adaptadores (Manual, Mock, BRAPI) e ingestão
 ├── tests/
-│   ├── unit/                    # Testes unitários puros (motores, schemas, tema, planos, billing, adaptadores)
-│   ├── integration/             # Testes de integração com PostgreSQL real (carteiras, planos, billing, market data, subscrições)
+│   ├── unit/                    # Testes unitários puros (motores, schemas, tema, planos, billing, gráficos, preferências)
+│   ├── integration/             # Testes de integração com PostgreSQL real (carteiras, planos, billing, market data, preferências)
 │   └── types/                   # Fixtures de tipagem estática (database-contracts.test-d.ts)
-├── e2e/                         # Testes end-to-end com Playwright (autenticação, termos, carteiras, planos, subscrições)
+├── e2e/                         # Testes end-to-end com Playwright (autenticação, termos, carteiras, planos, subscrições, preferências)
 └── docs/                        # Documentação técnica, arquitetura, ADRs e status de entrega
 ```
 
@@ -188,8 +192,8 @@ Crie um arquivo `.env` na raiz do projeto com base nas seguintes variáveis:
 ```bash
 # Desenvolvimento e Build
 pnpm install          # Instalar dependências
-pnpm dev              # Iniciar servidor de desenvolvimento
-pnpm build            # Compilar para produção
+pnpm dev              # Iniciar servidor de desenvolvimento (Next.js)
+pnpm build            # Compilar para produção (Next.js Turbopack)
 pnpm start            # Iniciar servidor de produção
 
 # Qualidade e Tipagem
@@ -199,16 +203,23 @@ pnpm lint:fix         # Corrigir problemas de lint automaticamente
 pnpm format:fix       # Verificar e aplicar formatação
 
 # Testes
-pnpm test:unit        # Testes unitários (Vitest)
-pnpm test:integration # Testes de integração com PostgreSQL (Vitest)
-pnpm test:e2e         # Testes End-to-End no Chromium, Firefox e WebKit (Playwright)
+pnpm test:unit        # Testes unitários (Vitest — 45 arquivos, 614 testes)
+pnpm test:integration # Testes de integração com PostgreSQL (Vitest — 28 arquivos, 286 testes)
+pnpm test:e2e         # Testes End-to-End no Chromium, Firefox e WebKit (Playwright — 78 testes)
 
 # Banco de Dados e Migrações
-pnpm db:verify        # Inspecionar catálogo físico no banco principal (17 tabelas)
-pnpm db:verify -- --test # Inspecionar catálogo físico no banco de testes
-pnpm db:migrate       # Executar migrações no banco principal (exige ALLOW_DATABASE_MUTATION=true)
-pnpm db:migrate -- --test # Executar migrações no banco de testes
-pnpm db:seed:dev      # Popular ativos de teste (exige ALLOW_DEV_SEED=true)
+# Inspecionar catálogo físico no banco de desenvolvimento (23 tabelas)
+pnpm db:verify
+# Inspecionar catálogo físico no banco de testes automatizados
+pnpm db:verify -- --test
+# Executar migrações pendentes no banco de desenvolvimento (PowerShell no Windows)
+$env:ALLOW_DATABASE_MUTATION="true"; pnpm db:migrate
+# Executar migrações pendentes no banco de desenvolvimento (Bash no Linux/macOS)
+ALLOW_DATABASE_MUTATION=true pnpm db:migrate
+# Executar migrações no banco de testes
+pnpm db:migrate -- --test
+# Popular ativos de teste no ambiente de desenvolvimento
+pnpm db:seed:dev
 
 # Dados de Mercado
 pnpm market:ingest    # Executar script administrativo de ingestão de dados de mercado (BRAPI / Manual)
