@@ -169,8 +169,8 @@ test.describe('Proteção de Rotas', () => {
     expect(page.url()).toMatch(/\/login(\?.*)?$/);
   });
 
-  test('deve redirecionar / para /login sem autenticação', async ({ page }) => {
-    await page.goto('/');
+  test('deve redirecionar /portfolios para /login sem autenticação', async ({ page }) => {
+    await page.goto('/portfolios');
     expect(page.url()).toMatch(/\/login(\?.*)?$/);
   });
 });

@@ -36,6 +36,11 @@ if (!connectionString) {
 
   beforeEach(async () => {
     // Limpeza completa entre testes (ordem respeitando FKs)
+    await db.delete(schema.userChartPreferences);
+    await db.delete(schema.marketQuotes);
+    await db.delete(schema.subscriptionExercises);
+    await db.delete(schema.subscriptionRights);
+    await db.delete(schema.subscriptionOffers);
     await db.delete(schema.billingGroupInvitations);
     await db.delete(schema.billingGroupMembers);
     await db.delete(schema.billingGroups);

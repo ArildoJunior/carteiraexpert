@@ -5,17 +5,38 @@ import { checkCsrf } from './modules/identity/server/csrf';
 
 // ─── Rotas públicas ───────────────────────────────────────────────────────────
 // Acessíveis sem sessão válida.
-const PUBLIC_PATHS = new Set([
+const AUTH_FORM_PATHS = new Set([
   '/login',
   '/register',
   '/forgot-password',
   '/reset-password',
 ]);
 
-function isPublicPath(pathname: string): boolean {
-  return PUBLIC_PATHS.has(pathname);
-}
+const PUBLIC_STATIC_PATHS = new Set([
+  '/',
+  '/ativos',
+  '/acoes',
+  '/fiis',
+  '/etfs',
+  '/bdrs',
+  '/sitemap.xml',
+  '/robots.txt',
+]);
 
+function isPublicPath(pathname: string): boolean {
+  if (AUTH_FORM_PATHS.has(pathname) || PUBLIC_STATIC_PATHS.has(pathname)) {
+    return true;
+  }
+  if (
+    pathname.startsWith('/acoes/') ||
+    pathname.startsWith('/fiis/') ||
+    pathname.startsWith('/etfs/') ||
+    pathname.startsWith('/bdrs/')
+  ) {
+    return true;
+  }
+  return false;
+}
 
 function isApiRoute(pathname: string): boolean {
   return pathname.startsWith('/api/');
@@ -47,8 +68,8 @@ export function middleware(req: NextRequest): NextResponse {
 
   // ── Redirecionamentos ─────────────────────────────────────────────────────
 
-  // Rotas públicas (login, register, etc.)
-  if (isPublicPath(pathname)) {
+  // Formulários de autenticação (login, register, etc.)
+  if (AUTH_FORM_PATHS.has(pathname)) {
     if (hasSessionCookie && !req.nextUrl.searchParams.has('redirect')) {
       // Usuário já autenticado: redireciona para dashboard
       return NextResponse.redirect(new URL('/dashboard', req.url));
@@ -56,12 +77,9 @@ export function middleware(req: NextRequest): NextResponse {
     return NextResponse.next();
   }
 
-  // Raiz: redireciona para dashboard ou login
-  if (pathname === '/') {
-    if (hasSessionCookie) {
-      return NextResponse.redirect(new URL('/dashboard', req.url));
-    }
-    return NextResponse.redirect(new URL('/login', req.url));
+  // Rotas públicas do catálogo, landing page e sitemap
+  if (isPublicPath(pathname)) {
+    return NextResponse.next();
   }
 
   // Rotas protegidas: exige cookie de sessão presente

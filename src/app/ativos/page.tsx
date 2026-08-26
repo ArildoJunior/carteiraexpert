@@ -1,0 +1,57 @@
+import type { Metadata } from 'next';
+import { getCurrentUser } from '@/modules/identity/server/current-user';
+import { getPublicCatalogList } from '@/modules/catalog/server/catalog.service';
+import { PublicNavbar } from '@/modules/catalog/ui/PublicNavbar';
+import { PublicFooter } from '@/modules/catalog/ui/PublicFooter';
+import { AssetListingView } from '@/modules/catalog/ui/AssetListingView';
+import type { CatalogFilterParams } from '@/modules/catalog/domain/catalog.types';
+
+export const metadata: Metadata = {
+  title: 'Catálogo de Ativos e Cotações | CarteiraExpert',
+  description:
+    'Consulte cotações, variações e histórico de ações, FIIs, ETFs e BDRs negociados no mercado brasileiro.',
+  openGraph: {
+    title: 'Catálogo de Ativos e Cotações | CarteiraExpert',
+    description:
+      'Consulte cotações, variações e histórico de ações, FIIs, ETFs e BDRs negociados no mercado brasileiro.',
+  },
+};
+
+interface AtivosPageProps {
+  searchParams: Promise<{
+    query?: string;
+    page?: string;
+    limit?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  }>;
+}
+
+export default async function AtivosIndexPage({ searchParams }: AtivosPageProps) {
+  const resolvedParams = await searchParams;
+  const user = await getCurrentUser();
+
+  const filterParams: CatalogFilterParams = {
+    query: resolvedParams.query,
+    page: resolvedParams.page ? Number(resolvedParams.page) : 1,
+    limit: resolvedParams.limit ? Number(resolvedParams.limit) : 20,
+    sortBy: (resolvedParams.sortBy as any) || 'ticker',
+    sortOrder: (resolvedParams.sortOrder as any) || 'asc',
+  };
+
+  const result = await getPublicCatalogList(filterParams);
+
+  return (
+    <div className="min-h-screen flex flex-col bg-background text-text-primary">
+      <PublicNavbar currentUser={user} activePath="/ativos" />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
+        <AssetListingView
+          initialResult={result}
+          pageTitle="Catálogo Geral de Ativos"
+          pageDescription="Índice unificado de ações, fundos imobiliários, ETFs e BDRs disponíveis na plataforma."
+        />
+      </main>
+      <PublicFooter />
+    </div>
+  );
+}

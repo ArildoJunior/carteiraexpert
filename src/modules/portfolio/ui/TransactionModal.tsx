@@ -17,6 +17,7 @@ interface TransactionModalProps {
   onClose: () => void;
   portfolioId: string;
   onSuccess?: () => void;
+  initialAsset?: Asset | null;
 }
 
 export function TransactionModal({
@@ -24,8 +25,9 @@ export function TransactionModal({
   onClose,
   portfolioId,
   onSuccess,
+  initialAsset,
 }: TransactionModalProps) {
-  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(initialAsset ?? null);
   const [transactionType, setTransactionType] = useState<'BUY' | 'SELL' | 'MANUAL_ADJUSTMENT'>('BUY');
   const [direction, setDirection] = useState<'IN' | 'OUT'>('IN');
   const [availableQty, setAvailableQty] = useState<string | null>(null);
@@ -38,6 +40,13 @@ export function TransactionModal({
 
   // Formata a data atual para YYYY-MM-DD (padrão do input date)
   const todayStr = new Date().toISOString().split('T')[0];
+
+  // Sincroniza o ativo pré-selecionado na abertura do modal
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedAsset(initialAsset ?? null);
+    }
+  }, [isOpen, initialAsset]);
 
   // Busca posição disponível quando seleciona ativo em modo VENDA ou AJUSTE DE SAÍDA com proteção contra estado obsoleto
   useEffect(() => {

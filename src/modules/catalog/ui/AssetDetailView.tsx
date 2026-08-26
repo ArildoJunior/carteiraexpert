@@ -1,0 +1,247 @@
+import type {
+  PublicAssetDetail,
+  PublicQuoteHistoryPoint,
+} from '../domain/catalog.types';
+import { getCategoryLabel, getCategoryRoute } from '../domain/catalog-utils';
+import { QuoteFreshnessBadge } from './QuoteFreshnessBadge';
+import { Breadcrumbs } from './Breadcrumbs';
+import { AssetPriceHistoryChart } from './AssetPriceHistoryChart';
+import {
+  LaunchOperationDialog,
+  type UserPortfolioItem,
+} from './LaunchOperationDialog';
+
+interface AssetDetailViewProps {
+  asset: PublicAssetDetail;
+  history: PublicQuoteHistoryPoint[];
+  userPortfolios: UserPortfolioItem[];
+  isAuthenticated: boolean;
+  currentUrl: string;
+}
+
+export function AssetDetailView({
+  asset,
+  history,
+  userPortfolios,
+  isAuthenticated,
+  currentUrl,
+}: AssetDetailViewProps) {
+  const categoryLabel = getCategoryLabel(asset.assetType);
+  const categoryRoute = getCategoryRoute(asset.assetType);
+
+  const breadcrumbs = [
+    { label: categoryLabel, href: categoryRoute },
+    { label: asset.ticker },
+  ];
+
+  const isPositive = asset.dailyVariation && Number(asset.dailyVariation) > 0;
+  const isNegative = asset.dailyVariation && Number(asset.dailyVariation) < 0;
+
+  return (
+    <div className="space-y-8">
+      {/* Breadcrumbs */}
+      <Breadcrumbs items={breadcrumbs} />
+
+      {/* Header Principal do Ativo */}
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 pb-6 border-b border-border-theme">
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1
+              id="asset-detail-ticker"
+              className="text-3xl sm:text-4xl font-extrabold tracking-tight text-text-primary"
+            >
+              {asset.ticker}
+            </h1>
+            <span className="px-2.5 py-1 rounded-md bg-surface-elevated border border-border-theme text-xs font-semibold text-text-secondary">
+              {categoryLabel}
+            </span>
+            <span className="px-2.5 py-1 rounded-md bg-surface-elevated border border-border-theme text-xs font-medium text-text-muted">
+              {asset.market}
+            </span>
+            <QuoteFreshnessBadge
+              status={asset.freshnessStatus}
+              quoteDate={asset.quoteDate}
+            />
+          </div>
+          <p
+            id="asset-detail-name"
+            className="text-base text-text-secondary font-medium"
+          >
+            {asset.name}
+          </p>
+        </div>
+
+        {/* CTA Lançar em Carteira */}
+        <div className="self-start md:self-center">
+          <LaunchOperationDialog
+            asset={asset}
+            userPortfolios={userPortfolios}
+            isAuthenticated={isAuthenticated}
+            callbackUrl={currentUrl}
+          />
+        </div>
+      </div>
+
+      {/* Grid de Métricas Principais */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Última Cotação */}
+        <div className="rounded-xl border border-border-theme bg-surface p-4 shadow-xs">
+          <div className="text-xs font-medium text-text-muted uppercase tracking-wider">
+            Última Cotação
+          </div>
+          <div
+            id="metric-latest-price"
+            className="text-2xl font-bold text-text-primary mt-1"
+          >
+            {asset.latestPrice ? (
+              <span>
+                {asset.currency === 'BRL' ? 'R$ ' : '$ '}
+                {Number(asset.latestPrice).toLocaleString('pt-BR', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </span>
+            ) : (
+              <span className="text-text-muted text-lg">Cotação Indisponível</span>
+            )}
+          </div>
+          <div className="text-[11px] text-text-muted mt-1">
+            {asset.quoteDate
+              ? `Ref: ${new Date(asset.quoteDate).toLocaleDateString('pt-BR', {
+                  timeZone: 'America/Sao_Paulo',
+                })}`
+              : 'Sem registro de data'}
+          </div>
+        </div>
+
+        {/* Card 2: Variação Diária */}
+        <div className="rounded-xl border border-border-theme bg-surface p-4 shadow-xs">
+          <div className="text-xs font-medium text-text-muted uppercase tracking-wider">
+            Variação no Pregão
+          </div>
+          <div
+            id="metric-daily-variation"
+            className={`text-2xl font-bold mt-1 ${
+              asset.variationStatus === 'available' && isPositive
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : asset.variationStatus === 'available' && isNegative
+                ? 'text-rose-600 dark:text-rose-400'
+                : 'text-text-muted'
+            }`}
+          >
+            {asset.variationStatus === 'available' && asset.dailyVariation ? (
+              <span>
+                {isPositive ? '+' : ''}
+                {asset.dailyVariation}%
+              </span>
+            ) : (
+              <span className="text-sm font-medium">
+                {asset.variationStatus === 'insufficient_history'
+                  ? 'Histórico insuficiente'
+                  : 'Indisponível'}
+              </span>
+            )}
+          </div>
+          <div className="text-[11px] text-text-muted mt-1">
+            Comparação com pregão anterior
+          </div>
+        </div>
+
+        {/* Card 3: Fechamento Anterior */}
+        <div className="rounded-xl border border-border-theme bg-surface p-4 shadow-xs">
+          <div className="text-xs font-medium text-text-muted uppercase tracking-wider">
+            Fechamento Anterior
+          </div>
+          <div
+            id="metric-previous-close"
+            className="text-2xl font-bold text-text-primary mt-1"
+          >
+            {asset.previousClosePrice ? (
+              <span>
+                {asset.currency === 'BRL' ? 'R$ ' : '$ '}
+                {Number(asset.previousClosePrice).toLocaleString('pt-BR', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </span>
+            ) : (
+              <span className="text-text-muted text-sm font-medium">Sem referência</span>
+            )}
+          </div>
+          <div className="text-[11px] text-text-muted mt-1">
+            {asset.previousCloseDate
+              ? `Em ${new Date(asset.previousCloseDate).toLocaleDateString('pt-BR', {
+                  timeZone: 'America/Sao_Paulo',
+                })}`
+              : 'Base de pregão inicial'}
+          </div>
+        </div>
+
+        {/* Card 4: Mercado e Moeda */}
+        <div className="rounded-xl border border-border-theme bg-surface p-4 shadow-xs">
+          <div className="text-xs font-medium text-text-muted uppercase tracking-wider">
+            Mercado de Negociação
+          </div>
+          <div className="text-2xl font-bold text-text-primary mt-1">
+            {asset.market}
+          </div>
+          <div className="text-[11px] text-text-muted mt-1">
+            Moeda base: {asset.currency}
+          </div>
+        </div>
+      </div>
+
+      {/* Gráfico Histórico */}
+      <AssetPriceHistoryChart
+        assetId={asset.id}
+        initialHistory={history}
+        currency={asset.currency}
+      />
+
+      {/* Informações Cadastrais */}
+      <div className="rounded-xl border border-border-theme bg-surface p-6 shadow-xs space-y-4">
+        <h3 className="text-base font-semibold text-text-primary">
+          Informações Cadastrais do Ativo
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-6 text-xs">
+          <div>
+            <span className="text-text-muted block">Ticker Oficial:</span>
+            <span className="font-semibold text-text-primary text-sm">
+              {asset.ticker}
+            </span>
+          </div>
+          <div>
+            <span className="text-text-muted block">Razão Social / Nome:</span>
+            <span className="font-medium text-text-primary">{asset.name}</span>
+          </div>
+          <div>
+            <span className="text-text-muted block">Classe de Ativo:</span>
+            <span className="font-medium text-text-primary">{categoryLabel}</span>
+          </div>
+          <div>
+            <span className="text-text-muted block">Bolsa / Mercado:</span>
+            <span className="font-medium text-text-primary">{asset.market}</span>
+          </div>
+          <div>
+            <span className="text-text-muted block">Moeda de Liquidação:</span>
+            <span className="font-medium text-text-primary">{asset.currency}</span>
+          </div>
+          <div>
+            <span className="text-text-muted block">Tipo de Registro:</span>
+            <span className="font-medium text-text-primary">Catálogo Oficial Global</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Espaço Arquitetural Futuro (Fases 08 e 09) */}
+      <div className="rounded-xl border border-dashed border-border-theme bg-surface-elevated/40 p-6 text-center text-text-muted">
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-1">
+          Proventos, Indicadores e Valuation
+        </h4>
+        <p className="text-xs text-text-muted max-w-lg mx-auto leading-relaxed">
+          Histórico detalhado de dividendos, JCP, indicadores fundamentalistas e modelos analíticos estão estruturados no roadmap de evolução do CarteiraExpert.
+        </p>
+      </div>
+    </div>
+  );
+}
