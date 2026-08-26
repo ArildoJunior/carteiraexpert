@@ -47,6 +47,8 @@ if (!connectionString) {
     await db.delete(schema.paymentEvents);
     await db.delete(schema.billingSubscriptions);
     await db.delete(schema.userPlans);
+    await db.delete(schema.importBatchItems);
+    await db.delete(schema.importBatches);
     await db.delete(portfolioEvents);
     await db.delete(portfolios);
     await db.delete(assets);

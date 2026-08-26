@@ -183,4 +183,9 @@ test.describe('Proteção de Rotas', () => {
     await page.goto('/plans');
     expect(page.url()).toMatch(/\/login(\?.*)?$/);
   });
+
+  test('deve redirecionar /import para /login sem autenticação', async ({ page }) => {
+    await page.goto('/import');
+    expect(page.url()).toMatch(/\/login(\?.*)?$/);
+  });
 });

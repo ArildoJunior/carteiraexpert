@@ -2,20 +2,21 @@
 
 ## Última atualização
 
-2026-08-25
+2026-08-26
 
 ---
 
 ## Estado do Repositório Git
 
 - **Branch:** `main` (sincronizada com `origin/main`)
-- **Commit base:** `e73a5b3` (preparando pacote 05.01)
+- **Commit base:** `149a170` (feat(catalog): add accessible catalog navigation)
+- **Estado da Working Tree:** Contém arquivos modificados e não rastreados referentes à Fase 07 (sem commit, push ou alterações remotas).
 
 ---
 
 ## Estado Geral
 
-A fundação técnica, a camada de identidade, segurança, governança, o módulo de carteiras com operações manuais e ajustes, motor de posições, dashboard consolidado, extrato de histórico, o suporte completo a eventos corporativos (Split, Grupamento, Bonificação, Dividendos, JCP e Subscrições), a camada comercial e de quotas por plano (Pacote 05.01), a infraestrutura de dados de mercado com adaptador BRAPI, a persistência de preferências de gráficos e o sistema global de temas encontram-se no seguinte status:
+A fundação técnica, a camada de identidade, segurança, governança, o módulo de carteiras com operações manuais e ajustes, motor de posições, dashboard consolidado, extrato de histórico, o suporte completo a eventos corporativos (Split, Grupamento, Bonificação, Dividendos, JCP e Subscrições), a camada comercial e de quotas por plano (Pacote 05.01), a infraestrutura de dados de mercado com adaptador BRAPI, o catálogo público de ativos (Fase 06.5), o módulo de importações revisáveis (Fase 07), a persistência de preferências de gráficos e o sistema global de temas encontram-se no seguinte status:
 
 - **Fase 01 — Fundação Técnica:** **IMPLEMENTADA E VALIDADA** (Arquitetura modular monolítica, motor financeiro determinístico baseado em `Decimal`, persistência `NUMERIC`, infraestrutura de testes unitários, integração e E2E, e registro em `audit_logs` nos fluxos auditados).
 - **Fase 02 — Identidade, Acesso e Segurança:** **IMPLEMENTADA E VALIDADA NOS FLUXOS COMPROVADOS** (Cadastro, login com hash Argon2id com parâmetros seguros, sessões com hash SHA-256 no banco, controle de taxa stateless com HMAC-SHA256, redefinição atômica de senha, logout auditado, consentimentos versionados LGPD com trigger append-only em `user_consents`. As rotas e operações analisadas utilizam o identificador autenticado do usuário para restringir o acesso aos dados, com a cobertura completa de todas as rotas e serviços sujeita à validação contínua).
@@ -30,7 +31,7 @@ A fundação técnica, a camada de identidade, segurança, governança, o módul
   - **Pacote 05.03 — Experiência Comercial de Planos:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Página dedicada `/plans` no dashboard, visão comparativa de recursos, quotas e carteiras ativas/congeladas em tempo real, status da assinatura com períodos de carência, ausência de checkout falso ou formulários de pagamento, botão de upgrade desabilitado com aviso explicativo e testes automatizados unitários, integração e E2E Playwright).
 - **Fase 06 — Dados de Mercado, Valuation e Gráficos:** **HOMOLOGADA COM SUCESSO (`PASS`)** (Infraestrutura interna entregue: tabelas `market_quotes`, `exchange_rates` e `user_chart_preferences` via migrações `0005` e `0010`, adaptadores `ManualPayloadAdapter`, `MockProviderAdapter` e conector externo público `BrapiAdapter`, script CLI `scripts/ingest-market-data.ts`, serviço de ingestão `MarketDataIngestionService` com ranking de qualidade, motores determinísticos de valuation e evolução temporal diária "Mercado vs. Custo", gráficos Recharts de alocação por ativo/classe/moeda e evolução temporal com seletores interativos, persistência atômica de preferências visuais por usuário e área no PostgreSQL com fila serializada anti-concorrência `ChartPreferenceSyncQueue`, coalescência, proteção de estado local contra `router.refresh()` e isolamento multitenant estrito).
 - **Fase 06.5 — Alinhamento do MVP e Catálogo Público de Ativos:** **HOMOLOGADA COM SUCESSO (`PASS`)** (Entrega da camada pública de descoberta e consulta com módulo `src/modules/catalog/`, rotas oficiais por categoria `/acoes`, `/fiis`, `/etfs`, `/bdrs`, busca global `/ativos`, páginas individuais por ticker, cálculo determinístico de variação diária no fuso `America/Sao_Paulo` com `Decimal`, indicador de frescor `QuoteFreshnessBadge`, estado vazio informativo em BDRs, SEO com `sitemap.ts` (limite seguro de 1.000 URLs e fallback) e `robots.ts`, Landing Page institucional complementar em `/`, página de erro 404 padronizada, lançamento em carteira própria autenticado com ativo pré-selecionado reutilizando `createPortfolioEvent` e `TransactionModal` com proteção integral contra IDOR e carteiras congeladas).
-- **Fase 07 — Importações Revisáveis:** **PLANEJADA, NÃO IMPLEMENTADA** (Upload, parsing de planilhas CSV/XLSX, extração assistida de notas em PDF e storage privado permanecem no roadmap).
+- **Fase 07 — Importações Revisáveis:** **PRONTA PARA REVISÃO FINAL E HOMOLOGAÇÃO** (Módulo `src/modules/imports/` entregue em conformidade com o ADR-007; tabelas `import_batches` e `import_batch_items` via migração `0011_add_imports_module.sql`; parsers CSV com auto-detecção de layout para `carteiraexpert_csv`, `b3_trades_csv` e `b3_movements_csv`; limite uniforme de 5 MB; deduplicação por hash de arquivo SHA-256 e linha; tela de upload `/import` com drag-and-drop; central de revisão `/import/[id]` com KPIs em tempo real, filtros por abas, edição de itens com `Decimal`, marcação/exclusão por linha e resolução explícita de ativos não mapeados; confirmação transacional atômica com lock pessimista `FOR UPDATE`, gravação em `portfolio_events` com `source = 'csv_import'` e bloqueio de edição pós-finalização; proteção IDOR rigorosa e 100% de aprovação nos testes unitários, integração e E2E multi-browser).
 - **Fase 08 — Ativos Internacionais e Criptoativos:** **PARCIALMENTE IMPLEMENTADA** (Multi-moeda, `exchange_rates`, conversão cambial determinística no valuation e precisão `NUMERIC(28, 10)` para criptoativos entregues; swaps, exchanges via API e custódia on-chain permanecem planejados).
 - **Fase 09 — Projeções, Opções e Apoio Tributário:** **PARCIALMENTE IMPLEMENTADA NAS BASES** (Bases factuais de PnL realizado e IRRF sobre JCP entregues nos motores existentes; modelos teóricos Bazin/Graham/DCF, módulo operacional de opções e módulo fiscal dedicado permanecem planejados; DARF e IRPF completo estão fora do escopo permanente).
 - **Fase 10 — IA Editorial e Preparação de Lançamento:** **PLANEJADA, NÃO IMPLEMENTADA** (Diretrizes de governança editorial aprovadas; infraestrutura de LLM e preparação operacional permanecem planejadas).
@@ -38,9 +39,9 @@ A fundação técnica, a camada de identidade, segurança, governança, o módul
 
 ---
 
-## Catálogo Físico de Tabelas Validadas no PostgreSQL (23 tabelas)
+## Catálogo Físico de Tabelas Validadas no PostgreSQL (25 tabelas)
 
-O banco de dados relacional oficial do CarteiraExpert é composto exatamente pelas seguintes 23 tabelas físicas:
+O banco de dados relacional oficial do CarteiraExpert é composto exatamente pelas seguintes 25 tabelas físicas:
 
 1. `audit_logs`: Trilha de auditoria e registro de alterações sensíveis;
 2. `users`: Contas de usuários autenticados;
@@ -64,7 +65,9 @@ O banco de dados relacional oficial do CarteiraExpert é composto exatamente pel
 20. `billing_groups`: Grupos familiares e comerciais de faturamento compartilhado;
 21. `billing_group_members`: Membros vinculados a planos compartilhados com isolamento estrito de carteiras e dados patrimoniais;
 22. `billing_group_invitations`: Convites de membros para planos compartilhados com expiração e token único;
-23. `user_chart_preferences`: Preferências de visualização de gráficos por usuário e área (`portfolio_evolution`, `dashboard_allocation`, `portfolio_allocation`).
+23. `user_chart_preferences`: Preferências de visualização de gráficos por usuário e área (`portfolio_evolution`, `dashboard_allocation`, `portfolio_allocation`);
+24. `import_batches`: Lotes de importação de arquivos enviados pelos usuários com status, métricas e hash de deduplicação;
+25. `import_batch_items`: Linhas individuais do lote com status de validação, hash de linha, erros/avisos, ativo resolvido e vínculo com evento gerado.
 
 ---
 
@@ -72,6 +75,7 @@ O banco de dados relacional oficial do CarteiraExpert é composto exatamente pel
 
 Permanecem como regras de negócio aprovadas ou capacidades planejadas:
 
+- **Expansão de Formatos de Importação:** Suporte a arquivos binários (`.xlsx`) e extração assistida de notas em PDF com bucket privado e workers assíncronos (Fase 07 expandida);
 - **Expansão de Gateways e Pagamentos:** Conexão de gateways reais (Stripe/Asaas), webhooks ativos com verificação de assinatura criptográfica e rotinas em background de expiração;
 - **Gestão de Caixa e Contas Bancárias:** Saldos em moeda, depósitos, saques, aportes em dinheiro e liquidação de caixa;
 - **Custódia Institucional:** Vinculação formal de corretoras, contas institucionais e custodiantes;
@@ -87,9 +91,9 @@ Permanecem como regras de negócio aprovadas ou capacidades planejadas:
 ## Validações Comprovadas no Repositório
 
 - [x] **Typecheck:** Arquitetura TypeScript em Strict Mode (`pnpm typecheck` aprovado com zero erros).
-- [x] **Lint:** Configuração Biome integrada para linting e formatação (`pnpm lint` aprovado com zero erros).
-- [x] **Testes Unitários:** Comprovados no repositório (**48 arquivos e 636 testes**, cobrindo motores, schemas, gráficos, preferências, catálogo, dropdowns, billing, quotas e planos).
-- [x] **Testes de Integração:** Comprovados no repositório (**29 arquivos e 295 testes** em PostgreSQL real, cobrindo carteiras, catálogo público, preferências de gráficos, market data, planos e billing).
-- [x] **Testes End-to-End (E2E):** Suítes Playwright estruturadas (**111 testes aprovados** cobrindo autenticação, consentimento LGPD, carteiras, catálogo público desktop/mobile, quotas de planos, subscrições e preferências de gráficos em Chromium, Firefox e WebKit).
-- [x] **Verificação Física do Schema:** 23 tabelas físicas catalogadas e 100% validadas pelo Schema Guardian no banco de testes e no banco de desenvolvimento (`pnpm db:verify`).
+- [x] **Lint:** Configuração Biome integrada para linting e formatação (`pnpm lint` e `biome check` aprovados com zero erros).
+- [x] **Testes Unitários:** Comprovados no repositório (**54 arquivos e 704 testes** via `pnpm run test:unit`, cobrindo importações, motores, schemas, gráficos, preferências, catálogo, dropdowns, billing, quotas e planos).
+- [x] **Testes de Integração:** Comprovados no repositório (**32 arquivos e 337 testes** via `pnpm run test:integration` em PostgreSQL real, cobrindo confirmação de importações, parsing, carteiras, catálogo público, preferências de gráficos, market data, planos e billing).
+- [x] **Testes End-to-End (E2E):** Suítes Playwright estruturadas (**10 arquivos e 126 testes aprovados** via `pnpm run test:e2e` cobrindo importações completas com resolução explícita de ativos e isolamento IDOR, autenticação, consentimento LGPD, carteiras, catálogo público desktop/mobile, quotas de planos, subscrições e preferências de gráficos em Chromium, Firefox e WebKit).
+- [x] **Verificação Física do Schema:** 25 tabelas físicas catalogadas e 100% validadas pelo Schema Guardian no banco de testes e no banco de desenvolvimento (`pnpm db:verify`).
 - [x] **Build de Produção:** Next.js 16 compilado com sucesso (Turbopack) com páginas estáticas/dinâmicas geradas.

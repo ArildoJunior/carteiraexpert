@@ -20,6 +20,7 @@ export function DashboardNavbar({ user }: DashboardNavbarProps) {
     { label: 'Dashboard', href: '/dashboard', id: 'nav-link-dashboard' },
     { label: 'Carteiras', href: '/portfolios', id: 'nav-link-portfolios' },
     { label: 'Histórico', href: '/history', id: 'nav-link-history' },
+    { label: 'Importações', href: '/import', id: 'nav-link-import' },
     { label: 'Planos', href: '/plans', id: 'nav-link-plans' },
   ];
 
