@@ -80,9 +80,9 @@ Conforme as diretrizes inegociáveis:
 ### 5.1. Resumo Quantitativo
 | Categoria de Validação | Quantidade / Status | Ferramenta |
 | :--- | :--- | :--- |
-| **Testes Unitários** | **631 aprovados** (47 arquivos) | Vitest |
+| **Testes Unitários** | **636 aprovados** (48 arquivos) | Vitest |
 | **Testes de Integração** | **295 aprovados** (29 arquivos) | Vitest + PostgreSQL Real |
-| **Testes E2E** | **96 aprovados** (3 navegadores) | Playwright (Chromium, Firefox, WebKit) |
+| **Testes E2E** | **111 aprovados** (3 navegadores) | Playwright (Chromium, Firefox, WebKit) |
 | **Schema Guardian** | **23 tabelas validadas** | `pnpm db:verify` e `pnpm db:verify -- --test` |
 | **TypeScript Typecheck** | **0 erros** | `tsc --noEmit` |
 | **Linter / Biome** | **0 erros** | `biome check src/ tests/ scripts/` |
@@ -92,10 +92,11 @@ Conforme as diretrizes inegociáveis:
 - **Unitários:**
   - `tests/unit/catalog/catalog-schema.test.ts`: Validação de categorias, tickers e paginação.
   - `tests/unit/catalog/catalog-utils.test.ts`: Variação com Decimal, fuso São Paulo, frescor e rotas.
+  - `tests/unit/catalog/catalog-nav-dropdown.test.tsx`: Testes de UI (jsdom) para o menu dropdown de navegação do catálogo, teclado (`Escape`) e prefixos de ID.
 - **Integração:**
   - `tests/integration/catalog/catalog-service.test.ts`: Listagem paginada, isolamento de custom assets, busca, sitemap e rejeição de IDOR com gravação em `audit_logs`.
 - **E2E (Playwright):**
-  - `e2e/public-catalog.spec.ts`: Navegação por categorias, estado vazio de BDRs, busca por ticker, redirecionamento de usuário anônimo para login, 404 para ativos inexistentes e fluxo completo de lançamento autenticado com ativo pré-selecionado.
+  - `e2e/public-catalog.spec.ts`: Navegação por categorias via menu desktop e gaveta mobile, estado vazio de BDRs, busca por ticker, redirecionamento de anônimo, 404, acesso via Dashboard e fluxo completo de lançamento autenticado com ativo pré-selecionado.
 
 ---
 
@@ -106,6 +107,7 @@ Conforme as diretrizes inegociáveis:
 - `src/modules/catalog/domain/catalog.schema.ts`
 - `src/modules/catalog/domain/catalog-utils.ts`
 - `src/modules/catalog/server/catalog.service.ts`
+- `src/modules/catalog/ui/CatalogNavDropdown.tsx`
 - `src/modules/catalog/ui/QuoteFreshnessBadge.tsx`
 - `src/modules/catalog/ui/Breadcrumbs.tsx`
 - `src/modules/catalog/ui/PublicNavbar.tsx`
@@ -115,6 +117,7 @@ Conforme as diretrizes inegociáveis:
 - `src/modules/catalog/ui/AssetDetailView.tsx`
 - `src/modules/catalog/ui/LaunchOperationDialog.tsx`
 - `src/modules/catalog/index.ts`
+- `src/app/(dashboard)/DashboardNavbar.tsx`
 - `src/app/ativos/page.tsx`
 - `src/app/acoes/page.tsx`
 - `src/app/acoes/[ticker]/page.tsx`
@@ -129,17 +132,20 @@ Conforme as diretrizes inegociáveis:
 - `src/app/robots.ts`
 - `tests/unit/catalog/catalog-schema.test.ts`
 - `tests/unit/catalog/catalog-utils.test.ts`
+- `tests/unit/catalog/catalog-nav-dropdown.test.tsx`
 - `tests/integration/catalog/catalog-service.test.ts`
 - `e2e/public-catalog.spec.ts`
 
 ### Arquivos Modificados:
-- `src/app/page.tsx`: Landing Page institucional do MVP.
+- `src/app/page.tsx`: Landing Page institucional com links client-side e navegação por categorias.
+- `src/app/(dashboard)/layout.tsx`: Integração com `DashboardNavbar` preservando autenticação server-side e validação LGPD.
 - `src/middleware.ts`: Liberação de rotas públicas de catálogo, landing page e sitemap.
 - `src/modules/portfolio/ui/TransactionModal.tsx`: Suporte a ativo inicial pré-selecionado via `initialAsset`.
 - `src/modules/catalog/ui/Breadcrumbs.tsx`: Uso de `Link` do Next.js para navegação do catálogo.
-- `src/modules/catalog/ui/PublicNavbar.tsx`: Uso de `Link` do Next.js para navegação do catálogo.
+- `src/modules/catalog/ui/PublicNavbar.tsx`: Menu dropdown expansível, atalhos de categoria e menu mobile responsivo.
+- `src/modules/catalog/ui/PublicFooter.tsx`: Links de categorias com componente `Link` do Next.js.
 - `tests/integration/identity/auth.test.ts`: Ordem de limpeza de tabelas respeitando constraints de chaves estrangeiras de `market_quotes` e `user_chart_preferences`.
 - `tests/integration/identity/auth-concurrency-and-rollback.test.ts`: Ordem de limpeza de tabelas respeitando constraints de chaves estrangeiras.
 - `scripts/seed-dev.ts`: Adicionado suporte a `.env` e flag `--test`.
-- `e2e/auth.spec.ts`: Atualizada asserção de rota privada para `/portfolios`.
+- `e2e/auth.spec.ts`: Proteção de rotas privadas estendida para `/dashboard`, `/portfolios`, `/history` e `/plans`.
 - `e2e/health.spec.ts`: Atualizada asserção de título e cabeçalho para a Landing Page.

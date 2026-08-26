@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export function PublicFooter() {
   return (
     <footer className="border-t border-border-theme bg-surface/50 mt-auto py-12 text-text-secondary text-sm">
@@ -25,29 +27,49 @@ export function PublicFooter() {
             </h4>
             <ul className="space-y-2 text-xs">
               <li>
-                <a href="/acoes" className="hover:text-text-primary transition-colors">
+                <Link
+                  id="footer-link-acoes"
+                  href="/acoes"
+                  className="hover:text-text-primary transition-colors"
+                >
                   Ações Brasileiras
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="/fiis" className="hover:text-text-primary transition-colors">
+                <Link
+                  id="footer-link-fiis"
+                  href="/fiis"
+                  className="hover:text-text-primary transition-colors"
+                >
                   Fundos Imobiliários (FIIs)
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="/etfs" className="hover:text-text-primary transition-colors">
+                <Link
+                  id="footer-link-etfs"
+                  href="/etfs"
+                  className="hover:text-text-primary transition-colors"
+                >
                   Fundos de Índice (ETFs)
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="/bdrs" className="hover:text-text-primary transition-colors">
+                <Link
+                  id="footer-link-bdrs"
+                  href="/bdrs"
+                  className="hover:text-text-primary transition-colors"
+                >
                   BDRs
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="/ativos" className="hover:text-text-primary transition-colors">
+                <Link
+                  id="footer-link-ativos"
+                  href="/ativos"
+                  className="hover:text-text-primary transition-colors"
+                >
                   Índice Geral de Ativos
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -59,19 +81,31 @@ export function PublicFooter() {
             </h4>
             <ul className="space-y-2 text-xs">
               <li>
-                <a href="/login" className="hover:text-text-primary transition-colors">
+                <Link
+                  id="footer-link-login"
+                  href="/login"
+                  className="hover:text-text-primary transition-colors"
+                >
                   Acessar Conta
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="/register" className="hover:text-text-primary transition-colors">
+                <Link
+                  id="footer-link-register"
+                  href="/register"
+                  className="hover:text-text-primary transition-colors"
+                >
                   Criar Conta Gratuita
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="/terms-acceptance" className="hover:text-text-primary transition-colors">
+                <Link
+                  id="footer-link-terms"
+                  href="/terms-acceptance"
+                  className="hover:text-text-primary transition-colors"
+                >
                   Termos e Privacidade
-                </a>
+                </Link>
               </li>
             </ul>
           </div>

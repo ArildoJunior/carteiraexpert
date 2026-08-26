@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { getCurrentUser } from '@/modules/identity/server/current-user';
 import { PublicNavbar } from '@/modules/catalog/ui/PublicNavbar';
 import { PublicFooter } from '@/modules/catalog/ui/PublicFooter';
@@ -86,29 +87,29 @@ export default async function HomePage() {
               </p>
 
               <div className="flex flex-wrap items-center gap-3 pt-2">
-                <a
+                <Link
                   id="btn-hero-catalog"
                   href="/ativos"
                   className="px-6 py-3 rounded-lg bg-action-primary text-action-primary-text font-medium text-sm hover:opacity-90 transition-opacity shadow-sm"
                 >
                   Explorar Catálogo de Ativos
-                </a>
+                </Link>
                 {user ? (
-                  <a
+                  <Link
                     id="btn-hero-dashboard"
                     href="/dashboard"
                     className="px-6 py-3 rounded-lg bg-surface-elevated border border-border-theme text-text-primary font-medium text-sm hover:border-action-primary/50 transition-colors"
                   >
                     Ir para o Dashboard
-                  </a>
+                  </Link>
                 ) : (
-                  <a
+                  <Link
                     id="btn-hero-register"
                     href="/register"
                     className="px-6 py-3 rounded-lg bg-surface-elevated border border-border-theme text-text-primary font-medium text-sm hover:border-action-primary/50 transition-colors"
                   >
                     Criar Conta Gratuita
-                  </a>
+                  </Link>
                 )}
               </div>
             </div>
@@ -126,17 +127,18 @@ export default async function HomePage() {
                 Consulte cotações e histórico de preços organizados por classe de ativo.
               </p>
             </div>
-            <a
+            <Link
+              id="link-view-all-assets"
               href="/ativos"
               className="text-xs font-semibold text-action-primary hover:underline self-start sm:self-auto"
             >
               Ver todos os ativos &rarr;
-            </a>
+            </Link>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {categories.map((cat) => (
-              <a
+              <Link
                 key={cat.title}
                 id={`card-category-${cat.tag.toLowerCase()}`}
                 href={cat.href}
@@ -164,7 +166,7 @@ export default async function HomePage() {
                 <div className="mt-4 pt-3 border-t border-border-theme/60 text-[11px] font-medium text-action-primary">
                   Consultar {cat.tag}
                 </div>
-              </a>
+              </Link>
             ))}
           </div>
         </section>

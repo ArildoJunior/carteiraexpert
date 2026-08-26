@@ -88,8 +88,8 @@ Permanecem como regras de negócio aprovadas ou capacidades planejadas:
 
 - [x] **Typecheck:** Arquitetura TypeScript em Strict Mode (`pnpm typecheck` aprovado com zero erros).
 - [x] **Lint:** Configuração Biome integrada para linting e formatação (`pnpm lint` aprovado com zero erros).
-- [x] **Testes Unitários:** Comprovados no repositório (**47 arquivos e 631 testes**, cobrindo motores, schemas, gráficos, preferências, catálogo, billing, quotas e planos).
+- [x] **Testes Unitários:** Comprovados no repositório (**48 arquivos e 636 testes**, cobrindo motores, schemas, gráficos, preferências, catálogo, dropdowns, billing, quotas e planos).
 - [x] **Testes de Integração:** Comprovados no repositório (**29 arquivos e 295 testes** em PostgreSQL real, cobrindo carteiras, catálogo público, preferências de gráficos, market data, planos e billing).
-- [x] **Testes End-to-End (E2E):** Suítes Playwright estruturadas (**96 testes aprovados** cobrindo autenticação, consentimento LGPD, carteiras, catálogo público, quotas de planos, subscrições e preferências de gráficos em Chromium, Firefox e WebKit).
+- [x] **Testes End-to-End (E2E):** Suítes Playwright estruturadas (**111 testes aprovados** cobrindo autenticação, consentimento LGPD, carteiras, catálogo público desktop/mobile, quotas de planos, subscrições e preferências de gráficos em Chromium, Firefox e WebKit).
 - [x] **Verificação Física do Schema:** 23 tabelas físicas catalogadas e 100% validadas pelo Schema Guardian no banco de testes e no banco de desenvolvimento (`pnpm db:verify`).
 - [x] **Build de Produção:** Next.js 16 compilado com sucesso (Turbopack) com páginas estáticas/dinâmicas geradas.

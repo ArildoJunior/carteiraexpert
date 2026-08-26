@@ -104,7 +104,8 @@ test.describe('Catálogo Público de Ativos — E2E', () => {
       await queryClient.end();
     }
   });
-  test('deve navegar na Landing Page e acessar as categorias do catálogo', async ({ page }) => {
+
+  test('deve navegar na Landing Page e acessar as categorias do catálogo via cards e abas', async ({ page }) => {
     await page.goto('/');
 
     // 1. Verifica elementos institucionais da Home
@@ -129,6 +130,118 @@ test.describe('Catálogo Público de Ativos — E2E', () => {
     await page.click('#tab-category-bdr');
     await page.waitForURL('**/bdrs');
     await expect(page.locator('h1')).toContainText('BDRs');
+  });
+
+  test('deve exibir o menu Catálogo de Ativos na navegação pública e navegar por todas as 5 categorias', async ({ page }) => {
+    await page.goto('/');
+
+    // 1. O botão do menu "Catálogo de Ativos" deve estar visível no navbar público
+    const catalogDropdownBtn = page.locator('#nav-link-catalog');
+    await expect(catalogDropdownBtn).toBeVisible();
+    await expect(catalogDropdownBtn).toContainText('Catálogo de Ativos');
+
+    // 2. Abre dropdown e navega para Todos os Ativos
+    await catalogDropdownBtn.click();
+    const linkAtivos = page.locator('#nav-link-ativos');
+    await expect(linkAtivos).toBeVisible();
+    await linkAtivos.click();
+    await page.waitForURL('**/ativos');
+    await expect(page.locator('h1')).toContainText('Catálogo Geral de Ativos');
+
+    // 3. Abre dropdown e navega para Ações
+    await page.click('#nav-link-catalog');
+    await page.click('#nav-link-acoes');
+    await page.waitForURL('**/acoes');
+    await expect(page.locator('h1')).toContainText('Ações Brasileiras');
+
+    // 4. Abre dropdown e navega para FIIs
+    await page.click('#nav-link-catalog');
+    await page.click('#nav-link-fiis');
+    await page.waitForURL('**/fiis');
+    await expect(page.locator('h1')).toContainText('Fundos Imobiliários');
+
+    // 5. Abre dropdown e navega para ETFs
+    await page.click('#nav-link-catalog');
+    await page.click('#nav-link-etfs');
+    await page.waitForURL('**/etfs');
+    await expect(page.locator('h1')).toContainText('Fundos de Índice');
+
+    // 6. Abre dropdown e navega para BDRs
+    await page.click('#nav-link-catalog');
+    await page.click('#nav-link-bdrs');
+    await page.waitForURL('**/bdrs');
+    await expect(page.locator('h1')).toContainText('BDRs');
+  });
+
+  test('deve permitir navegação por todas as categorias do catálogo através do menu mobile público', async ({ page }) => {
+    // Define viewport mobile
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.goto('/');
+
+    // 1. Botão do menu mobile deve estar visível
+    const mobileToggle = page.locator('#btn-mobile-menu-toggle');
+    await expect(mobileToggle).toBeVisible();
+
+    // 2. Abre menu mobile e clica em Ações
+    await mobileToggle.click();
+    await expect(page.locator('#mobile-menu')).toBeVisible();
+    await page.click('#mobile-nav-link-acoes');
+    await page.waitForURL('**/acoes');
+    await expect(page.locator('h1')).toContainText('Ações Brasileiras');
+
+    // 3. Abre menu mobile e clica em FIIs
+    await page.click('#btn-mobile-menu-toggle');
+    await page.click('#mobile-nav-link-fiis');
+    await page.waitForURL('**/fiis');
+    await expect(page.locator('h1')).toContainText('Fundos Imobiliários');
+
+    // 4. Abre menu mobile e clica em Todos os Ativos
+    await page.click('#btn-mobile-menu-toggle');
+    await page.click('#mobile-nav-link-ativos');
+    await page.waitForURL('**/ativos');
+    await expect(page.locator('h1')).toContainText('Catálogo Geral de Ativos');
+  });
+
+  test('deve exibir o Catálogo de Ativos no menu do Dashboard autenticado em desktop e mobile', async ({ page }) => {
+    // 1. Cadastra novo usuário para acessar o dashboard
+    const uniqueEmail = `dash-catalog-${Date.now()}@example.com`;
+    await page.goto('/register');
+    await page.fill('#register-name', 'Investidor Navegacao');
+    await page.fill('#register-email', uniqueEmail);
+    await page.fill('#register-password', 'SenhaForte@123');
+    await page.fill('#register-confirm-password', 'SenhaForte@123');
+    await page.check('#register-terms');
+    await page.check('#register-privacy');
+    await page.click('#register-submit');
+    await page.waitForURL('**/dashboard');
+
+    // 2. No desktop, valida a presença do Catálogo de Ativos no DashboardNavbar
+    const dashCatalogBtn = page.locator('#dashboard-nav-link-catalog');
+    await expect(dashCatalogBtn).toBeVisible();
+    await expect(dashCatalogBtn).toContainText('Catálogo de Ativos');
+
+    // Abre o dropdown e navega para Ações a partir do Dashboard
+    await dashCatalogBtn.click();
+    await expect(page.locator('#dashboard-nav-catalog-dropdown-menu')).toBeVisible();
+    await page.click('#dashboard-nav-link-acoes');
+    await page.waitForURL('**/acoes');
+    await expect(page.locator('h1')).toContainText('Ações Brasileiras');
+
+    // Retorna ao Dashboard pelo link da navbar
+    await page.click('#btn-nav-dashboard');
+    await page.waitForURL('**/dashboard');
+
+    // 3. Em viewport mobile, valida o menu mobile do dashboard
+    await page.setViewportSize({ width: 375, height: 667 });
+    const dashMobileToggle = page.locator('#btn-dashboard-mobile-menu-toggle');
+    await expect(dashMobileToggle).toBeVisible();
+    await dashMobileToggle.click();
+    await expect(page.locator('#dashboard-mobile-menu')).toBeVisible();
+
+    // Navega para FIIs a partir do menu mobile autenticado
+    await page.click('#dashboard-mobile-link-fiis');
+    await page.waitForURL('**/fiis');
+    await expect(page.locator('h1')).toContainText('Fundos Imobiliários');
   });
 
   test('deve exibir o estado vazio informativo na listagem de BDRs', async ({ page }) => {
