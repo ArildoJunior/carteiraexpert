@@ -54,7 +54,7 @@ A plataforma organiza carteiras, operações, eventos corporativos, projeções,
 - Dados importados de planilhas ou documentos são candidatos a lançamento;
 - Usuário deve revisar, confirmar e editar dados antes da gravação;
 - PDFs e planilhas não constituem fonte imutável da verdade;
-- O módulo de importações e storage privado permanece planejado (Fase 07).
+- O módulo de importações CSV revisáveis encontra-se implementado e homologado (Fase 07). Storage privado em nuvem e extração assistida de PDFs permanecem como capacidades planejadas de infraestrutura futura.
 
 ## Dados de Mercado
 

@@ -6,8 +6,11 @@ Permitir a importação progressiva de dados de operações via arquivos (planil
 
 ## Estado Atual da Fase
 
-> **Classificação:** **Planejada, não implementada.**  
-> O diretório `src/modules/imports/` encontra-se vazio. Não existem rotas de upload, filas assíncronas, infraestrutura de armazenamento privado (buckets) ou parsers de planilhas/documentos implementados.
+> **Classificação:** **Implementada e Publicada (Fluxos CSV Comprovados).**
+>
+> **Documento Oficial de Homologação:** Consulte [`phase-07-import-module.md`](file:///c:/Projetos/carteiraexpert/docs/delivery/phase-07-import-module.md) para o relatório completo de implementação, catálogo de tabelas, parsers, rotas e evidências de testes.
+>
+> **Nota Histórica:** Este documento representa o planejamento inicial pré-implementação. O módulo de importações CSV revisáveis (`carteiraexpert_csv`, `b3_trades_csv`, `b3_movements_csv`), deduplicação SHA-256, tela de revisão, edição de itens com `Decimal`, resolução de ativos e confirmação transacional atômica em `portfolio_events` foi integralmente entregue e validado com 100% de aprovação nos testes automatizados (704 unitários, 337 integração, 126 E2E). A expansão para arquivos binários `.xlsx` e extração de PDFs com bucket privado permanece planejada no Roadmap expandido.
 
 ## Pacote 07.01 — Importação de CSV e XLSX
 

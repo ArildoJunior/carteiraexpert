@@ -35,7 +35,7 @@ Os planos superiores ao Free ampliam a capacidade analítica e operacional da pl
 - **Estrutura de Assinaturas e Eventos:** ciclo de vida em `billing_subscriptions`, eventos em `payment_events` com idempotência estrita e adaptação agnóstica de gateways (*Implementado e validado no código*).
 - **Gestão Visual e Transparência Comercial:** página `/plans` com exibição de quotas, limites, status de vigência e aviso de preparação de pagamentos sem cobrança real (*Implementado e validado no código*).
 - **Comparação entre Carteiras:** ferramenta analítica para comparação explícita de métricas entre carteiras (*Planejado, não implementado*).
-- **Importações Avançadas:** processamento de planilhas e importação assistida de notas de corretagem em PDF com tela de conferência (*Planejado, não implementado*).
+- **Importações Avançadas:** processamento de planilhas binárias (.xlsx) e importação assistida de notas de corretagem em PDF com tela de conferência (*Módulo base de importações CSV implementado na Fase 07; extração de PDF e XLSX permanece planejada*).
 - **Projeções e Simulações:** modelagem de cenários hipotéticos sem afetar a carteira real (*Planejado, não implementado*).
 - **Módulo de Opções:** controle operacional de travas, posições cobertas e alertas de vencimento (*Planejado, não implementado*).
 - **Apoio Tributário Avançado:** relatórios auxiliares consolidados e exportações estruturadas para contabilidade (*Planejado, não implementado*).

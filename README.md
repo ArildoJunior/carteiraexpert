@@ -20,8 +20,10 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
   - **Pacote 05.02 — Estrutura de Assinaturas e Pagamentos:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Tabelas `billing_subscriptions` e `payment_events` com migração `0008`, máquina de estados de faturamento, idempotência estrita por `idempotency_key`, sincronização atômica e transacional com `user_plans`, fallback e congelamento automático em caso de inadimplência (`unpaid`), interface agnóstica `PaymentGatewayAdapter` e adaptador `MockPaymentGatewayAdapter` para testes sem chamadas externas, e resumo de faturamento seguro na UI).
   - **Pacote 05.03 — Experiência Comercial de Planos:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Página dedicada `/plans` no dashboard, visão comparativa transparente de recursos entre Free e Pro, uso de quotas em tempo real, alertas contextuais para carteiras congeladas e períodos de carência, ausência de checkout falso ou formulários de pagamento, e botão de upgrade desabilitado com aviso informativo de que pagamentos automáticos estão em desenvolvimento).
 - **Fase 06 — Dados de Mercado, Valuation e Gráficos:** **HOMOLOGADA COM SUCESSO (`PASS`)** (Persistência relacional em `market_quotes` e `exchange_rates`, adaptadores `ManualPayloadAdapter`, `MockProviderAdapter` e conector externo público `BrapiAdapter`, serviço de ingestão `MarketDataIngestionService` com ranking de qualidade, motores de valuation e evolução patrimonial diária, gráficos Recharts de alocação por ativo/classe/moeda e evolução temporal "Mercado vs. Custo", e persistência atômica de preferências visuais por usuário e área na tabela `user_chart_preferences` via migração `0010` com fila serializada anti-concorrência `ChartPreferenceSyncQueue`, coalescência e isolamento rigoroso entre dados financeiros e preferências visuais; sincronização automática em background / cron jobs agendados e WebSockets permanecem como capacidades planejadas de infraestrutura futura).
+- **Fase 06.5 — Alinhamento do MVP e Catálogo Público de Ativos:** **HOMOLOGADA COM SUCESSO (`PASS`)** (Entrega da camada pública de descoberta e consulta com módulo `src/modules/catalog/`, rotas oficiais por categoria `/acoes`, `/fiis`, `/etfs`, `/bdrs`, busca global `/ativos`, páginas individuais por ticker, cálculo determinístico de variação diária no fuso `America/Sao_Paulo` com `Decimal`, indicador de frescor `QuoteFreshnessBadge`, estado vazio informativo em BDRs, SEO com `sitemap.ts` e `robots.ts`, Landing Page institucional complementar em `/`, página de erro 404 padronizada e lançamento em carteira autenticado com ativo pré-selecionado).
+- **Fase 07 — Importações Revisáveis:** **HOMOLOGADA COM SUCESSO (`PASS`)** (Módulo `src/modules/imports/` entregue em conformidade com o ADR-007; tabelas `import_batches` e `import_batch_items` via migração `0011_add_imports_module.sql`; parsers CSV com auto-detecção de layout para `carteiraexpert_csv`, `b3_trades_csv` e `b3_movements_csv`; limite uniforme de 5 MB; deduplicação por hash de arquivo SHA-256 e linha; tela de upload `/import` com drag-and-drop; central de revisão `/import/[id]` com KPIs em tempo real, filtros por abas, edição de itens com `Decimal`, marcação/exclusão por linha e resolução explícita de ativos não mapeados; confirmação transacional atômica com lock pessimista `FOR UPDATE`, gravação em `portfolio_events` com `source = 'csv_import'` e bloqueio de edição pós-finalização; proteção IDOR rigorosa e 100% de aprovação nos testes unitários, integração e E2E multi-browser).
 - **Sistema Global de Tema e Identidade Visual:** Concluído (Suporte nativo aos temas Claro, Escuro e Automático com `prefers-color-scheme`, tokens semânticos, persistência em `localStorage` e script anti-FOUC no `<head>`).
-- **Próxima Fase Prevista:** **Fase 07 — Importações Revisáveis** (ou expansão da Fase 05 com gateways e compartilhamento).
+- **Próxima Fase Prevista:** **Fase 08 — Ativos Globais e Criptoativos** (ou expansão da Fase 05 com gateways e compartilhamento).
 
 ---
 
@@ -99,8 +101,19 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 - **Acessibilidade e Controle:** Componente `ThemeToggle` com teclado acessível (`Escape`, clique fora, `aria-expanded`), sem FOUC (flash de tema incorreto) via script síncrono injetado no `<head>` e persistência sob a chave `carteiraexpert_theme`.
 - **Tokens Semânticos:** Matriz padronizada de cores funcionais (textos, bordas, superfícies, ações, gráficos positivos/negativos e custos).
 
-### 10. Integridade de Schema, Contratos e Banco de Dados
-- **Schema Guardian:** Validação física em tempo de execução (`assertSchemaCompatible`) e via CLI (`db:verify`) inspecionando o catálogo PostgreSQL (**23 tabelas oficiais validadas**).
+### 10. Módulo de Importações Revisáveis (Fase 07)
+- **Formatos CSV Suportados com Auto-Detecção:** Parser canônico `StandardCsvParserAdapter` (`carteiraexpert_csv`) com suporte a colunas flexíveis em português ou inglês e separadores (`,`, `;`, `\t`), além de adaptadores dedicados para relatórios B3: `B3TradesCsvParserAdapter` (`b3_trades_csv`) e `B3MovementsCsvParserAdapter` (`b3_movements_csv`).
+- **Limite Uniforme de Upload:** Limite de 5 MB (`5_242_880` bytes) e rejeição impeditiva de arquivos vazios (0 bytes), validados no client-side (`ImportUploadZone`), nos schemas Zod e no serviço server-side.
+- **Deduplicação Inteligente em Dois Níveis:** Hash SHA-256 de arquivo (`raw_content_hash`) para alertar sobre arquivos já confirmados anteriormente e hash de linha (`raw_line_hash`) com detecção automática de operações idênticas na carteira, marcando-as como duplicadas e desmarcando-as preventivamente por padrão.
+- **Revisão Humana Mandatória (ADR-007):** Tela central `/import/[id]` em status `pending_review` com painel de KPIs em tempo real (*Total de Linhas*, *Válidos*, *Alertas/Avisos*, *Erros Bloqueantes*, *Duplicados*), abas de filtro por status e tabela detalhada de conferência.
+- **Edição Manual e Exclusão de Linhas:** Retificação de quantidades, preços e taxas com precisão `Decimal` via modal dedicado (`EditBatchItemModal`), além de exclusão/reativação voluntária de linhas via checkbox.
+- **Resolução Explícita de Ativos Não Mapeados:** Ativos com tickers não cadastrados recebem status `warning` e impedem a confirmação até resolução explícita do usuário: associação a ativo existente no catálogo ou criação de ativo customizado restrito ao usuário (`select_existing` / `create_custom`).
+- **Confirmação Transacional Atômica:** Execução sob lock pessimista `FOR UPDATE` no lote e na carteira, validação de carteira ativa (rejeitando carteiras congeladas `frozen` ou arquivadas), ordenação cronológica determinística e gravação em `portfolio_events` com `source = 'csv_import'` e vínculo bidirecional em `imported_portfolio_event_id`. Rollback total em qualquer falha.
+- **Imutabilidade e Rejeição de Lote:** Transição para estados terminais (`confirmed` ou `rejected`) com bloqueio estrito de novas alterações (`ImportBatchNotEditableError`) e registro em `audit_logs`.
+- **Proteção IDOR e Isolamento:** Todas as rotas `/import` e `/import/[id]`, Server Actions e consultas validam autenticação e posse exclusiva do usuário autenticado no servidor.
+
+### 11. Integridade de Schema, Contratos e Banco de Dados
+- **Schema Guardian:** Validação física em tempo de execução (`assertSchemaCompatible`) e via CLI (`db:verify`) inspecionando o catálogo PostgreSQL (**25 tabelas oficiais validadas**).
 - **Contratos Drizzle Tipados:** Exportação canônica de `Database`, `DatabaseTransaction`, `DbExecutor`, `SchemaQueryExecutor` e `AuditExecutor`, com eliminação de `any` em assinaturas e callbacks.
 - **Fixture Estática de Tipos:** Arquivo `tests/types/database-contracts.test-d.ts` validando compatibilidade estrutural e rejeição em tempo de compilação via `@ts-expect-error`.
 - **Migrações Versionadas:** Script de migração (`scripts/migrate.ts`) com pre-flight check e trava de segurança exigindo `ALLOW_DATABASE_MUTATION=true` para o banco principal.
@@ -128,7 +141,7 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 
 ```text
 carteiraexpert/
-├── drizzle/                     # Migrações versionadas SQL (0000 a 0010)
+├── drizzle/                     # Migrações versionadas SQL (0000 a 0011)
 │   └── migrations/
 ├── scripts/                     # Scripts de manutenção e infraestrutura
 │   ├── ingest-market-data.ts    # Ingestão administrativa de dados de mercado (BRAPI / Manual)
@@ -141,13 +154,15 @@ carteiraexpert/
 │   │   ├── (dashboard)/         # Área autenticada protegida com verificação de termos
 │   │   │   ├── dashboard/       # Dashboard consolidado de carteiras
 │   │   │   ├── history/         # Extrato cronológico paginado com filtros avançados
+│   │   │   ├── import/          # Listagem de lotes (/import) e central de revisão (/import/[id])
 │   │   │   ├── plans/           # Página de planos, quotas e transparência comercial
 │   │   │   └── portfolios/      # Listagem (/portfolios) e detalhes (/portfolios/[id])
+│   │   ├── (public)/            # Catálogo público de ativos (/acoes, /fiis, /etfs, /bdrs, /ativos)
 │   │   ├── terms-acceptance/    # Tela isolada de consentimentos pendentes LGPD
 │   │   ├── layout.tsx           # Layout raiz com script anti-FOUC e ThemeProvider
 │   │   └── globals.css          # Variáveis CSS semânticas e Tailwind inline theme
 │   ├── lib/
-│   │   ├── db/                  # Cliente PostgreSQL, contratos canônicos, auditoria e schemas
+│   │   ├── db/                  # Cliente PostgreSQL, contratos canônicos, auditoria e schemas (25 tabelas)
 │   │   └── theme/               # Provedor, hook useTheme, alternador e tokens semânticos
 │   ├── middleware.ts            # Proteção de rotas no Edge
 │   └── modules/
@@ -156,12 +171,14 @@ carteiraexpert/
 │       ├── billing/             # Módulo de assinaturas comerciais, eventos de pagamento e gateways
 │       ├── portfolio/           # Módulo de carteiras, ativos, motor de posições, valuation, gráficos e preferências
 │       ├── corporate-actions/   # Módulo de ações corporativas (split, grupamento, bonificação, proventos e subscrições)
-│       └── market-data/         # Módulo de cotações, câmbio, adaptadores (Manual, Mock, BRAPI) e ingestão
+│       ├── market-data/         # Módulo de cotações, câmbio, adaptadores (Manual, Mock, BRAPI) e ingestão
+│       ├── catalog/             # Módulo do catálogo público de ativos, SEO e páginas por categoria
+│       └── imports/             # Módulo de importações revisáveis (parsers CSV, deduplicação, revisão e confirmação)
 ├── tests/
-│   ├── unit/                    # Testes unitários puros (motores, schemas, tema, planos, billing, gráficos, preferências)
-│   ├── integration/             # Testes de integração com PostgreSQL real (carteiras, planos, billing, market data, preferências)
+│   ├── unit/                    # Testes unitários puros (motores, schemas, tema, planos, billing, gráficos, importações)
+│   ├── integration/             # Testes de integração com PostgreSQL real (carteiras, planos, billing, market data, importações)
 │   └── types/                   # Fixtures de tipagem estática (database-contracts.test-d.ts)
-├── e2e/                         # Testes end-to-end com Playwright (autenticação, termos, carteiras, planos, subscrições, preferências)
+├── e2e/                         # Testes end-to-end com Playwright (autenticação, termos, carteiras, planos, catálogo, importações)
 └── docs/                        # Documentação técnica, arquitetura, ADRs e status de entrega
 ```
 
@@ -203,18 +220,18 @@ pnpm lint:fix         # Corrigir problemas de lint automaticamente
 pnpm format:fix       # Verificar e aplicar formatação
 
 # Testes
-pnpm test:unit        # Testes unitários (Vitest — 45 arquivos, 614 testes)
-pnpm test:integration # Testes de integração com PostgreSQL (Vitest — 28 arquivos, 286 testes)
-pnpm test:e2e         # Testes End-to-End no Chromium, Firefox e WebKit (Playwright — 78 testes)
+pnpm test:unit        # Testes unitários (Vitest — 54 arquivos, 704 testes)
+pnpm test:integration # Testes de integração com PostgreSQL (Vitest — 32 arquivos, 337 testes)
+pnpm test:e2e         # Testes End-to-End no Chromium, Firefox e WebKit (Playwright — 10 arquivos, 126 testes)
 
 # Banco de Dados e Migrações
-# Inspecionar catálogo físico no banco de desenvolvimento (23 tabelas)
+# Inspecionar catálogo físico no banco de desenvolvimento/produção (25 tabelas)
 pnpm db:verify
-# Inspecionar catálogo físico no banco de testes automatizados
+# Inspecionar catálogo físico no banco de testes automatizados (25 tabelas)
 pnpm db:verify -- --test
-# Executar migrações pendentes no banco de desenvolvimento (PowerShell no Windows)
+# Executar migrações pendentes no banco principal (PowerShell no Windows)
 $env:ALLOW_DATABASE_MUTATION="true"; pnpm db:migrate
-# Executar migrações pendentes no banco de desenvolvimento (Bash no Linux/macOS)
+# Executar migrações pendentes no banco principal (Bash no Linux/macOS)
 ALLOW_DATABASE_MUTATION=true pnpm db:migrate
 # Executar migrações no banco de testes
 pnpm db:migrate -- --test
@@ -232,7 +249,7 @@ pnpm market:ingest    # Executar script administrativo de ingestão de dados de 
 As seguintes funcionalidades representam direcionamentos no roadmap e permanecem como capacidades planejadas para fases futuras:
 
 1. **Fase 05 (Expansão) — Pagamentos e Compartilhamento:** Gateways de pagamento (Stripe/Asaas/MercadoPago), webhooks, cron jobs de expiração de assinatura e gestão de grupos compartilhados com faturamento unificado e segregação estrita de dados financeiros (ADR-004).
-2. **Fase 07 — Importações de Arquivos:** Upload e parsing de planilhas CSV/XLSX, extração assíncrona de notas de corretagem em PDF e armazenamento em bucket privado com URLs assinadas.
+2. **Fase 07 (Expansão) — Importações Avançadas:** Upload de planilhas binárias `.xlsx`, extração assíncrona de notas de corretagem em PDF e armazenamento em bucket privado com URLs assinadas.
 3. **Fase 09 — Opções e Módulo Fiscal Dedicado:** Cadastro e acompanhamento de contratos de opções, modelos teóricos de valuation (Bazin, Graham, Lynch, DCF), simulações de aportes futuros, módulo fiscal dedicado (`src/modules/tax/`) e relatórios anuais auxiliares para IRPF.
 4. **Fase 10 — IA Editorial Interna:** Pipeline editorial interno com apoio de IA e revisão humana mandatória para elaboração de resumos corporativos.
 5. **Gestão de Caixa e Custódia Institucional:** Saldos em moeda corrente, depósitos/retiradas bancárias e vinculação formal de corretoras e contas de custódia.
