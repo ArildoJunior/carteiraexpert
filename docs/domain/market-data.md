@@ -4,10 +4,14 @@ Este documento descreve as regras de domínio, contratos de adaptadores e ingest
 
 ## 1. Princípios de Consumo de Dados
 
-1. **Desacoplamento e Consultas Locais:** Nas rotas e fluxos analisados, a interface e os motores consultam os dados persistidos localmente em `market_quotes` e `exchange_rates`. Não foi confirmada chamada síncrona a provedores externos durante o carregamento. A integração com provedores externos reais permanece não implementada ou não verificada.
-2. **Desacoplamento por Adaptadores:** A obtenção de dados de mercado é intermediada pela interface abstrata `MarketDataProviderAdapter` (`src/modules/market-data/server/market-data-provider.types.ts`).
-3. **Transparência de Defasagem:** Toda cotação e taxa armazena seu estado de defasagem (`delay_status`) e data de referência em UTC.
-4. **Respeito ao Multi-Tenant:** Ativos globais (`is_custom = false`) compartilham cotações comuns; ativos customizados (`is_custom = true`) são restritos ao usuário criador.
+1. **Desacoplamento e Consultas Locais (ADR-006):** Nas rotas e fluxos da aplicação, a interface e os motores consultam exclusivamente os dados persistidos localmente em `market_quotes` e `exchange_rates`. Não são realizadas chamadas síncronas a provedores externos durante o carregamento de telas.
+2. **Desacoplamento por Adaptadores (ADR-008):** A obtenção de dados de mercado é intermediada pela interface abstrata `MarketDataProviderAdapter` (`src/modules/market-data/server/market-data-provider.types.ts`).
+3. **B3 como Fonte Histórica e de Fim de Dia (ADR-010):** Os arquivos oficiais de séries históricas e diárias da B3 (`COTAHIST`) constituem a fonte primária para cotações históricas e de fechamento (End of Day — EOD).
+4. **Transparência de Defasagem e Origem:** Toda cotação e taxa armazena seu estado de defasagem (`delay_status`: `eod`, `delayed_15m`, `realtime`, `manual`, `unknown`), fonte (`source`) e data de referência em UTC. Dados de fim de dia (D-1) são formalmente identificados como históricos/EOD, sem promessa de tempo real.
+5. **Separação entre Fatos de Mercado e Operações de Carteira:** Cotações representam fatos públicos de mercado e permanecem estritamente isoladas dos lançamentos e eventos privados das carteiras (`portfolio_events`). A oscilação de mercado altera o valuation da custódia sem modificar o histórico de operações ou custo de aquisição.
+6. **Preços Brutos vs. Ajustes Corporativos:** Os preços ingeridos a partir do COTAHIST representam cotações brutas negociadas em pregão. Ajustes decorrentes de proventos, splits, bonificações ou grupamentos não são inferidos na carga bruta, sendo apurados pelos motores dedicados de eventos corporativos (Fase 04).
+7. **Uso Interno sem Redistribuição:** Os dados de mercado processados destinam-se exclusivamente ao consumo das funcionalidades internas do produto (gráficos, valuation, estudos, indicadores e relatórios). Os arquivos brutos originais (ZIP/TXT) não são redistribuídos, baixados ou revendidos aos usuários finais.
+8. **Respeito ao Multi-Tenant:** Ativos globais (`is_custom = false`) compartilham cotações comuns; ativos customizados (`is_custom = true`) são restritos ao usuário criador.
 
 ## 2. Camada de Adaptadores e Ingestão
 
@@ -16,7 +20,22 @@ Este documento descreve as regras de domínio, contratos de adaptadores e ingest
 - **`MockProviderAdapter`** (`src/modules/market-data/server/adapters/mock-provider.adapter.ts`): Fornece cotações e taxas determinísticas simuladas para testes e ambiente local (*Implementado e validado*).
 - **`BrapiAdapter`** (`src/modules/market-data/server/adapters/brapi.adapter.ts`): Conector que consome cotações de ações brasileiras (B3) via API pública da BRAPI com normalização UTC (*Implementado e validado*).
 
-### 2.2. Serviço de Ingestão (`MarketDataIngestionService`)
+### 2.2. Adaptador de Séries Históricas B3 (Pacote 06.03 / ADR-010)
+- **`CotahistParserAdapter`** (*Planejado / Especificado em ADR-010 e Pacote 06.03*):
+  - **Formato Oficial:** Leitura de arquivos TXT de largura fixa contidos em arquivos ZIP oficiais da B3 (`SeriesHistoricas_Layout.pdf`).
+  - **Estrutura de Registros:** Registro de Abertura (`00`), Registros de Negociação de Ativos (`01`) e Registro de Encerramento/Trailer (`99`).
+  - **Preços Brutos e Escala:** Preços armazenados como inteiros no arquivo e normalizados monetariamente via divisão determinística por 100 com `Decimal` (abertura, máxima, mínima, médio e fechamento).
+  - **Fator de Cotação (`quotation_factor`):** Multiplicador de quantidade aplicável ao preço unitário (ex.: `1` para cotação por unidade de ação/cota; `1000` para cotação por lote de mil ações).
+  - **Códigos BDI e Tipos de Mercado:**
+    - Código BDI: identifica a classificação do papel (ex.: `02` para Lote Padrão, `12` para Fundos Imobiliários, `96` para Fracionário B3, etc.);
+    - Tipo de Mercado: categoriza a modalidade de negociação (ex.: `010` para Mercado à Vista, `020` para Fracionário, `070`/`080` para Opções de Compra/Venda).
+  - **Chave de Unicidade e Idempotência:** Chave de negócio canônica para desempate de cotações da B3:
+    ```text
+    (trading_date, ticker, bdi_code, market_type, distribution_number)
+    ```
+  - **Descarte de Registros Incompletos:** Registros parciais resultantes de truncamento de arquivo são sumariamente descartados durante o parser e nunca gravados no banco.
+
+### 2.3. Serviço de Ingestão (`MarketDataIngestionService`)
 O serviço valida os dados com Zod e `Decimal` (`src/modules/market-data/domain/market-data.schema.ts`), normaliza as datas para `00:00:00.000Z` e aplica a hierarquia de qualidade (`DELAY_STATUS_QUALITY_RANK`):
 1. `realtime` (Rank 5)
 2. `delayed_15m` (Rank 4)
@@ -26,7 +45,7 @@ O serviço valida os dados com Zod e `Decimal` (`src/modules/market-data/domain/
 
 Caso já exista cotação para o mesmo ativo e data em `market_quotes`, o registro só é substituído se o novo payload apresentar qualidade igual ou superior.
 
-### 2.3. Persistência Relacional
+### 2.4. Persistência Relacional
 - **`market_quotes`:** `asset_id`, `quote_date`, `price`, `currency`, `source`, `delay_status`. Chave única `uq_market_quotes_asset_date`.
 - **`exchange_rates`:** `from_currency`, `to_currency`, `rate_date`, `rate`, `source`, `delay_status`. Chave única `uq_exchange_rates_pair_date`.
 - As tabelas registram a fonte e data de referência; não possuem coluna `created_by` obrigatória no schema físico.
@@ -53,7 +72,8 @@ O motor de evolução temporal (`src/modules/portfolio/domain/portfolio-evolutio
 | Serviço de ingestão e normalização (`MarketDataIngestionService`) | Implementado | **Implementado e validado** |
 | Persistência e consulta local (`market_quotes` e `exchange_rates`) | Implementado | **Implementado e validado** |
 | Tratamento de cotações obsoletas, ausentes e divergência cambial | Implementado | **Implementado e validado** |
+| Ingestão Histórica B3 COTAHIST / Atualização Diária (Pacote 06.03) | Especificado em ADR-010 | **Planejado / Especificado para implementação** |
 | Sincronização automática em background / Cron jobs periódicos | Não implementado | **Planejado, não implementado** |
-| Provedores comerciais pagos com SLA dedicado | Não implementado | **Planejado, não implementado** |
+| Provedores comerciais pagos com SLA dedicado (ADR-008) | Não implementado | **Planejado, não implementado** |
 | Streaming em tempo real via WebSocket | Não implementado | **Planejado, não implementado** |
-| Livro de ofertas e profundidade de mercado | Não suportado | **Fora do escopo do MVP** |
+| Livro de ofertas e profundidade de mercado | Não suportado | **Fora do escopo permanente** |

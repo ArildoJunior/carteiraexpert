@@ -60,7 +60,8 @@ A plataforma organiza carteiras, operações, eventos corporativos, projeções,
 
 - Consultas de usuários são atendidas pelo banco interno local da plataforma (`market_quotes` e `exchange_rates`);
 - Não realizar chamadas diretas a provedores externos a cada carregamento de tela;
-- Adaptadores de provedor devem ser substituíveis para permitir futura contratação de fontes pagas.
+- Adaptadores de provedor devem ser substituíveis para permitir futura contratação de fontes pagas (ADR-008);
+- Séries históricas e dados de fechamento diário da B3 são ingeridos via arquivos oficiais COTAHIST com upload restrito a operadores e armazenamento privado, sem redistribuição de arquivos brutos aos usuários (ADR-010).
 
 ## Governança da Futura IA Editorial Interna (Fase 10)
 

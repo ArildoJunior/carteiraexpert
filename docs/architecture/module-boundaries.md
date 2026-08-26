@@ -44,17 +44,18 @@ Este documento define os limites de responsabilidade, fronteiras arquiteturais e
   - Não recomenda adesão a eventos societários ou compra de direitos.
 
 ### 1.4. `market-data`
-- **Estado:** *Parcialmente implementado por ausência de integração externa real*.
+- **Estado:** *Implementado internamente e integrado via BRAPI / Ingestão B3 COTAHIST planejada*.
 - **Código Principal:** `src/modules/market-data/` e `src/lib/db/schema/market-data.ts`.
 - **Capacidades Implementadas e Validadas:**
   - Abstração de provedor de dados (`MarketDataProviderAdapter`);
-  - Adaptadores internos: manual (`ManualPayloadAdapter`) e mock (`MockProviderAdapter`);
+  - Adaptadores internos: manual (`ManualPayloadAdapter`), mock (`MockProviderAdapter`) e conector público B3/BRAPI (`BrapiAdapter`);
+  - Script CLI administrativo de ingestão (`scripts/ingest-market-data.ts`, `pnpm market:ingest`);
   - Ingestão em lote e normalização temporal em UTC (`MarketDataIngestionService`);
   - Persistência e consulta de cotações (`market_quotes`) e taxas de câmbio (`exchange_rates`);
   - Motor de valuation de posições com tratamento de moeda e defasagem (`valuation-engine.ts`).
-- **Capacidades Pendentes / Não Verificadas:**
-  - *Integração Externa Real:* Não implementada ou não verificada (sem chamadas HTTP a provedores externos);
-  - *Camada de Cache:* As consultas são atendidas diretamente pelo banco PostgreSQL; não há camada de cache externo Redis confirmada.
+- **Capacidades Pendentes / Especificadas:**
+  - *Ingestão Histórica B3 COTAHIST (Pacote 06.03 / ADR-010):* Upload privado de ZIPs, parser de largura fixa COTAHIST, armazenamento privado seguro e processamento assíncrono por workers;
+  - *Sincronização Automática em Background:* Cron jobs periódicos e streaming via WebSocket.
 
 ### 1.5. `plans`
 - **Estado:** *Implementado e validado*.
@@ -79,15 +80,35 @@ Este documento define os limites de responsabilidade, fronteiras arquiteturais e
 - **Limitações:**
   - Não faz chamadas de rede externas, não integra SDKs de terceiros (Stripe, Asaas) e não expõe webhooks ativos no momento.
 
+### 1.7. `catalog`
+- **Estado:** *Implementado e validado*.
+- **Código Principal:** `src/modules/catalog/`.
+- **Responsabilidades:**
+  - Descoberta pública de ativos por classe (`/acoes`, `/fiis`, `/etfs`, `/bdrs`, `/ativos`);
+  - Páginas públicas individuais por ticker com cálculo de variação diária no fuso São Paulo com `Decimal`;
+  - Badge de frescor de cotação (`QuoteFreshnessBadge`);
+  - SEO com geração de `sitemap.ts` e `robots.ts`;
+  - Ação de lançamento em carteira autenticado com ativo pré-selecionado (`TransactionModal`).
+
+### 1.8. `imports`
+- **Estado:** *Implementado e validado (Fase 07)*.
+- **Código Principal:** `src/modules/imports/` e `src/lib/db/schema/imports.ts`.
+- **Responsabilidades:**
+  - Ingestão de planilhas CSV com auto-detecção de layout (`carteiraexpert_csv`, `b3_trades_csv`, `b3_movements_csv`);
+  - Validação rigorosa de limite de 5 MB e rejeição de arquivos vazios;
+  - Deduplicação inteligente por hash de arquivo SHA-256 e por linha (`raw_line_hash`);
+  - Central de revisão de lotes em `/import/[id]` com KPIs em tempo real, filtros por status e edição manual de itens com `Decimal`;
+  - Resolução explícita de ativos não identificados (`select_existing` / `create_custom`);
+  - Confirmação transacional atômica com bloqueio pessimista `FOR UPDATE`, gravação em `portfolio_events` com `source = 'csv_import'` e bloqueio de edição pós-finalização;
+  - Proteção IDOR estrita e isolamento multitenant.
+- **Limitações e Expansão Futura:**
+  - Suporte a planilhas binárias `.xlsx` e extração de notas em PDF com bucket privado permanecem planejados no roadmap expandido.
+
 ## 2. Módulos Planejados (Sem Implementação Efetiva)
 
 Os módulos abaixo possuem diretórios estruturais reservados em `src/modules/`, mas encontram-se sem código ou tabelas ativas no estado atual:
 
-### 2.1. `imports` (Importações e Documentos)
-- **Estado:** *Planejado, não implementado*.
-- **Escopo Previsto:** Upload de extratos (CSV, XLSX) e notas de corretagem em PDF, processamento assíncrono de arquivos, tela de conferência/revisão antes da efetivação e rastreamento de documentos de origem.
-
-### 2.3. `tax` (Módulo Tributário Dedicado)
+### 2.1. `tax` (Módulo Tributário Dedicado)
 - **Estado:** *Parcialmente implementado nos motores existentes / Módulo dedicado planejado*.
 - **Escopo Previsto:** Relatórios anuais de IRPF auxiliares, fechamento de períodos fiscais e consolidação de apuração.
 - **Realidade Atual:** O cálculo factual de PnL realizado por venda é executado no módulo `portfolio` e a retenção de IRRF em JCP é calculada no módulo `corporate-actions`. Não há módulo fiscal dedicado em `src/modules/tax/`.

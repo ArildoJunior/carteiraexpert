@@ -27,15 +27,16 @@ Define a interface comprovada no código:
 - **`MockProviderAdapter`** (`src/modules/market-data/server/adapters/mock-provider.adapter.ts`): *Implementado e validado*. Adaptador determinístico para testes unitários, testes de integração e ambiente de desenvolvimento local, gerando cotações e taxas simuladas sem dependência de rede.
 - **`BrapiAdapter`** (`src/modules/market-data/server/adapters/brapi.adapter.ts`): *Implementado e validado*. Adaptador que consome a API pública da BRAPI (B3 / mercado brasileiro), com suporte a autenticação via `BRAPI_TOKEN`, normalização rigorosa de fusos horários para UTC, e filtros por data de referência (`targetDate`).
 
-### 2.3. Provedores Externos e Execução Operacional
+### 2.4. Adaptador de Ingestão de Séries Históricas e Fim de Dia B3 (Pacote 06.03 / ADR-010)
 
-- **Adaptador Externo Disponível:** O `BrapiAdapter` está implementado e integrado ao ecossistema através do script CLI administrativo `scripts/ingest-market-data.ts` (comando `pnpm market:ingest`).
-- **Execução Operacional Sob Demanda vs. Agendada:** A ingestão de mercado atual é disparada sob demanda (via script CLI ou chamada manual de serviço). A automação periódica em background (cron jobs / workers assíncronos) permanece planejada.
-- **Provedores Comerciais Pagos:** A integração com fontes pagas com SLA dedicado e suporte a alta disponibilidade permanece como diretriz futura aprovada (conforme ADR-008).
+- **`CotahistParserAdapter`** (*Planejado — especificação em ADR-010 e Pacote 06.03*):
+  - Adaptador especializado na ingestão em lote de arquivos oficiais da B3 no formato `COTAHIST` (arquivos ZIP contendo TXT de largura fixa).
+  - Parser de largura fixa com validação de registros de abertura (`00`), negociações (`01`) e encerramento (`99`), descarte de linhas truncadas e normalização de escalas monetárias e fatores de cotação.
+  - Carga transacional e idempotente baseada em hash SHA-256 e chave de negócio canônica `(trading_date, ticker, bdi_code, market_type, distribution_number)`.
 
 ## 3. Fluxo de Ingestão de Dados de Mercado
 
-O fluxo comprovado no código (`src/modules/market-data/server/market-data-ingestion.service.ts`) opera nas seguintes etapas:
+### 3.1. Fluxo Geral de Ingestão Sob Demanda (BRAPI / Manual / Mock)
 
 ```text
 Adaptador (Manual / Mock / BRAPI)
@@ -59,12 +60,51 @@ Motores de Domínio (`valuation-engine` / `portfolio-evolution-engine`)
 Interface do Usuário (Server Components / Gráficos Recharts)
 ```
 
-### 3.1. Validação com Zod e Decimal
+### 3.2. Fluxo de Ingestão Assíncrona B3 COTAHIST (Pacote 06.03 / ADR-010)
+
+```text
+Administrador / Operador Autorizado
+               │ (Área Administrativa Restrita)
+               ▼
+   Upload Privado de ZIP B3
+               │
+               ▼
+   Armazenamento Privado Seguro
+  (Bloqueado para usuários comuns)
+               │
+               ▼
+   Registro do Lote & Hash SHA-256
+               │
+               ▼
+   Fila de Processamento Assíncrono
+               │
+               ▼
+     Worker em Background
+               │
+    ├── Extração Segura do TXT
+    ├── Parser de Largura Fixa (Layout B3)
+    ├── Validação Header '00', Trailer '99', Linhas '01'
+    ├── Descarte de Linhas Truncadas / Incompletas
+    ├── Normalização Monetária & Fator de Cotação
+    └── Carga Idempotente (Upsert / Transação ACID)
+               │
+               ▼
+   Tabela Canônica `market_quotes` (source: 'B3_COTAHIST')
+               │
+               ▼
+   Relatório Operacional & Auditoria do Lote
+               │
+               ▼
+   Motores de Domínio, Gráficos Recharts, Valuation e Estudos
+  (Acesso transparente aos dados processados pelos usuários)
+```
+
+### 3.3. Validação com Zod e Decimal
 Localização: `src/modules/market-data/domain/market-data.schema.ts`
 - `ingestQuoteItemSchema`: valida `ticker` ou `assetId`, preço não-negativo via `Decimal`, data/hora e `delayStatus`.
 - `ingestExchangeRateItemSchema`: valida par de moedas (`fromCurrency`, `toCurrency`), taxa positiva (`rate > 0`) via `Decimal`, data/hora e `delayStatus`.
 
-### 3.2. Normalização e Hierarquia de Qualidade
+### 3.4. Normalização e Hierarquia de Qualidade
 - As datas são normalizadas para UTC no início do dia civil de referência (`00:00:00.000Z`).
 - Hierarquia de qualidade de dados (`DELAY_STATUS_QUALITY_RANK`):
   1. `realtime` (Rank 5)
@@ -74,10 +114,14 @@ Localização: `src/modules/market-data/domain/market-data.schema.ts`
   5. `unknown` (Rank 1)
 - Em caso de conflito de cotação para o mesmo ativo e data, o registro existente só é substituído se o novo payload apresentar qualidade igual ou superior.
 
-### 3.3. Persistência Relacional
+### 3.5. Persistência Relacional
 - **`market_quotes`:** constraint de unicidade `uq_market_quotes_asset_date (asset_id, quote_date)`.
 - **`exchange_rates`:** constraint de unicidade `uq_exchange_rates_pair_date (from_currency, to_currency, rate_date)`.
 - As tabelas registram a fonte, data de referência e defasagem; não possuem `created_by` obrigatório no schema físico.
+
+### 3.6. Armazenamento Privado e Controle de Acesso
+- Os arquivos brutos da B3 (ZIP/TXT) são mantidos em armazenamento estritamente privado, acessíveis exclusivamente pelas rotinas internas e por administradores autorizados.
+- Usuários comuns não possuem telas, endpoints, links assinados ou permissão de download dos arquivos brutos da B3, consumindo unicamente as agregações e visualizações derivadas nos gráficos e relatórios.
 
 ## 4. Consumo nos Motores de Domínio
 
@@ -109,8 +153,9 @@ Os dados ingeridos são consumidos exclusivamente através de consultas no banco
 | Persistência local de cotações (`market_quotes`) | Implementado | **Implementado e validado** |
 | Persistência local de câmbio (`exchange_rates`) | Implementado | **Implementado e validado** |
 | Tratamento de cotações obsoletas / ausentes no valuation | Implementado | **Implementado e validado** |
+| Ingestão Histórica B3 COTAHIST / Atualização Diária (Pacote 06.03) | Especificado em ADR-010 | **Planejado / Especificado para implementação** |
 | Sincronização automática em background / Cron jobs periódicos | Não implementado | **Planejado, não implementado** |
-| Provedores comerciais pagos com SLA dedicado | Não implementado | **Planejado, não implementado** |
+| Provedores comerciais pagos com SLA dedicado (ADR-008) | Não implementado | **Planejado, não implementado** |
 | Feeds de cotações em tempo real via WebSocket | Não implementado | **Planejado, não implementado** |
-| Open Finance e APIs bancárias para custódia | Não implementado | **Fora do escopo do MVP** |
-| Mensageria assíncrona / Filas Redis | Não implementado | **Planejado, não implementado** |
+| Open Finance e APIs bancárias para custódia | Não implementado | **Fora do escopo permanente** |
+| Mensageria assíncrona / Filas dedicadas de jobs | Não implementado | **Planejado, não implementado** |

@@ -65,3 +65,45 @@ Prover infraestrutura local para ingestão, persistência e consulta de cotaçõ
 - [x] Séries temporais utilizam dados do banco local sem sobrecarga do cliente;
 - [x] Testes unitários do motor de gráficos aprovados;
 - [x] Preferências de exibição persistidas por usuário e área no PostgreSQL (tabela `user_chart_preferences`, migração `0010_add_user_chart_preferences.sql`).
+
+## Pacote 06.03 — Ingestão Histórica e Diária de Dados de Mercado da B3
+
+> **Especificação Detalhada:** [`phase-06-03-b3-historical-market-data-ingestion.md`](./phase-06-03-b3-historical-market-data-ingestion.md)
+> **Decisão Arquitetural Vinculada:** [ADR-010](../decisions/ADR-010-b3-eod-historical-ingestion.md)
+> **Status:** **Planejado — especificação para implementação.**
+
+### Objetivo e Escopo Funcional
+
+Implementar fluxo seguro, auditável e idempotente para upload privado e processamento assíncrono das séries históricas e arquivos diários de fim de dia (EOD) da B3 no formato oficial `COTAHIST` (arquivos ZIP contendo TXT de largura fixa).
+
+### Componentes Planejados
+
+1. **Upload e Armazenamento Privado:**
+   - Envio exclusivo por administradores e funcionários autorizados via área restrita;
+   - Armazenamento dos arquivos ZIP originais em área privada com cálculo e conferência de hash SHA-256;
+   - Bloqueio rigoroso de acesso de usuários comuns aos arquivos originais (sem telas, endpoints, links públicos ou redistribuição).
+
+2. **Processamento Assíncrono e Parser COTAHIST:**
+   - Desacoplamento da requisição HTTP via fila e workers em background com máquina de estados de lote (`RECEIVED`, `VALIDATING`, `QUEUED`, `PROCESSING`, `COMPLETED`, `COMPLETED_WITH_WARNINGS`, `FAILED`, `DUPLICATE`, `CANCELLED`);
+   - Extração segura do TXT e parser de largura fixa versionado conforme layout oficial `SeriesHistoricas_Layout.pdf`;
+   - Validações de integridade estrutural: registro de abertura/header `00`, registros de negociação `01` e registro de encerramento/trailer `99` com contagens;
+   - Descarte obrigatório de linhas incompletas ou truncadas (nunca importar registros parciais);
+   - Normalização monetária (escala inteira dividida por 100), fator de cotação (`quotation_factor`), códigos BDI e tipos de mercado.
+
+3. **Carga Idempotente e Integração:**
+   - Deduplicação por hash SHA-256 e chave de negócio `(trading_date, ticker, bdi_code, market_type, distribution_number)`;
+   - Carga transacional atômica na tabela canônica `market_quotes` identificando a origem `B3_COTAHIST` e lote de importação;
+   - Trilha de auditoria e geração de relatórios operacionais do lote com contagem de registros válidos, inseridos, atualizados, rejeitados e avisos;
+   - Disponibilização dos dados processados para consumo pelos motores de valuation, evolução temporal, gráficos e estudos do produto.
+
+### Critérios de Aceite (Pendentes)
+
+- [ ] Upload de ZIPs restrito a administradores e funcionários autorizados no backend;
+- [ ] Arquivos originais mantidos em armazenamento privado sem acesso ou redistribuição a usuários comuns;
+- [ ] Parser versionado de largura fixa validando header `00`, trailer `99` e registros `01`;
+- [ ] Linhas parciais ou truncadas descartadas sem interrupção indevida ou corrupção de base;
+- [ ] Carga idempotente por SHA-256 e chave de negócio sem duplicar cotações;
+- [ ] Processamento assíncrono fora da requisição web com estados e auditoria de lote;
+- [ ] Homologação inicial aprovada com a série completa de 2016 antes da expansão;
+- [ ] Gráficos, valuation e estudos consumindo os dados normalizados com indicação de origem B3 e natureza de fim de dia;
+- [ ] Testes unitários, de integração e autorização aprovados com 100% de sucesso.
