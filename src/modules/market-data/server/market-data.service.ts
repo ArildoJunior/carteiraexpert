@@ -56,9 +56,12 @@ function mapExchangeRateRow(row: typeof exchangeRates.$inferSelect): ExchangeRat
   };
 }
 
+import { b3HistoricalQuotes } from '@/lib/db/schema/b3-market-data';
+
 /**
  * Consulta a cotação mais recente de um ativo específico.
  * Valida autorização caso o ativo seja customizado do usuário.
+ * Caso não haja cotação em market_quotes, busca o último fechamento oficial em b3_historical_quotes.
  */
 export async function getLatestQuoteForAsset(
   assetId: string,
@@ -66,9 +69,9 @@ export async function getLatestQuoteForAsset(
   executor: DbExecutor = db
 ): Promise<MarketQuote | null> {
   // 1. Valida acesso ao ativo (garante isolamento para ativos customizados)
-  await getAssetById(assetId, user, executor);
+  const asset = await getAssetById(assetId, user, executor);
 
-  // 2. Busca a cotação com maior quoteDate no banco interno
+  // 2. Busca a cotação com maior quoteDate no banco interno (market_quotes)
   const rows = await executor
     .select()
     .from(marketQuotes)
@@ -76,16 +79,41 @@ export async function getLatestQuoteForAsset(
     .orderBy(desc(marketQuotes.quoteDate), desc(marketQuotes.createdAt))
     .limit(1);
 
-  if (rows.length === 0) {
-    return null;
+  if (rows.length > 0) {
+    return mapQuoteRow(rows[0]);
   }
 
-  return mapQuoteRow(rows[0]);
+  // 3. Fallback: Busca o último fechamento oficial na base COTAHIST B3
+  const [b3Row] = await executor
+    .select()
+    .from(b3HistoricalQuotes)
+    .where(eq(b3HistoricalQuotes.ticker, asset.ticker))
+    .orderBy(desc(b3HistoricalQuotes.tradeDate))
+    .limit(1);
+
+  if (b3Row) {
+    const qDate = new Date(b3Row.tradeDate);
+    return {
+      id: `cotahist-${b3Row.id}`,
+      assetId: asset.id,
+      price: new Decimal(b3Row.closePrice),
+      currency: 'BRL',
+      quoteDate: qDate,
+      source: 'cotahist_b3',
+      delayStatus: 'eod',
+      notes: `Fechamento oficial B3 COTAHIST (${qDate.toISOString().slice(0, 10)})`,
+      createdBy: 'system',
+      createdAt: qDate,
+      updatedAt: qDate,
+    };
+  }
+
+  return null;
 }
 
 /**
  * Consulta as cotações mais recentes para um conjunto de ativos.
- * Utiliza DISTINCT ON para garantir alta performance sem chamadas externas síncronas.
+ * Utiliza DISTINCT ON para alta performance e fallback para b3_historical_quotes.
  */
 export async function getLatestQuotesForAssets(
   assetIds: string[],
@@ -103,15 +131,17 @@ export async function getLatestQuotesForAssets(
     .from(assets)
     .where(inArray(assets.id, assetIds));
 
-  const authorizedAssetIds = userAssetRows
-    .filter((a) => !a.isCustom || a.userId === user.id)
-    .map((a) => a.id);
+  const authorizedAssets = userAssetRows.filter(
+    (a) => !a.isCustom || a.userId === user.id
+  );
 
-  if (authorizedAssetIds.length === 0) {
+  if (authorizedAssets.length === 0) {
     return result;
   }
 
-  // Executa consulta com DISTINCT ON (asset_id)
+  const authorizedAssetIds = authorizedAssets.map((a) => a.id);
+
+  // Executa consulta com DISTINCT ON (asset_id) em market_quotes
   const rows = await executor
     .selectDistinctOn([marketQuotes.assetId])
     .from(marketQuotes)
@@ -120,6 +150,34 @@ export async function getLatestQuotesForAssets(
 
   for (const row of rows) {
     result.set(row.assetId, mapQuoteRow(row));
+  }
+
+  // Fallback: Para ativos que não possuem cotação em market_quotes, busca em b3_historical_quotes
+  const missingAssets = authorizedAssets.filter((a) => !result.has(a.id));
+  for (const asset of missingAssets) {
+    const [b3Row] = await executor
+      .select()
+      .from(b3HistoricalQuotes)
+      .where(eq(b3HistoricalQuotes.ticker, asset.ticker))
+      .orderBy(desc(b3HistoricalQuotes.tradeDate))
+      .limit(1);
+
+    if (b3Row) {
+      const qDate = new Date(b3Row.tradeDate);
+      result.set(asset.id, {
+        id: `cotahist-${b3Row.id}`,
+        assetId: asset.id,
+        price: new Decimal(b3Row.closePrice),
+        currency: 'BRL',
+        quoteDate: qDate,
+        source: 'cotahist_b3',
+        delayStatus: 'eod',
+        notes: `Fechamento oficial B3 COTAHIST (${qDate.toISOString().slice(0, 10)})`,
+        createdBy: 'system',
+        createdAt: qDate,
+        updatedAt: qDate,
+      });
+    }
   }
 
   return result;

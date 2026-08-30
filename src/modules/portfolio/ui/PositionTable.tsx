@@ -75,13 +75,14 @@ function renderDelayBadge(delayStatus: string | null, hasQuote: boolean, ticker:
         </span>
       );
     case 'eod':
+    case 'end_of_day':
       return (
         <span
           id={`delay-badge-${ticker}`}
-          title="Cotação de fechamento diário (EOD)"
-          className="text-[10px] font-sans font-medium text-text-secondary bg-background border border-border-theme px-1.5 py-0.5 rounded"
+          title="Fonte: COTAHIST B3 • Fechamento oficial"
+          className="text-[10px] font-sans font-medium text-text-secondary bg-surface-elevated border border-border-theme px-1.5 py-0.5 rounded"
         >
-          Fechamento
+          COTAHIST B3
         </span>
       );
     case 'manual':
@@ -407,7 +408,14 @@ export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTablePr
                             <span className="font-medium text-text-primary">
                               {formatMoney(pos.marketPrice, pos.quoteCurrency || pos.currency)}
                             </span>
-                            {renderDelayBadge(pos.delayStatus, pos.hasQuote, pos.ticker)}
+                            <div className="flex items-center gap-1">
+                              {renderDelayBadge(pos.delayStatus, pos.hasQuote, pos.ticker)}
+                            </div>
+                            {pos.quoteDate && (
+                              <span className="text-[10px] text-text-secondary">
+                                Pregão: {new Date(pos.quoteDate).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+                              </span>
+                            )}
                           </div>
                         ) : (
                           <div className="flex justify-end">

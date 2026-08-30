@@ -6,12 +6,23 @@ import {
   getPublicAssetDetailByTicker,
   getPublicAssetPriceHistory,
 } from '@/modules/catalog/server/catalog.service';
+import { getB3HistoricalQuotes } from '@/modules/market-data';
 import { PublicNavbar } from '@/modules/catalog/ui/PublicNavbar';
 import { PublicFooter } from '@/modules/catalog/ui/PublicFooter';
 import { AssetDetailView } from '@/modules/catalog/ui/AssetDetailView';
 
+import type { CatalogHistoryPeriod } from '@/modules/catalog/domain/catalog.schema';
+
 interface AcaoDetailPageProps {
   params: Promise<{ ticker: string }>;
+  searchParams?: Promise<{
+    period?: CatalogHistoryPeriod;
+    page?: string;
+    limit?: string;
+    startDate?: string;
+    endDate?: string;
+    order?: 'asc' | 'desc';
+  }>;
 }
 
 export async function generateMetadata({ params }: AcaoDetailPageProps): Promise<Metadata> {
@@ -36,8 +47,9 @@ export async function generateMetadata({ params }: AcaoDetailPageProps): Promise
   };
 }
 
-export default async function AcaoDetailPage({ params }: AcaoDetailPageProps) {
+export default async function AcaoDetailPage({ params, searchParams }: AcaoDetailPageProps) {
   const { ticker } = await params;
+  const sParams = (await searchParams) || {};
   const user = await getCurrentUser();
 
   const asset = await getPublicAssetDetailByTicker(ticker, 'stock');
@@ -46,7 +58,23 @@ export default async function AcaoDetailPage({ params }: AcaoDetailPageProps) {
     notFound();
   }
 
-  const history = await getPublicAssetPriceHistory(asset.id, '1M');
+  const period: CatalogHistoryPeriod = sParams.period && ['1M', '3M', '6M', '1Y', 'ALL'].includes(sParams.period)
+    ? sParams.period
+    : '1M';
+  const page = Math.max(1, Number.parseInt(sParams.page || '1', 10) || 1);
+  const limit = Math.min(50, Math.max(1, Number.parseInt(sParams.limit || '15', 10) || 15));
+
+  const [history, b3HistoricalResult] = await Promise.all([
+    getPublicAssetPriceHistory(asset.id, period),
+    getB3HistoricalQuotes({
+      ticker: asset.ticker,
+      startDate: sParams.startDate,
+      endDate: sParams.endDate,
+      order: sParams.order,
+      page,
+      limit,
+    }),
+  ]);
 
   let userPortfolios: Array<{ id: string; name: string; baseCurrency: string; status: string }> = [];
   if (user) {
@@ -66,6 +94,8 @@ export default async function AcaoDetailPage({ params }: AcaoDetailPageProps) {
         <AssetDetailView
           asset={asset}
           history={history}
+          initialPeriod={period}
+          b3HistoricalResult={b3HistoricalResult}
           userPortfolios={userPortfolios}
           isAuthenticated={!!user}
           currentUrl={`/acoes/${asset.ticker}`}

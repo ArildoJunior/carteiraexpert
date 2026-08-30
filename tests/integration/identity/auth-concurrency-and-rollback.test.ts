@@ -62,6 +62,7 @@ if (!connectionString) {
     }
 
     await db.delete(auditLogs);
+    await db.execute(sql`UPDATE b3_cotahist_batches SET created_by = NULL WHERE created_by IS NOT NULL;`);
     await db.delete(users);
   });
 

@@ -12,21 +12,26 @@ import {
 } from 'recharts';
 import type { PublicQuoteHistoryPoint } from '../domain/catalog.types';
 import type { CatalogHistoryPeriod } from '../domain/catalog.schema';
+import { getAssetPriceHistoryAction } from '../server/catalog-actions';
 
 interface AssetPriceHistoryChartProps {
   assetId: string;
+  ticker?: string;
   initialHistory: PublicQuoteHistoryPoint[];
+  initialPeriod?: CatalogHistoryPeriod;
   currency?: string;
   onPeriodChange?: (period: CatalogHistoryPeriod) => Promise<PublicQuoteHistoryPoint[]>;
 }
 
 export function AssetPriceHistoryChart({
   assetId,
+  ticker,
   initialHistory,
+  initialPeriod = '1M',
   currency = 'BRL',
   onPeriodChange,
 }: AssetPriceHistoryChartProps) {
-  const [selectedPeriod, setSelectedPeriod] = useState<CatalogHistoryPeriod>('1M');
+  const [selectedPeriod, setSelectedPeriod] = useState<CatalogHistoryPeriod>(initialPeriod);
   const [history, setHistory] = useState<PublicQuoteHistoryPoint[]>(initialHistory);
   const [isPending, startTransition] = useTransition();
 
@@ -34,16 +39,26 @@ export function AssetPriceHistoryChart({
 
   async function handleSelectPeriod(p: CatalogHistoryPeriod) {
     setSelectedPeriod(p);
-    if (onPeriodChange) {
-      startTransition(async () => {
-        try {
-          const data = await onPeriodChange(p);
-          setHistory(data);
-        } catch {
-          // Mantém o histórico anterior em caso de erro
+    startTransition(async () => {
+      try {
+        let data: PublicQuoteHistoryPoint[];
+        if (onPeriodChange) {
+          data = await onPeriodChange(p);
+        } else {
+          data = await getAssetPriceHistoryAction(ticker || assetId, p);
         }
-      });
-    }
+        setHistory(data);
+
+        // Atualiza a URL de forma suave (shallow) para sincronizar o parâmetro de período
+        if (typeof window !== 'undefined') {
+          const url = new URL(window.location.href);
+          url.searchParams.set('period', p);
+          window.history.replaceState(null, '', url.toString());
+        }
+      } catch {
+        // Mantém o histórico anterior em caso de erro
+      }
+    });
   }
 
   const chartData = history.map((item) => ({
@@ -57,6 +72,9 @@ export function AssetPriceHistoryChart({
     chartData.length >= 2 &&
     chartData[chartData.length - 1].price >= chartData[0].price;
 
+  const firstDate = hasData ? chartData[0].date : null;
+  const lastDate = hasData ? chartData[chartData.length - 1].date : null;
+
   const strokeColor = isPositive ? '#10b981' : '#f43f5e';
   const fillColor = isPositive ? 'rgba(16, 185, 129, 0.12)' : 'rgba(244, 63, 94, 0.12)';
 
@@ -65,11 +83,21 @@ export function AssetPriceHistoryChart({
       {/* Header do Gráfico */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h3 className="text-sm font-semibold text-text-primary">
-            Evolução de Preço
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-text-primary">
+              Evolução de Preço
+            </h3>
+            <span className="text-[10px] font-semibold text-text-secondary bg-surface-elevated border border-border-theme px-1.5 py-0.5 rounded">
+              COTAHIST B3
+            </span>
+          </div>
           <p className="text-xs text-text-muted mt-0.5">
             Histórico diário oficial de negociação ({currency})
+            {hasData && firstDate && lastDate && (
+              <span className="ml-1 text-text-secondary font-medium">
+                • {firstDate} a {lastDate} ({chartData.length} pregões)
+              </span>
+            )}
           </p>
         </div>
 

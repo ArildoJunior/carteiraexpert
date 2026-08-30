@@ -10,10 +10,18 @@ import {
   LaunchOperationDialog,
   type UserPortfolioItem,
 } from './LaunchOperationDialog';
+import {
+  B3HistoricalQuotesExplorer,
+  type B3HistoricalQuotesResult,
+} from '@/modules/market-data';
+
+import type { CatalogHistoryPeriod } from '../domain/catalog.schema';
 
 interface AssetDetailViewProps {
   asset: PublicAssetDetail;
   history: PublicQuoteHistoryPoint[];
+  initialPeriod?: CatalogHistoryPeriod;
+  b3HistoricalResult?: B3HistoricalQuotesResult;
   userPortfolios: UserPortfolioItem[];
   isAuthenticated: boolean;
   currentUrl: string;
@@ -22,6 +30,8 @@ interface AssetDetailViewProps {
 export function AssetDetailView({
   asset,
   history,
+  initialPeriod = '1M',
+  b3HistoricalResult,
   userPortfolios,
   isAuthenticated,
   currentUrl,
@@ -86,8 +96,13 @@ export function AssetDetailView({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Última Cotação */}
         <div className="rounded-xl border border-border-theme bg-surface p-4 shadow-xs">
-          <div className="text-xs font-medium text-text-muted uppercase tracking-wider">
-            Última Cotação
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-text-muted uppercase tracking-wider">
+              Última Cotação
+            </span>
+            <span className="text-[10px] font-semibold text-text-secondary bg-surface-elevated border border-border-theme px-1.5 py-0.5 rounded">
+              COTAHIST B3
+            </span>
           </div>
           <div
             id="metric-latest-price"
@@ -105,12 +120,17 @@ export function AssetDetailView({
               <span className="text-text-muted text-lg">Cotação Indisponível</span>
             )}
           </div>
-          <div className="text-[11px] text-text-muted mt-1">
-            {asset.quoteDate
-              ? `Ref: ${new Date(asset.quoteDate).toLocaleDateString('pt-BR', {
-                  timeZone: 'America/Sao_Paulo',
-                })}`
-              : 'Sem registro de data'}
+          <div className="text-[11px] text-text-muted mt-1 space-y-0.5">
+            <div>
+              {asset.quoteDate
+                ? `Pregão: ${new Date(asset.quoteDate).toLocaleDateString('pt-BR', {
+                    timeZone: 'America/Sao_Paulo',
+                  })}`
+                : 'Sem registro de pregão'}
+            </div>
+            <div className="text-[10px] text-text-secondary font-medium">
+              Usando último fechamento oficial disponível
+            </div>
           </div>
         </div>
 
@@ -135,10 +155,8 @@ export function AssetDetailView({
                 {asset.dailyVariation}%
               </span>
             ) : (
-              <span className="text-sm font-medium">
-                {asset.variationStatus === 'insufficient_history'
-                  ? 'Histórico insuficiente'
-                  : 'Indisponível'}
+              <span className="text-xs font-medium text-text-muted">
+                Variação indisponível para este período
               </span>
             )}
           </div>
@@ -194,7 +212,9 @@ export function AssetDetailView({
       {/* Gráfico Histórico */}
       <AssetPriceHistoryChart
         assetId={asset.id}
+        ticker={asset.ticker}
         initialHistory={history}
+        initialPeriod={initialPeriod}
         currency={asset.currency}
       />
 
@@ -232,6 +252,25 @@ export function AssetDetailView({
           </div>
         </div>
       </div>
+
+      {/* Cotações Históricas Oficiais B3 (COTAHIST) */}
+      {b3HistoricalResult && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-bold text-text-primary">
+              Cotações Oficiais de Fechamento B3
+            </h3>
+            <span className="text-xs text-text-muted">
+              Fonte oficial: B3 COTAHIST
+            </span>
+          </div>
+          <B3HistoricalQuotesExplorer
+            initialResult={b3HistoricalResult}
+            basePath={currentUrl}
+            hideSearchHeader
+          />
+        </div>
+      )}
 
       {/* Espaço Arquitetural Futuro (Fases 08 e 09) */}
       <div className="rounded-xl border border-dashed border-border-theme bg-surface-elevated/40 p-6 text-center text-text-muted">

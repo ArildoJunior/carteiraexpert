@@ -1,7 +1,8 @@
 import { db, type DbExecutor } from '@/lib/db';
 import { assets } from '@/lib/db/schema/portfolio';
 import { marketQuotes } from '@/lib/db/schema/market-data';
-import { eq, and, isNull, ilike, or, desc, asc, inArray, count, gte } from 'drizzle-orm';
+import { b3HistoricalQuotes } from '@/lib/db/schema/b3-market-data';
+import { eq, and, isNull, ilike, or, desc, asc, inArray, count, gte, sql } from 'drizzle-orm';
 import { Decimal } from '@/lib/decimal';
 import {
   catalogFilterSchema,
@@ -16,6 +17,7 @@ import type {
   PublicAssetSummary,
   PublicAssetDetail,
   PublicQuoteHistoryPoint,
+  DelayStatus,
 } from '../domain/catalog.types';
 import {
   calculateDailyVariation,
@@ -30,32 +32,74 @@ function escapeLike(str: string): string {
   return str.replace(/[%_\\]/g, '\\$&');
 }
 
+function inferAssetTypeFromCotahist(
+  ticker: string,
+  bdiCode?: string | null,
+  specification?: string | null,
+  shortName?: string | null
+): CatalogAssetCategory {
+  const normTicker = ticker.toUpperCase();
+  const specUpper = (specification || '').toUpperCase();
+  const nameUpper = (shortName || '').toUpperCase();
+
+  if (
+    bdiCode === '12' ||
+    (normTicker.endsWith('11') && (specUpper.includes('FII') || nameUpper.includes('FII') || nameUpper.includes('IMOB')))
+  ) {
+    return 'fii';
+  }
+  if (
+    bdiCode === '14' ||
+    specUpper.includes('ETF') ||
+    nameUpper.includes('ETF') ||
+    nameUpper.includes('ISHARES') ||
+    nameUpper.includes('INDEX')
+  ) {
+    return 'etf';
+  }
+  if (
+    bdiCode === '34' ||
+    bdiCode === '36' ||
+    bdiCode === '38' ||
+    normTicker.endsWith('34') ||
+    normTicker.endsWith('35') ||
+    normTicker.endsWith('39') ||
+    specUpper.includes('BDR') ||
+    specUpper.includes('DRN') ||
+    nameUpper.includes('BDR')
+  ) {
+    return 'bdr';
+  }
+  return 'stock';
+}
+
 /**
  * Consulta pública paginada de ativos do catálogo oficial.
  * Exclui rigorosamente ativos customizados ou vinculados a usuários (isCustom = false AND userId IS NULL).
+ * Pesquisa em `assets` e em `b3_historical_quotes` para garantir que todos os tickers oficiais da B3 sejam exibidos e ordenados por liquidez/negociação.
  */
 export async function getPublicCatalogList(
   rawParams: CatalogFilterParams = {},
   executor: DbExecutor = db
 ): Promise<PaginatedCatalogResult> {
   const params = catalogFilterSchema.parse(rawParams);
+  const trimmedQuery = params.query?.trim();
 
-  // 1. Condições de segurança e filtro
-  const conditions = [
+  // 1. Busca todos os ativos cadastrados na tabela assets compatíveis com os filtros
+  const assetConditions = [
     eq(assets.isCustom, false),
     isNull(assets.userId),
   ];
 
   if (params.category) {
-    conditions.push(eq(assets.assetType, params.category));
+    assetConditions.push(eq(assets.assetType, params.category));
   } else {
-    conditions.push(inArray(assets.assetType, TRADITIONAL_ASSET_TYPES));
+    assetConditions.push(inArray(assets.assetType, TRADITIONAL_ASSET_TYPES));
   }
 
-  const trimmedQuery = params.query?.trim();
   if (trimmedQuery && trimmedQuery.length > 0) {
     const escaped = escapeLike(trimmedQuery);
-    conditions.push(
+    assetConditions.push(
       or(
         ilike(assets.ticker, `${escaped}%`),
         ilike(assets.name, `%${escaped}%`)
@@ -63,15 +107,163 @@ export async function getPublicCatalogList(
     );
   }
 
-  const whereClause = and(...conditions);
-
-  // 2. Contagem total
-  const [countRes] = await executor
-    .select({ total: count() })
+  const assetRows = await executor
+    .select()
     .from(assets)
-    .where(whereClause);
+    .where(and(...assetConditions))
+    .orderBy(asc(assets.ticker));
 
-  const total = Number(countRes?.total ?? 0);
+  // Mapa unificado indexado por TICKER em caixa alta
+  const candidateMap = new Map<string, {
+    id: string;
+    ticker: string;
+    name: string;
+    assetType: CatalogAssetCategory;
+    market: string;
+    currency: string;
+    tradeCount: number;
+    financialVolume: number;
+    isRegistered: boolean;
+  }>();
+
+  for (const a of assetRows) {
+    const t = a.ticker.toUpperCase();
+    candidateMap.set(t, {
+      id: a.id,
+      ticker: t,
+      name: a.name,
+      assetType: a.assetType as CatalogAssetCategory,
+      market: a.market,
+      currency: a.currency,
+      tradeCount: 0,
+      financialVolume: 0,
+      isRegistered: true,
+    });
+  }
+
+  // 2. Busca ativos oficiais em b3_historical_quotes compatíveis com a categoria e busca
+  let bdiFilterSql = sql`${b3HistoricalQuotes.bdiCode} IN ('02', '12', '14', '34', '36', '38') AND ${b3HistoricalQuotes.ticker} NOT LIKE '%F'`;
+  if (params.category === 'stock') {
+    bdiFilterSql = sql`${b3HistoricalQuotes.bdiCode} = '02' AND ${b3HistoricalQuotes.ticker} NOT LIKE '%F' AND ${b3HistoricalQuotes.ticker} NOT LIKE '%34' AND ${b3HistoricalQuotes.ticker} NOT LIKE '%35' AND ${b3HistoricalQuotes.ticker} NOT LIKE '%39'`;
+  } else if (params.category === 'fii') {
+    bdiFilterSql = sql`${b3HistoricalQuotes.bdiCode} = '12' AND ${b3HistoricalQuotes.ticker} NOT LIKE '%F'`;
+  } else if (params.category === 'etf') {
+    bdiFilterSql = sql`${b3HistoricalQuotes.bdiCode} = '14' AND ${b3HistoricalQuotes.ticker} NOT LIKE '%F'`;
+  } else if (params.category === 'bdr') {
+    bdiFilterSql = sql`${b3HistoricalQuotes.bdiCode} IN ('34', '36', '38') AND ${b3HistoricalQuotes.ticker} NOT LIKE '%F'`;
+  }
+
+  const b3Conditions = [bdiFilterSql];
+  if (trimmedQuery && trimmedQuery.length > 0) {
+    const escaped = escapeLike(trimmedQuery);
+    b3Conditions.push(
+      or(
+        ilike(b3HistoricalQuotes.ticker, `${escaped}%`),
+        ilike(b3HistoricalQuotes.shortName, `%${escaped}%`)
+      )!
+    );
+  } else {
+    b3Conditions.push(
+      sql`${b3HistoricalQuotes.tradeDate} = (SELECT MAX(trade_date) FROM b3_historical_quotes WHERE ${bdiFilterSql})`
+    );
+  }
+
+  // Cada candidato é formado por uma ÚNICA linha física representativa,
+  // selecionada deterministicamente pelo último pregão e critérios de desempate (liquidez e ID)
+  const b3Candidates = await executor
+    .selectDistinctOn([b3HistoricalQuotes.ticker], {
+      id: b3HistoricalQuotes.id,
+      ticker: b3HistoricalQuotes.ticker,
+      shortName: b3HistoricalQuotes.shortName,
+      specification: b3HistoricalQuotes.specification,
+      currency: b3HistoricalQuotes.currency,
+      bdiCode: b3HistoricalQuotes.bdiCode,
+      tradeCount: b3HistoricalQuotes.tradeCount,
+      financialVolume: b3HistoricalQuotes.financialVolume,
+      closePrice: b3HistoricalQuotes.closePrice,
+      tradeDate: b3HistoricalQuotes.tradeDate,
+    })
+    .from(b3HistoricalQuotes)
+    .where(and(...b3Conditions))
+    .orderBy(
+      b3HistoricalQuotes.ticker,
+      desc(b3HistoricalQuotes.tradeDate),
+      desc(b3HistoricalQuotes.tradeCount),
+      desc(b3HistoricalQuotes.financialVolume),
+      asc(b3HistoricalQuotes.id)
+    );
+
+  for (const match of b3Candidates) {
+    const matchTicker = match.ticker.toUpperCase();
+    const inferredType = inferAssetTypeFromCotahist(
+      matchTicker,
+      match.bdiCode,
+      match.specification,
+      match.shortName
+    );
+
+    if (!params.category || params.category === inferredType) {
+      const existing = candidateMap.get(matchTicker);
+      const tc = Number(match.tradeCount) || 0;
+      const fv = Number(match.financialVolume) || 0;
+
+      if (existing) {
+        existing.tradeCount = tc;
+        existing.financialVolume = fv;
+      } else {
+        candidateMap.set(matchTicker, {
+          id: `b3_${matchTicker}`,
+          ticker: matchTicker,
+          name: `${match.shortName}${match.specification ? ' - ' + match.specification : ''}`.trim() || matchTicker,
+          assetType: inferredType,
+          market: 'B3',
+          currency: match.currency || 'BRL',
+          tradeCount: tc,
+          financialVolume: fv,
+          isRegistered: false,
+        });
+      }
+    }
+  }
+
+  // 3. Converte para array unificado completo e aplica ordenação determinística sobre todo o conjunto
+  const allCandidates = Array.from(candidateMap.values());
+
+  if (params.sortBy === 'name') {
+    allCandidates.sort((a, b) =>
+      params.sortOrder === 'desc' ? b.name.localeCompare(a.name) : a.name.localeCompare(b.name)
+    );
+  } else if (params.sortBy === 'ticker' || !params.sortBy) {
+    if (trimmedQuery && trimmedQuery.length > 0) {
+      const upperQ = trimmedQuery.toUpperCase();
+      allCandidates.sort((a, b) => {
+        const aExact = a.ticker === upperQ ? 1 : 0;
+        const bExact = b.ticker === upperQ ? 1 : 0;
+        if (aExact !== bExact) return bExact - aExact;
+
+        const aStarts = a.ticker.startsWith(upperQ) ? 1 : 0;
+        const bStarts = b.ticker.startsWith(upperQ) ? 1 : 0;
+        if (aStarts !== bStarts) return bStarts - aStarts;
+
+        return params.sortOrder === 'desc'
+          ? b.ticker.localeCompare(a.ticker)
+          : a.ticker.localeCompare(b.ticker);
+      });
+    } else {
+      allCandidates.sort((a, b) => {
+        // Ativos curados/registrados na tabela assets são priorizados na navegação padrão
+        if (a.isRegistered !== b.isRegistered) {
+          return a.isRegistered ? -1 : 1;
+        }
+        return params.sortOrder === 'desc'
+          ? b.ticker.localeCompare(a.ticker)
+          : a.ticker.localeCompare(b.ticker);
+      });
+    }
+  }
+
+  // 4. Paginação exata sobre o conjunto completo ordenado
+  const total = allCandidates.length;
   const totalPages = Math.max(1, Math.ceil(total / params.limit));
 
   if (total === 0) {
@@ -84,29 +276,19 @@ export async function getPublicCatalogList(
     };
   }
 
-  // 3. Busca de ativos paginados
-  // Ordenação básica no banco
-  const sortColumn = params.sortBy === 'name' ? assets.name : assets.ticker;
-  const sortDirection = params.sortOrder === 'desc' ? desc(sortColumn) : asc(sortColumn);
+  const startIndex = (params.page - 1) * params.limit;
+  const pagedAssets = allCandidates.slice(startIndex, startIndex + params.limit);
 
-  const assetRows = await executor
-    .select()
-    .from(assets)
-    .where(whereClause)
-    .orderBy(sortDirection)
-    .limit(params.limit)
-    .offset((params.page - 1) * params.limit);
+  // 5. Busca cotações recentes para os tickers paginados
+  // a) De market_quotes
+  const assetIdList = pagedAssets.filter((a) => !a.id.startsWith('b3_')).map((a) => a.id);
+  const quotesMap = new Map<string, Array<{ price: Decimal; currency: string; quoteDate: Date | string; delayStatus: DelayStatus }>>();
 
-  const assetIds = assetRows.map((a) => a.id);
-
-  // 4. Busca as cotações recentes para os ativos paginados
-  const quotesMap = new Map<string, Array<{ price: Decimal; currency: string; quoteDate: Date; delayStatus: any }>>();
-
-  if (assetIds.length > 0) {
+  if (assetIdList.length > 0) {
     const quotesRows = await executor
       .select()
       .from(marketQuotes)
-      .where(inArray(marketQuotes.assetId, assetIds))
+      .where(inArray(marketQuotes.assetId, assetIdList))
       .orderBy(marketQuotes.assetId, desc(marketQuotes.quoteDate), asc(marketQuotes.id));
 
     for (const q of quotesRows) {
@@ -115,14 +297,66 @@ export async function getPublicCatalogList(
         price: new Decimal(q.price),
         currency: q.currency,
         quoteDate: new Date(q.quoteDate),
-        delayStatus: q.delayStatus as any,
+        delayStatus: q.delayStatus as DelayStatus,
       });
       quotesMap.set(q.assetId, list);
     }
   }
 
-  // 5. Monta os resumos de cada ativo
-  const items: PublicAssetSummary[] = assetRows.map((asset) => {
+  // b) De b3_historical_quotes para os que faltam
+  const tickersNeedingB3 = pagedAssets
+    .filter((a) => !quotesMap.has(a.id) || quotesMap.get(a.id)!.length === 0)
+    .map((a) => a.ticker);
+
+  if (tickersNeedingB3.length > 0) {
+    const b3Rows = await executor
+      .select()
+      .from(b3HistoricalQuotes)
+      .where(inArray(b3HistoricalQuotes.ticker, tickersNeedingB3))
+      .orderBy(
+        b3HistoricalQuotes.ticker,
+        desc(b3HistoricalQuotes.tradeDate),
+        desc(b3HistoricalQuotes.tradeCount),
+        desc(b3HistoricalQuotes.financialVolume)
+      );
+
+    const b3ByTicker = new Map<string, Array<typeof b3HistoricalQuotes.$inferSelect>>();
+    const b3SeenDates = new Map<string, Set<string>>();
+
+    for (const row of b3Rows) {
+      const t = row.ticker;
+      const list = b3ByTicker.get(t) ?? [];
+      const seen = b3SeenDates.get(t) ?? new Set<string>();
+      const dStr = row.tradeDate;
+
+      if (!seen.has(dStr) && list.length < 5) {
+        seen.add(dStr);
+        list.push(row);
+        b3ByTicker.set(t, list);
+        b3SeenDates.set(t, seen);
+      }
+    }
+
+    for (const asset of pagedAssets) {
+      if (!quotesMap.has(asset.id) || quotesMap.get(asset.id)!.length === 0) {
+        const rowsForTicker = b3ByTicker.get(asset.ticker) ?? [];
+        if (rowsForTicker.length > 0) {
+          quotesMap.set(
+            asset.id,
+            rowsForTicker.map((r) => ({
+              price: new Decimal(r.closePrice),
+              currency: r.currency || 'BRL',
+              quoteDate: r.tradeDate,
+              delayStatus: 'eod' as DelayStatus,
+            }))
+          );
+        }
+      }
+    }
+  }
+
+  // 6. Monta os resumos de cada ativo
+  const items: PublicAssetSummary[] = pagedAssets.map((asset) => {
     const quotes = quotesMap.get(asset.id) ?? [];
     const latestQuote = quotes[0] ?? null;
     const variationResult = calculateDailyVariation(quotes, B3_TIMEZONE);
@@ -136,28 +370,17 @@ export async function getPublicCatalogList(
       market: asset.market,
       currency: asset.currency,
       latestPrice: latestQuote ? latestQuote.price.toFixed(2) : null,
-      quoteDate: latestQuote ? latestQuote.quoteDate.toISOString() : null,
+      quoteDate: latestQuote
+        ? typeof latestQuote.quoteDate === 'string'
+          ? latestQuote.quoteDate
+          : latestQuote.quoteDate.toISOString()
+        : null,
       delayStatus: latestQuote ? latestQuote.delayStatus : null,
       freshnessStatus,
       dailyVariation: variationResult.dailyVariation,
       variationStatus: variationResult.variationStatus,
     };
   });
-
-  // 6. Ordenação em memória caso seja por preço ou variação
-  if (params.sortBy === 'price') {
-    items.sort((a, b) => {
-      const pA = a.latestPrice ? Number(a.latestPrice) : -Infinity;
-      const pB = b.latestPrice ? Number(b.latestPrice) : -Infinity;
-      return params.sortOrder === 'desc' ? pB - pA : pA - pB;
-    });
-  } else if (params.sortBy === 'variation') {
-    items.sort((a, b) => {
-      const vA = a.dailyVariation ? Number(a.dailyVariation) : -Infinity;
-      const vB = b.dailyVariation ? Number(b.dailyVariation) : -Infinity;
-      return params.sortOrder === 'desc' ? vB - vA : vA - vB;
-    });
-  }
 
   return {
     items,
@@ -171,18 +394,23 @@ export async function getPublicCatalogList(
 /**
  * Consulta os detalhes públicos de um ativo pelo ticker.
  * Exclui ativos customizados e valida compatibilidade de categoria se fornecida.
+ * Suporta busca na tabela `assets` e na tabela `b3_historical_quotes`.
  */
 export async function getPublicAssetDetailByTicker(
   rawTicker: string,
   category?: CatalogAssetCategory,
   executor: DbExecutor = db
 ): Promise<PublicAssetDetail | null> {
-  const ticker = tickerParamSchema.parse(rawTicker);
+  const parsedTicker = tickerParamSchema.safeParse(rawTicker);
+  if (!parsedTicker.success) {
+    return null;
+  }
+  const normalizedTicker = parsedTicker.data;
 
   const conditions = [
     eq(assets.isCustom, false),
     isNull(assets.userId),
-    eq(assets.ticker, ticker),
+    eq(assets.ticker, normalizedTicker),
   ];
 
   if (category) {
@@ -197,38 +425,99 @@ export async function getPublicAssetDetailByTicker(
     .where(and(...conditions))
     .limit(1);
 
-  if (!asset) {
-    return null;
+  let assetId = asset?.id ?? `b3_${normalizedTicker}`;
+  let assetName = asset?.name ?? normalizedTicker;
+  let assetType: CatalogAssetCategory = (asset?.assetType as CatalogAssetCategory) ?? 'stock';
+  let assetMarket = asset?.market ?? 'B3';
+  let assetCurrency = asset?.currency ?? 'BRL';
+
+  const quotes: Array<{ price: Decimal; currency: string; quoteDate: Date | string; delayStatus: any }> = [];
+
+  if (asset) {
+    // Busca cotações do ativo em market_quotes
+    const quotesRows = await executor
+      .select()
+      .from(marketQuotes)
+      .where(eq(marketQuotes.assetId, asset.id))
+      .orderBy(desc(marketQuotes.quoteDate), asc(marketQuotes.id))
+      .limit(30);
+
+    for (const q of quotesRows) {
+      quotes.push({
+        price: new Decimal(q.price),
+        currency: q.currency,
+        quoteDate: new Date(q.quoteDate),
+        delayStatus: q.delayStatus as any,
+      });
+    }
   }
 
-  // Busca cotações do ativo ordenadas por data decrescente
-  const quotesRows = await executor
-    .select()
-    .from(marketQuotes)
-    .where(eq(marketQuotes.assetId, asset.id))
-    .orderBy(desc(marketQuotes.quoteDate), asc(marketQuotes.id))
-    .limit(30);
+  // Fallback ou busca direta em b3_historical_quotes
+  if (quotes.length === 0) {
+    const b3Rows = await executor
+      .select()
+      .from(b3HistoricalQuotes)
+      .where(eq(b3HistoricalQuotes.ticker, normalizedTicker))
+      .orderBy(
+        desc(b3HistoricalQuotes.tradeDate),
+        desc(b3HistoricalQuotes.tradeCount),
+        desc(b3HistoricalQuotes.financialVolume)
+      )
+      .limit(60);
 
-  const quotes = quotesRows.map((q) => ({
-    price: new Decimal(q.price),
-    currency: q.currency,
-    quoteDate: new Date(q.quoteDate),
-    delayStatus: q.delayStatus as any,
-  }));
+    if (b3Rows.length > 0) {
+      const firstRow = b3Rows[0];
+      if (!asset) {
+        assetName =
+          `${firstRow.shortName}${firstRow.specification ? ' - ' + firstRow.specification : ''}`.trim() ||
+          normalizedTicker;
+        assetCurrency = firstRow.currency || 'BRL';
+        assetType = inferAssetTypeFromCotahist(
+          normalizedTicker,
+          firstRow.bdiCode,
+          firstRow.specification,
+          firstRow.shortName
+        );
+      }
+
+      const seenDates = new Set<string>();
+      for (const r of b3Rows) {
+        const dStr = r.tradeDate;
+        if (!seenDates.has(dStr)) {
+          seenDates.add(dStr);
+          quotes.push({
+            price: new Decimal(r.closePrice),
+            currency: r.currency || 'BRL',
+            quoteDate: r.tradeDate,
+            delayStatus: 'end_of_day' as any,
+          });
+        }
+      }
+    }
+  }
+
+  // Se não foi encontrado em assets nem em b3_historical_quotes, retorna null (ativo inexistente)
+  if (!asset && quotes.length === 0) {
+    return null;
+  }
 
   const latestQuote = quotes[0] ?? null;
   const variationResult = calculateDailyVariation(quotes, B3_TIMEZONE);
   const freshnessStatus = deriveFreshnessStatus(latestQuote, new Date(), B3_TIMEZONE);
 
   return {
-    id: asset.id,
-    ticker: asset.ticker,
-    name: asset.name,
-    assetType: asset.assetType,
-    market: asset.market,
-    currency: asset.currency,
+    id: assetId,
+    ticker: normalizedTicker,
+    name: assetName,
+    assetType,
+    market: assetMarket,
+    currency: assetCurrency,
     latestPrice: latestQuote ? latestQuote.price.toFixed(2) : null,
-    quoteDate: latestQuote ? latestQuote.quoteDate.toISOString() : null,
+    quoteDate: latestQuote
+      ? typeof latestQuote.quoteDate === 'string'
+        ? latestQuote.quoteDate
+        : latestQuote.quoteDate.toISOString()
+      : null,
     delayStatus: latestQuote ? latestQuote.delayStatus : null,
     freshnessStatus,
     dailyVariation: variationResult.dailyVariation,
@@ -240,6 +529,7 @@ export async function getPublicAssetDetailByTicker(
 
 /**
  * Consulta a série histórica de cotações para exibição em gráficos.
+ * Suporta resolução a partir de asset_id ou ticker B3 e períodos 1M, 3M, 6M, 1Y e ALL.
  */
 export async function getPublicAssetPriceHistory(
   assetId: string,
@@ -248,121 +538,187 @@ export async function getPublicAssetPriceHistory(
 ): Promise<PublicQuoteHistoryPoint[]> {
   const period = catalogHistoryPeriodSchema.parse(rawPeriod);
 
-  // 1. Valida que o ativo é público
-  const [asset] = await executor
-    .select({ id: assets.id })
-    .from(assets)
-    .where(
-      and(
-        eq(assets.id, assetId),
-        eq(assets.isCustom, false),
-        isNull(assets.userId)
+  let ticker: string | null = null;
+  let resolvedAssetUuid: string | null = null;
+
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(assetId);
+
+  if (assetId.startsWith('b3_')) {
+    ticker = assetId.replace(/^b3_/, '').toUpperCase();
+  } else if (isUuid) {
+    resolvedAssetUuid = assetId;
+    const [asset] = await executor
+      .select({ id: assets.id, ticker: assets.ticker })
+      .from(assets)
+      .where(
+        and(
+          eq(assets.id, assetId),
+          eq(assets.isCustom, false),
+          isNull(assets.userId)
+        )
       )
-    )
-    .limit(1);
+      .limit(1);
 
-  if (!asset) {
-    return [];
+    if (asset) {
+      ticker = asset.ticker.toUpperCase();
+    }
+  } else {
+    // Busca por ticker em assets
+    const [asset] = await executor
+      .select({ id: assets.id, ticker: assets.ticker })
+      .from(assets)
+      .where(
+        and(
+          eq(assets.ticker, assetId.toUpperCase()),
+          eq(assets.isCustom, false),
+          isNull(assets.userId)
+        )
+      )
+      .limit(1);
+
+    if (asset) {
+      ticker = asset.ticker.toUpperCase();
+      resolvedAssetUuid = asset.id;
+    } else {
+      ticker = assetId.toUpperCase();
+    }
   }
 
-  // 2. Calcula data inicial conforme período
-  let startDate: Date | null = null;
-  const now = new Date();
+  // 2. Consulta em b3_historical_quotes pelo ticker
+  if (ticker) {
+    // Encontra o último pregão registrado para o ticker para calcular os intervalos relativos ao histórico
+    const [latestTrade] = await executor
+      .select({
+        maxDate: sql<string>`MAX(${b3HistoricalQuotes.tradeDate})::text`,
+      })
+      .from(b3HistoricalQuotes)
+      .where(eq(b3HistoricalQuotes.ticker, ticker));
 
-  switch (period) {
-    case '1M':
-      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      break;
-    case '3M':
-      startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-      break;
-    case '6M':
-      startDate = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
-      break;
-    case '1Y':
-      startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-      break;
-    case 'ALL':
-      startDate = null;
-      break;
+    let startDateStr: string | null = null;
+    if (period !== 'ALL' && latestTrade?.maxDate) {
+      const parts = latestTrade.maxDate.split('-').map(Number);
+      if (parts.length === 3) {
+        const refDate = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+        const daysMap = { '1M': 30, '3M': 90, '6M': 180, '1Y': 365 };
+        refDate.setUTCDate(refDate.getUTCDate() - daysMap[period]);
+        const y = refDate.getUTCFullYear();
+        const m = String(refDate.getUTCMonth() + 1).padStart(2, '0');
+        const d = String(refDate.getUTCDate()).padStart(2, '0');
+        startDateStr = `${y}-${m}-${d}`;
+      }
+    }
+
+    const b3Conditions = [eq(b3HistoricalQuotes.ticker, ticker)];
+    if (startDateStr) {
+      b3Conditions.push(gte(b3HistoricalQuotes.tradeDate, startDateStr));
+    }
+
+    // Usamos GROUP BY trade_date para evitar pontos duplicados caso haja sobreposição entre arquivo diário e anual
+    const b3Rows = await executor
+      .select({
+        tradeDate: b3HistoricalQuotes.tradeDate,
+        closePrice: sql<string>`(array_agg(${b3HistoricalQuotes.closePrice} ORDER BY COALESCE(${b3HistoricalQuotes.tradeCount}, 0) DESC, COALESCE(${b3HistoricalQuotes.financialVolume}::numeric, 0) DESC, ${b3HistoricalQuotes.createdAt} DESC))[1]`,
+      })
+      .from(b3HistoricalQuotes)
+      .where(and(...b3Conditions))
+      .groupBy(b3HistoricalQuotes.tradeDate)
+      .orderBy(asc(b3HistoricalQuotes.tradeDate));
+
+    if (b3Rows.length > 0) {
+      return b3Rows.map((r) => {
+        return {
+          date: r.tradeDate,
+          price: r.closePrice,
+          quoteDate: r.tradeDate,
+        };
+      });
+    }
   }
 
-  const conditions = [eq(marketQuotes.assetId, asset.id)];
-  if (startDate) {
-    conditions.push(gte(marketQuotes.quoteDate, startDate));
+  // 3. Fallback para marketQuotes caso não haja registros em b3HistoricalQuotes
+  if (resolvedAssetUuid) {
+    const [latestMq] = await executor
+      .select({
+        maxDate: sql<Date | string>`MAX(${marketQuotes.quoteDate})`,
+      })
+      .from(marketQuotes)
+      .where(eq(marketQuotes.assetId, resolvedAssetUuid));
+
+    const refDate = latestMq?.maxDate ? new Date(latestMq.maxDate) : new Date();
+
+    let startDate: Date | null = null;
+    switch (period) {
+      case '1M':
+        startDate = new Date(refDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case '3M':
+        startDate = new Date(refDate.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      case '6M':
+        startDate = new Date(refDate.getTime() - 180 * 24 * 60 * 60 * 1000);
+        break;
+      case '1Y':
+        startDate = new Date(refDate.getTime() - 365 * 24 * 60 * 60 * 1000);
+        break;
+      case 'ALL':
+        startDate = null;
+        break;
+    }
+
+    const mqConditions = [eq(marketQuotes.assetId, resolvedAssetUuid)];
+    if (startDate) {
+      mqConditions.push(gte(marketQuotes.quoteDate, startDate));
+    }
+
+    const mqRows = await executor
+      .select({
+        quoteDate: marketQuotes.quoteDate,
+        price: marketQuotes.price,
+      })
+      .from(marketQuotes)
+      .where(and(...mqConditions))
+      .orderBy(asc(marketQuotes.quoteDate), asc(marketQuotes.id));
+
+    return mqRows.map((q) => {
+      const d = new Date(q.quoteDate);
+      return {
+        date: d.toISOString().slice(0, 10),
+        price: q.price,
+        quoteDate: d.toISOString(),
+      };
+    });
   }
 
-  const rows = await executor
-    .select({
-      price: marketQuotes.price,
-      quoteDate: marketQuotes.quoteDate,
-    })
-    .from(marketQuotes)
-    .where(and(...conditions))
-    .orderBy(asc(marketQuotes.quoteDate), asc(marketQuotes.id));
-
-  return rows.map((r) => {
-    const qDate = new Date(r.quoteDate);
-    return {
-      date: getMarketTradingDay(qDate, B3_TIMEZONE),
-      price: new Decimal(r.price).toFixed(2),
-      quoteDate: qDate.toISOString(),
-    };
-  });
+  return [];
 }
 
 /**
- * Consulta os ativos públicos elegíveis para o sitemap com limite seguro de 1.000 URLs.
+ * Consulta a lista de tickers ativos e públicos para geração de sitemap.xml.
  */
 export async function getPublicSitemapAssets(
-  limit = 1000,
+  limit: number = 1000,
   executor: DbExecutor = db
 ): Promise<Array<{ ticker: string; assetType: string; updatedAt: Date }>> {
-  try {
-    // 1. Contagem total de ativos públicos
-    const [countRes] = await executor
-      .select({ total: count() })
-      .from(assets)
-      .where(
-        and(
-          eq(assets.isCustom, false),
-          isNull(assets.userId),
-          inArray(assets.assetType, TRADITIONAL_ASSET_TYPES)
-        )
-      );
-
-    const total = Number(countRes?.total ?? 0);
-
-    if (total > limit) {
-      console.warn(
-        `[Sitemap] O catálogo público possui ${total} ativos, excedendo o limite de ${limit} URLs do MVP. Planejar segmentação em Sitemap Index.`
-      );
-    }
-
-    const rows = await executor
-      .select({
-        ticker: assets.ticker,
-        assetType: assets.assetType,
-        updatedAt: assets.updatedAt,
-      })
-      .from(assets)
-      .where(
-        and(
-          eq(assets.isCustom, false),
-          isNull(assets.userId),
-          inArray(assets.assetType, TRADITIONAL_ASSET_TYPES)
-        )
+  const assetRows = await executor
+    .select({
+      ticker: assets.ticker,
+      assetType: assets.assetType,
+      updatedAt: assets.updatedAt,
+    })
+    .from(assets)
+    .where(
+      and(
+        eq(assets.isCustom, false),
+        isNull(assets.userId),
+        inArray(assets.assetType, TRADITIONAL_ASSET_TYPES)
       )
-      .orderBy(asc(assets.ticker))
-      .limit(limit);
+    )
+    .orderBy(asc(assets.ticker))
+    .limit(limit);
 
-    return rows.map((r) => ({
-      ticker: r.ticker,
-      assetType: r.assetType,
-      updatedAt: new Date(r.updatedAt),
-    }));
-  } catch (err) {
-    console.error('[Sitemap] Falha ao consultar ativos para o sitemap:', err);
-    return [];
-  }
+  return assetRows.map((a) => ({
+    ticker: a.ticker,
+    assetType: a.assetType,
+    updatedAt: a.updatedAt,
+  }));
 }

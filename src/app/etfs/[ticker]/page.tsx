@@ -10,8 +10,13 @@ import { PublicNavbar } from '@/modules/catalog/ui/PublicNavbar';
 import { PublicFooter } from '@/modules/catalog/ui/PublicFooter';
 import { AssetDetailView } from '@/modules/catalog/ui/AssetDetailView';
 
+import type { CatalogHistoryPeriod } from '@/modules/catalog/domain/catalog.schema';
+
 interface EtfDetailPageProps {
   params: Promise<{ ticker: string }>;
+  searchParams?: Promise<{
+    period?: CatalogHistoryPeriod;
+  }>;
 }
 
 export async function generateMetadata({ params }: EtfDetailPageProps): Promise<Metadata> {
@@ -36,8 +41,9 @@ export async function generateMetadata({ params }: EtfDetailPageProps): Promise<
   };
 }
 
-export default async function EtfDetailPage({ params }: EtfDetailPageProps) {
+export default async function EtfDetailPage({ params, searchParams }: EtfDetailPageProps) {
   const { ticker } = await params;
+  const sParams = (await searchParams) || {};
   const user = await getCurrentUser();
 
   const asset = await getPublicAssetDetailByTicker(ticker, 'etf');
@@ -46,7 +52,11 @@ export default async function EtfDetailPage({ params }: EtfDetailPageProps) {
     notFound();
   }
 
-  const history = await getPublicAssetPriceHistory(asset.id, '1M');
+  const period: CatalogHistoryPeriod = sParams.period && ['1M', '3M', '6M', '1Y', 'ALL'].includes(sParams.period)
+    ? sParams.period
+    : '1M';
+
+  const history = await getPublicAssetPriceHistory(asset.id, period);
 
   let userPortfolios: Array<{ id: string; name: string; baseCurrency: string; status: string }> = [];
   if (user) {
@@ -66,6 +76,7 @@ export default async function EtfDetailPage({ params }: EtfDetailPageProps) {
         <AssetDetailView
           asset={asset}
           history={history}
+          initialPeriod={period}
           userPortfolios={userPortfolios}
           isAuthenticated={!!user}
           currentUrl={`/etfs/${asset.ticker}`}

@@ -8,3 +8,4 @@ export * from './billing';
 export * from './groups';
 export * from './chart-preferences';
 export * from './imports';
+export * from './b3-market-data';

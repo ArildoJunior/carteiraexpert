@@ -32,6 +32,47 @@ describe('Catálogo Público — Utilitários de Domínio', () => {
       const days = countBusinessDaysSince(friday, monday);
       expect(days).toBe(1);
     });
+
+    it('deve retornar zero dias úteis dentro do mesmo fim de semana', () => {
+      const friday = new Date('2026-08-21T18:00:00-03:00');
+      const sunday = new Date('2026-08-23T20:00:00-03:00');
+      const saturday = new Date('2026-08-22T10:00:00-03:00');
+
+      expect(countBusinessDaysSince(friday, sunday)).toBe(0);
+      expect(countBusinessDaysSince(saturday, sunday)).toBe(0);
+    });
+
+    it('deve contar 1 dia útil de sábado/domingo até segunda-feira', () => {
+      const saturday = new Date('2026-08-22T10:00:00-03:00');
+      const sunday = new Date('2026-08-23T18:00:00-03:00');
+      const monday = new Date('2026-08-24T10:00:00-03:00');
+
+      expect(countBusinessDaysSince(saturday, monday)).toBe(1);
+      expect(countBusinessDaysSince(sunday, monday)).toBe(1);
+    });
+
+    it('deve retornar zero quando as datas forem no mesmo dia civil', () => {
+      const morning = new Date('2026-08-24T08:00:00-03:00');
+      const evening = new Date('2026-08-24T22:00:00-03:00');
+
+      expect(countBusinessDaysSince(morning, evening)).toBe(0);
+      expect(countBusinessDaysSince(morning, morning)).toBe(0);
+    });
+
+    it('deve retornar zero quando as datas forem invertidas (data passada posterior à atual)', () => {
+      const monday = new Date('2026-08-24T10:00:00-03:00');
+      const friday = new Date('2026-08-21T18:00:00-03:00');
+
+      expect(countBusinessDaysSince(monday, friday)).toBe(0);
+    });
+
+    it('deve calcular corretamente na virada de horário e meia-noite', () => {
+      // 2026-08-24 23:59:59-03:00 (Segunda) até 2026-08-25 00:00:01-03:00 (Terça) = 1 dia útil
+      const mondayNight = new Date('2026-08-24T23:59:59-03:00');
+      const tuesdayDawn = new Date('2026-08-25T00:00:01-03:00');
+
+      expect(countBusinessDaysSince(mondayNight, tuesdayDawn)).toBe(1);
+    });
   });
 
   describe('Cálculo Determinístico de Variação Diária', () => {
@@ -110,10 +151,32 @@ describe('Catálogo Público — Utilitários de Domínio', () => {
       expect(result.previousClosePrice).toBe('40.00');
     });
 
-    it('deve retornar "insufficient_history" se houver apenas uma cotação', () => {
+    it('deve retornar "insufficient_history" e null quando houver um gap temporal excessivo entre os pregões (> 10 dias úteis)', () => {
+      const quotesWithGap = [
+        {
+          price: new Decimal('446.15'),
+          currency: 'BRL',
+          quoteDate: new Date('2026-08-25T18:00:00-03:00'),
+          delayStatus: 'eod' as const,
+        },
+        {
+          price: new Decimal('75.96'),
+          currency: 'BRL',
+          quoteDate: new Date('2016-12-28T18:00:00-03:00'),
+          delayStatus: 'eod' as const,
+        },
+      ];
+
+      const result = calculateDailyVariation(quotesWithGap);
+      expect(result.variationStatus).toBe('insufficient_history');
+      expect(result.dailyVariation).toBeNull();
+      expect(result.previousClosePrice).toBe('75.96');
+    });
+
+    it('deve retornar "insufficient_history" se só houver uma cotação no histórico', () => {
       const quotes = [
         {
-          price: new Decimal('50.00'),
+          price: new Decimal('40.00'),
           currency: 'BRL',
           quoteDate: new Date('2026-08-25T18:00:00-03:00'),
           delayStatus: 'eod' as const,
@@ -123,6 +186,7 @@ describe('Catálogo Público — Utilitários de Domínio', () => {
       const result = calculateDailyVariation(quotes);
       expect(result.variationStatus).toBe('insufficient_history');
       expect(result.dailyVariation).toBeNull();
+      expect(result.previousClosePrice).toBeNull();
     });
 
     it('deve retornar "unavailable" se as moedas forem diferentes', () => {

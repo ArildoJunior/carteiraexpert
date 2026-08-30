@@ -1,10 +1,10 @@
 # Pacote 06.03 — Ingestão Histórica e Diária de Dados de Mercado da B3
 
-**Fase:** 06 — Dados de Mercado, Valuation e Gráficos  
-**Status:** Planejado — especificação para implementação  
-**Tipo:** Entrega funcional e operacional  
-**Fonte inicial:** Arquivos oficiais de séries históricas da B3 (`COTAHIST`)  
-**Última atualização:** 2026-08-26
+**Fase:** 06 — Dados de Mercado, Valuation e Gráficos
+**Status:** Concluída com limitações — integração operacional validada em desenvolvimento/homologação; produção pendente
+**Tipo:** Entrega funcional e operacional
+**Fonte inicial:** Arquivos oficiais de séries históricas da B3 (`COTAHIST`)
+**Última atualização:** 2026-08-27
 
 ## 1. Objetivo
 
@@ -430,3 +430,59 @@ A entrega será considerada pronta quando:
 ## 19. Resultado esperado
 
 Ao final, o sistema deverá permitir que a equipe interna envie diariamente o ZIP de fim de dia da B3, sem expor os arquivos brutos aos usuários. O produto utilizará as cotações processadas como base para suas funcionalidades de mercado, gráficos, estudos e relatórios, preservando origem, histórico, auditoria, qualidade e possibilidade de reprocessamento.
+
+## 20. Arquitetura da Camada Unificada de Cotação e Integração Sistêmica
+
+### 20.1 COTAHIST como Fonte Oficial de Fechamento
+- Os dados ingeridos de arquivos `COTAHIST_D*.ZIP` e `COTAHIST_A*.ZIP` são persistidos na tabela `b3_historical_quotes` com integridade referencial ao lote `b3_cotahist_batches`.
+- Representam exclusivamente o **fechamento oficial (End of Day — EOD)** do pregão regular da B3.
+- Nunca são apresentados como cotações em tempo real ou intraday.
+
+### 20.2 Diferença entre Fechamento Oficial e Intraday
+- **Intraday (`market_quotes`):** Cotações com atraso de 15 minutos ou tempo real, válidas prioritariamente durante o horário de negociação do pregão atual.
+- **Fechamento Oficial (`b3_historical_quotes`):** Preço oficial de fechamento consolidado pela B3 após o encerramento do pregão, auditoria e publicação dos arquivos COTAHIST.
+- **Na Interface:** A origem e natureza são explicitamente sinalizadas: `Fonte: COTAHIST B3 • Tipo: Fechamento oficial • Pregão: DD/MM/AAAA • Usando último fechamento oficial disponível`.
+
+### 20.3 Serviço Unificado de Cotação (`UnifiedQuoteService`)
+A camada unificada (`src/modules/market-data/server/unified-quote.service.ts`) fornece contratos determinísticos:
+- `getLatestUsableQuote(ticker)`: Obtém a cotação mais recente utilizável respeitando a ordem de precedência.
+- `getQuoteAtDate(ticker, date)`: Consulta o fechamento oficial em data histórica exata.
+- `getHistoricalQuotes(ticker, from, to)`: Retorna a série histórica cronológica para gráficos e estudos.
+- `calculateTickerPeriodVariation(ticker, from, to)`: Calcula variação percentual, mínima e máxima do período exclusivamente com cotações do mesmo ticker.
+- `getPortfolioValuationQuotes(assetIds, user)`: Retorna mapa de cotações para valuation seguro e isolado por usuário.
+
+### 20.4 Prioridade das Fontes
+1. `market_quotes` se houver cotação recente do pregão atual (`source: 'brapi' | 'manual'`).
+2. Fechamento oficial COTAHIST B3 (`b3_historical_quotes`), com indicação de `delayStatus: 'eod'`.
+3. Fallback controlado (indicação explícita de ausência de cotação sem inventar valores nem assumir zero).
+
+### 20.5 Utilização na Carteira e Posições
+- O cálculo de posições (`getPortfolioPositions`) utiliza a cotação oficial do COTAHIST quando não houver cotação intraday recente.
+- Posições exibem badge de origem (`COTAHIST B3`), data do pregão utilizado e status `eod`.
+- O valor a mercado (`marketValue`), lucro/prejuízo não realizado (`unrealizedPnL`) e percentual de valorização são calculados deterministicamente via motor financeiro (`Decimal`).
+- Usuários e membros de planos compartilhados possuem isolamento rigoroso de carteiras e eventos no servidor.
+
+### 20.6 Cálculo das Variações
+- **Variação Diária:** `(fechamento atual - fechamento anterior) / fechamento anterior * 100`, utilizando estritamente o pregão imediatamente anterior do mesmo ticker.
+- Nunca mistura tickers ou instrumentos distintos no cálculo de variações.
+
+### 20.7 Utilização nos Gráficos e Estudos
+- A rota `/acoes/[ticker]` e o componente `AssetPriceHistoryChart` consultam a série oficial persistida em `b3_historical_quotes`.
+- O histórico reflete abertura, máxima, mínima, fechamento e volume oficiais da B3.
+
+### 20.8 Comportamento até o Próximo Arquivo Diário
+- O sistema mantém o último fechamento oficial conhecido como valor de referência.
+- A interface indica a defasagem (`Pregão: DD/MM/AAAA` e `Usando último fechamento oficial disponível`), garantindo transparência ao usuário.
+
+### 20.9 Idempotência e Reprocessamento
+- Deduplicação de lotes por hash `sha256` na tabela `b3_cotahist_batches`.
+- Deduplicação de cotações por hash único `record_hash` em `b3_historical_quotes` (`UNIQUE (record_hash)` e `UNIQUE (ticker, trade_date, market_type)`).
+- Reexecuções e reprocessamentos com `--force` atualizam registros sem duplicidade nem erros de chave única.
+
+### 20.10 Preservação de `market_quotes`
+- A tabela `market_quotes` foi 100% preservada em estrutura, tipos e constraints.
+- Nenhum dado de `market_quotes` foi apagado ou alterado silenciosamente.
+
+### 20.11 Status da Produção
+- **Declaração Formal:** `PRODUÇÃO NÃO ATUALIZADA — conexão, autorização ou backup não identificados com segurança.`
+- A migration `0012_b3_historical_quotes.sql` e a ingestão foram aplicadas e validadas exclusivamente nos ambientes locais de desenvolvimento e homologação/testes.

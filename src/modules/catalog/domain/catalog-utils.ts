@@ -10,9 +10,25 @@ export const B3_TIMEZONE = 'America/Sao_Paulo';
 
 /**
  * Retorna a data no formato YYYY-MM-DD no fuso horário do pregão (padrão B3: America/Sao_Paulo).
- * Garante que cotações próximas da meia-noite UTC sejam agrupadas no dia correto do mercado.
+ * Suporta string pura YYYY-MM-DD diretamente sem conversão de fuso ou objeto Date.
  */
-export function getMarketTradingDay(date: Date, timeZone = B3_TIMEZONE): string {
+export function getMarketTradingDay(date: Date | string, timeZone = B3_TIMEZONE): string {
+  if (typeof date === 'string') {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return date;
+    }
+    const d = new Date(date);
+    if (!Number.isNaN(d.getTime())) {
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      });
+      return formatter.format(d);
+    }
+    return date;
+  }
   const formatter = new Intl.DateTimeFormat('en-CA', {
     timeZone,
     year: 'numeric',
@@ -25,7 +41,11 @@ export function getMarketTradingDay(date: Date, timeZone = B3_TIMEZONE): string 
 /**
  * Calcula a quantidade de dias úteis (segunda a sexta-feira) entre uma data no passado e o momento atual.
  */
-export function countBusinessDaysSince(pastDate: Date, currentDate = new Date(), timeZone = B3_TIMEZONE): number {
+export function countBusinessDaysSince(
+  pastDate: Date | string,
+  currentDate: Date | string = new Date(),
+  timeZone = B3_TIMEZONE
+): number {
   const pastDayStr = getMarketTradingDay(pastDate, timeZone);
   const currentDayStr = getMarketTradingDay(currentDate, timeZone);
 
@@ -34,11 +54,14 @@ export function countBusinessDaysSince(pastDate: Date, currentDate = new Date(),
   }
 
   let businessDays = 0;
-  const cursor = new Date(pastDate);
+  const [y, m, d] = pastDayStr.split('-').map(Number);
+  // Inicializa o cursor às 12:00 UTC para garantir que o fuso America/Sao_Paulo (UTC-3 / UTC-2)
+  // permaneça no mesmo dia civil durante toda a iteração
+  const cursor = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
 
   while (getMarketTradingDay(cursor, timeZone) < currentDayStr) {
-    cursor.setDate(cursor.getDate() + 1);
-    const dayOfWeek = cursor.getDay(); // 0: Dom, 6: Sáb
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+    const dayOfWeek = cursor.getUTCDay(); // 0: Dom, 6: Sáb
     if (dayOfWeek !== 0 && dayOfWeek !== 6) {
       businessDays += 1;
     }
@@ -50,7 +73,7 @@ export function countBusinessDaysSince(pastDate: Date, currentDate = new Date(),
 export interface QuoteComparisonInput {
   price: Decimal | string;
   currency: string;
-  quoteDate: Date;
+  quoteDate: Date | string;
   delayStatus: DelayStatus;
 }
 
@@ -87,9 +110,7 @@ export function calculateDailyVariation(
 
   // Encontra a cotação mais recente de um dia de negociação anterior
   const previousQuote = quotesSortedDesc.find(
-    (q) =>
-      getMarketTradingDay(q.quoteDate, timeZone) < currentTradingDay &&
-      q.quoteDate < currentQuote.quoteDate
+    (q) => getMarketTradingDay(q.quoteDate, timeZone) < currentTradingDay
   );
 
   if (!previousQuote) {
@@ -100,6 +121,11 @@ export function calculateDailyVariation(
       previousCloseDate: null,
     };
   }
+
+  const prevCloseDateStr =
+    typeof previousQuote.quoteDate === 'string'
+      ? previousQuote.quoteDate
+      : previousQuote.quoteDate.toISOString();
 
   if (currentQuote.currency !== previousQuote.currency) {
     return {
@@ -120,7 +146,18 @@ export function calculateDailyVariation(
       dailyVariation: null,
       variationStatus: 'unavailable',
       previousClosePrice: prevPrice.toFixed(2),
-      previousCloseDate: previousQuote.quoteDate.toISOString(),
+      previousCloseDate: prevCloseDateStr,
+    };
+  }
+
+  // Verifica se há descontinuidade excessiva (gap > 10 dias úteis sem pregão para o mesmo ticker)
+  const businessDaysGap = countBusinessDaysSince(previousQuote.quoteDate, currentQuote.quoteDate, timeZone);
+  if (businessDaysGap > 10) {
+    return {
+      dailyVariation: null,
+      variationStatus: 'insufficient_history',
+      previousClosePrice: prevPrice.toFixed(2),
+      previousCloseDate: prevCloseDateStr,
     };
   }
 
@@ -133,7 +170,7 @@ export function calculateDailyVariation(
     dailyVariation: variationStr,
     variationStatus: 'available',
     previousClosePrice: prevPrice.toFixed(2),
-    previousCloseDate: previousQuote.quoteDate.toISOString(),
+    previousCloseDate: prevCloseDateStr,
   };
 }
 
@@ -142,7 +179,7 @@ export function calculateDailyVariation(
  */
 export function deriveFreshnessStatus(
   latestQuote: QuoteComparisonInput | null | undefined,
-  now = new Date(),
+  now: Date | string = new Date(),
   timeZone = B3_TIMEZONE
 ): DerivedFreshnessStatus {
   if (!latestQuote) {

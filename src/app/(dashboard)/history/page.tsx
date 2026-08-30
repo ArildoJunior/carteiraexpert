@@ -8,19 +8,26 @@ import { HistoryFilterBar } from '@/modules/portfolio/ui/HistoryFilterBar';
 import { Decimal } from '@/lib/decimal';
 import type { PortfolioEventType } from '@/modules/portfolio/domain/portfolio-event.types';
 import { PORTFOLIO_EVENT_TYPES } from '@/modules/portfolio/domain/portfolio-event.schema';
+import {
+  getB3HistoricalQuotes,
+  getPopularB3Tickers,
+  B3HistoricalQuotesExplorer,
+} from '@/modules/market-data';
 
 export const metadata: Metadata = {
-  title: 'Extrato Geral de Operações — CarteiraExpert',
-  description: 'Histórico consolidado, detalhado e paginado de todas as suas operações patrimoniais.',
+  title: 'Extrato Geral e Cotações B3 — CarteiraExpert',
+  description: 'Histórico consolidado de operações patrimoniais e consulta de séries históricas oficiais da B3 (COTAHIST).',
 };
 
 interface HistoryPageProps {
   searchParams: Promise<{
+    tab?: string;
     portfolioId?: string;
     type?: string;
     ticker?: string;
     startDate?: string;
     endDate?: string;
+    order?: 'asc' | 'desc';
     page?: string;
     limit?: string;
   }>;
@@ -58,9 +65,83 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
   if (!user) redirect('/login');
 
   const params = await searchParams;
+  const activeTab = params.tab === 'cotahist' ? 'cotahist' : 'operations';
   const page = Math.max(1, Number.parseInt(params.page || '1', 10) || 1);
   const limit = Math.min(50, Math.max(1, Number.parseInt(params.limit || '20', 10) || 20));
 
+  if (activeTab === 'cotahist') {
+    const [b3Result, popularTickers] = await Promise.all([
+      getB3HistoricalQuotes({
+        ticker: params.ticker ? params.ticker.trim().toUpperCase() : 'PETR4',
+        startDate: params.startDate,
+        endDate: params.endDate,
+        order: params.order,
+        page,
+        limit,
+      }),
+      getPopularB3Tickers(),
+    ]);
+
+    return (
+      <div className="space-y-6 text-text-primary" id="history-page-container">
+        {/* Cabeçalho */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-text-primary tracking-tight">
+              Séries Históricas Oficiais B3 (COTAHIST)
+            </h1>
+            <p className="text-text-secondary text-sm mt-1">
+              Consulte cotações diárias, preços de abertura, máxima, mínima, fechamento, quantidade e volume oficial da B3.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Link
+              id="history-back-to-dashboard-btn"
+              href="/dashboard"
+              className="text-xs font-semibold text-text-primary hover:text-action-primary bg-surface hover:bg-background border border-border-theme px-3.5 py-2 rounded-xl transition-colors"
+            >
+              ← Voltar ao Dashboard
+            </Link>
+            <Link
+              id="history-portfolios-btn"
+              href="/portfolios"
+              className="text-xs font-semibold text-action-primary-text bg-action-primary hover:opacity-90 px-3.5 py-2 rounded-xl transition-colors shadow-sm"
+            >
+              💼 Carteiras
+            </Link>
+          </div>
+        </div>
+
+        {/* Seletor de Abas */}
+        <div className="flex items-center gap-2 border-b border-border-theme pb-2" id="history-tabs-container">
+          <Link
+            id="tab-user-operations"
+            href="/history"
+            className="px-4 py-2 rounded-xl text-xs font-semibold transition-colors bg-surface hover:bg-surface-elevated text-text-secondary"
+          >
+            📋 Extrato de Minhas Carteiras
+          </Link>
+          <Link
+            id="tab-b3-cotahist"
+            href="/history?tab=cotahist"
+            className="px-4 py-2 rounded-xl text-xs font-semibold transition-colors bg-action-primary text-action-primary-text shadow-xs"
+          >
+            🏛️ Cotações Oficiais B3 (COTAHIST)
+          </Link>
+        </div>
+
+        {/* Visualizador de Séries Históricas B3 */}
+        <B3HistoricalQuotesExplorer
+          initialResult={b3Result}
+          popularTickers={popularTickers}
+          basePath="/history"
+        />
+      </div>
+    );
+  }
+
+  // Aba Padrão: Extrato de Operações do Usuário
   const rawType = params.type;
   const validatedType: PortfolioEventType | undefined =
     rawType && (PORTFOLIO_EVENT_TYPES as readonly string[]).includes(rawType)
@@ -128,6 +209,24 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
             💼 Carteiras
           </Link>
         </div>
+      </div>
+
+      {/* Seletor de Abas */}
+      <div className="flex items-center gap-2 border-b border-border-theme pb-2" id="history-tabs-container">
+        <Link
+          id="tab-user-operations"
+          href="/history"
+          className="px-4 py-2 rounded-xl text-xs font-semibold transition-colors bg-action-primary text-action-primary-text shadow-xs"
+        >
+          📋 Extrato de Minhas Carteiras
+        </Link>
+        <Link
+          id="tab-b3-cotahist"
+          href="/history?tab=cotahist"
+          className="px-4 py-2 rounded-xl text-xs font-semibold transition-colors bg-surface hover:bg-surface-elevated text-text-secondary"
+        >
+          🏛️ Cotações Oficiais B3 (COTAHIST)
+        </Link>
       </div>
 
       {/* Barra de Filtros Combinados */}
@@ -199,103 +298,89 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
               className="w-full text-left border-collapse text-sm"
             >
               <thead>
-                <tr className="border-b border-border-theme bg-background/60 text-[11px] font-semibold text-text-secondary uppercase tracking-wider">
-                  <th className="px-6 py-3.5">Tipo</th>
-                  <th className="px-4 py-3.5">Carteira</th>
-                  <th className="px-4 py-3.5">Ativo</th>
-                  <th className="px-4 py-3.5">Data Negociação / Corte</th>
-                  <th className="px-4 py-3.5 text-right">Quantidade / Fator</th>
-                  <th className="px-4 py-3.5 text-right">Preço Unitário</th>
-                  <th className="px-4 py-3.5 text-right">Taxas</th>
-                  <th className="px-4 py-3.5 text-right">Total da Operação</th>
-                  <th className="px-6 py-3.5">Notas</th>
+                <tr className="border-b border-border-theme bg-surface-elevated text-text-secondary font-semibold text-xs uppercase tracking-wider">
+                  <th className="py-3 px-6">Carteira</th>
+                  <th className="py-3 px-4">Tipo</th>
+                  <th className="py-3 px-4">Ativo</th>
+                  <th className="py-3 px-4">Data</th>
+                  <th className="py-3 px-4 text-right">Qtd / Fator</th>
+                  <th className="py-3 px-4 text-right">Preço Unitário</th>
+                  <th className="py-3 px-4 text-right">Taxas</th>
+                  <th className="py-3 px-4 text-right">Total</th>
+                  <th className="py-3 px-6">Notas</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border-theme text-text-primary">
+              <tbody className="divide-y divide-border-theme">
                 {historyData.items.map((event) => {
                   const isBuy = event.type === 'BUY';
                   const isSell = event.type === 'SELL';
+                  const isDividend = event.type === 'DIVIDEND';
+                  const isJcp = event.type === 'JCP';
                   const isSplit = event.type === 'SPLIT';
                   const isGrouping = event.type === 'GROUPING';
                   const isBonus = event.type === 'BONUS_SHARE';
-                  const isDividend = event.type === 'DIVIDEND';
-                  const isJcp = event.type === 'JCP';
-                  const isAdjustment = event.type === 'MANUAL_ADJUSTMENT';
 
-                  const tradeDateFormatted = new Date(event.tradeDate).toLocaleDateString(
-                    'pt-BR',
-                    { timeZone: 'UTC' }
-                  );
+                  const typeLabel =
+                    event.type === 'BUY'
+                      ? 'Compra'
+                      : event.type === 'SELL'
+                      ? 'Venda'
+                      : event.type === 'DIVIDEND'
+                      ? 'Dividendo'
+                      : event.type === 'JCP'
+                      ? 'JCP'
+                      : event.type === 'SPLIT'
+                      ? 'Desdobramento'
+                      : event.type === 'GROUPING'
+                      ? 'Grupamento'
+                      : event.type === 'BONUS_SHARE'
+                      ? 'Bonificação'
+                      : event.type;
+
+                  const typeColor = isBuy
+                    ? 'bg-status-success/10 text-status-success border-status-success/20'
+                    : isSell
+                    ? 'bg-status-danger/10 text-status-danger border-status-danger/20'
+                    : isDividend || isJcp
+                    ? 'bg-action-primary/10 text-action-primary border-action-primary/20'
+                    : 'bg-surface-elevated text-text-secondary border-border-theme';
+
+                  const decPrice = new Decimal(event.unitPrice || '0');
+                  const decQty = new Decimal(event.quantity || '0');
+                  const decFees = new Decimal(event.fees || '0');
+                  const totalGross = decPrice.times(decQty);
+                  const totalNetJcp = totalGross.minus(decFees);
+                  const hasFees = decFees.greaterThan(0);
+
+                  const tradeDateFormatted = new Date(event.tradeDate).toLocaleDateString('pt-BR', {
+                    timeZone: 'UTC',
+                  });
                   const settlementDateFormatted = event.settlementDate
                     ? new Date(event.settlementDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
                     : null;
 
-                  const decQty = new Decimal(event.quantity || '0');
-                  const decPrice = new Decimal(event.unitPrice || '0');
-                  const decFees = new Decimal(event.fees || '0');
-                  const totalGross = decQty.times(decPrice);
-                  const totalNetJcp = totalGross.minus(decFees);
-                  const hasFees = decFees.greaterThan(0);
-
                   return (
                     <tr
                       key={event.id}
-                      id={`history-event-row-${event.id}`}
-                      className="hover:bg-background/40 transition-colors"
+                      className="hover:bg-surface-elevated/40 transition-colors"
+                      id={`history-row-${event.id}`}
                     >
-                      {/* Tipo */}
-                      <td className="px-6 py-3.5 whitespace-nowrap">
-                        {isBuy && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-positive-text/10 text-positive-text border border-positive-text/30">
-                            🟢 Compra
-                          </span>
-                        )}
-                        {isSell && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-action-primary/10 text-action-primary border border-action-primary/30">
-                            🔵 Venda
-                          </span>
-                        )}
-                        {isSplit && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/30">
-                            🔀 Desdobramento
-                          </span>
-                        )}
-                        {isGrouping && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                            🔄 Grupamento
-                          </span>
-                        )}
-                        {isBonus && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-pink-500/10 text-pink-600 dark:text-pink-400 border border-pink-500/30">
-                            🎁 Bonificação
-                          </span>
-                        )}
-                        {isDividend && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-positive-text/10 text-positive-text border border-positive-text/30">
-                            💵 Dividendo
-                          </span>
-                        )}
-                        {isJcp && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-500/10 text-teal-600 dark:text-teal-300 border border-teal-500/30">
-                            🏛️ JCP
-                          </span>
-                        )}
-                        {isAdjustment && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30">
-                            ⚖️ {event.direction === 'OUT' ? 'Ajuste (Saída)' : 'Ajuste (Entrada)'}
-                          </span>
-                        )}
+                      {/* Carteira */}
+                      <td className="px-6 py-3.5 font-medium text-text-primary">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-action-primary" />
+                          <span className="truncate max-w-[140px]">{event.portfolioName}</span>
+                        </div>
                       </td>
 
-                      {/* Carteira */}
-                      <td className="px-4 py-3.5 whitespace-nowrap">
-                        <Link
-                          href={`/portfolios/${event.portfolioId}`}
-                          className="font-medium text-action-primary hover:underline transition-colors"
-                          id={`history-event-portfolio-${event.id}`}
+                      {/* Tipo */}
+                      <td className="px-4 py-3.5">
+                        <span
+                          id={`history-event-type-${event.id}`}
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${typeColor}`}
                         >
-                          {event.portfolioName}
-                        </Link>
+                          {typeLabel}
+                        </span>
                       </td>
 
                       {/* Ativo */}
