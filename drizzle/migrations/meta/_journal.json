@@ -106,6 +106,20 @@
       "when": 1787800000000,
       "tag": "0014_add_market_fundamentals",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1787900000000,
+      "tag": "0015_add_cvm_ingestion_base",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1788000000000,
+      "tag": "0016_add_cvm_asset_bindings_unique_active",
+      "breakpoints": true
     }
   ]
 }

@@ -10,3 +10,4 @@ export * from './chart-preferences';
 export * from './imports';
 export * from './b3-market-data';
 export * from './market-fundamentals';
+export * from './cvm-market-data';

@@ -51,6 +51,10 @@ if (!connectionString) {
     await db.delete(schema.importBatches);
     await db.delete(schema.assetFundamentals);
     await db.delete(schema.b3HistoricalQuotes);
+    await db.delete(schema.cvmCompanyAssets);
+    await db.delete(schema.cvmIngestionRuns);
+    await db.delete(schema.cvmSourceFiles);
+    await db.delete(schema.cvmCompanies);
     await db.delete(portfolioEvents);
     await db.delete(portfolios);
     await db.delete(assets);

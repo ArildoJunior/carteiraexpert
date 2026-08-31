@@ -8,7 +8,7 @@ import {
 } from '../../src/lib/db/verify-schema';
 
 function findTargetTable(query: any): string | null {
-  const knownTables = Object.keys(EXPECTED_SCHEMA_MATRIX);
+  const knownTables = Object.keys(EXPECTED_SCHEMA_MATRIX).sort((a, b) => b.length - a.length);
 
   // 1. Procura em queryChunks
   if (Array.isArray(query?.queryChunks)) {
