@@ -16,3 +16,7 @@ export * from './server/b3-historical-quotes.service';
 export * from './ui/B3HistoricalQuotesExplorer';
 export * from './domain/unified-quote.types';
 export * from './server/unified-quote.service';
+export * from './domain/fundamentals.types';
+export * from './domain/fundamentals.schema';
+export * from './domain/fundamentals-engine';
+export * from './server/fundamentals.service';

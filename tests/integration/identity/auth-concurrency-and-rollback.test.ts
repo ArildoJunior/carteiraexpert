@@ -48,9 +48,12 @@ if (!connectionString) {
     await db.delete(schema.userPlans);
     await db.delete(schema.importBatchItems);
     await db.delete(schema.importBatches);
+    await db.delete(schema.assetFundamentals);
+    await db.delete(schema.b3HistoricalQuotes);
     await db.delete(portfolioEvents);
     await db.delete(portfolios);
     await db.delete(assets);
+
     await db.delete(authRateLimits);
     await db.delete(passwordResetTokens);
     // Desativa trigger temporariamente para permitir limpeza em testes

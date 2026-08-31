@@ -13,7 +13,9 @@ import {
 import {
   B3HistoricalQuotesExplorer,
   type B3HistoricalQuotesResult,
+  type AssetFundamentalsViewData,
 } from '@/modules/market-data';
+import { AssetFundamentalsCard } from './AssetFundamentalsCard';
 
 import type { CatalogHistoryPeriod } from '../domain/catalog.schema';
 
@@ -22,6 +24,7 @@ interface AssetDetailViewProps {
   history: PublicQuoteHistoryPoint[];
   initialPeriod?: CatalogHistoryPeriod;
   b3HistoricalResult?: B3HistoricalQuotesResult;
+  fundamentalsData?: AssetFundamentalsViewData | null;
   userPortfolios: UserPortfolioItem[];
   isAuthenticated: boolean;
   currentUrl: string;
@@ -32,10 +35,12 @@ export function AssetDetailView({
   history,
   initialPeriod = '1M',
   b3HistoricalResult,
+  fundamentalsData,
   userPortfolios,
   isAuthenticated,
   currentUrl,
 }: AssetDetailViewProps) {
+
   const categoryLabel = getCategoryLabel(asset.assetType);
   const categoryRoute = getCategoryRoute(asset.assetType);
 
@@ -272,15 +277,8 @@ export function AssetDetailView({
         </div>
       )}
 
-      {/* Espaço Arquitetural Futuro (Fases 08 e 09) */}
-      <div className="rounded-xl border border-dashed border-border-theme bg-surface-elevated/40 p-6 text-center text-text-muted">
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-1">
-          Proventos, Indicadores e Valuation
-        </h4>
-        <p className="text-xs text-text-muted max-w-lg mx-auto leading-relaxed">
-          Histórico detalhado de dividendos, JCP, indicadores fundamentalistas e modelos analíticos estão estruturados no roadmap de evolução do CarteiraExpert.
-        </p>
-      </div>
+      {/* Fundamentos e Indicadores Contábeis Oficiais */}
+      <AssetFundamentalsCard fundamentals={fundamentalsData ?? null} />
     </div>
   );
 }

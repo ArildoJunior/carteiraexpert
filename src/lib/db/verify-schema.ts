@@ -883,7 +883,54 @@ export const EXPECTED_SCHEMA_MATRIX: Record<string, ExpectedTable> = {
       { name: 'created_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: false, hasDefault: true },
     ],
   },
+  asset_fundamentals: {
+    name: 'asset_fundamentals',
+    primaryKey: 'id',
+    uniqueConstraints: ['uq_asset_fundamentals_versioning'],
+    foreignKeys: [
+      {
+        column: 'asset_id',
+        foreignTable: 'assets',
+        foreignColumn: 'id',
+        deleteRule: 'RESTRICT',
+      },
+      {
+        column: 'created_by',
+        foreignTable: 'users',
+        foreignColumn: 'id',
+        deleteRule: 'RESTRICT',
+      },
+    ],
+    columns: [
+      { name: 'id', type: 'uuid', isNullable: false },
+      { name: 'asset_id', type: 'uuid', isNullable: false },
+      { name: 'reference_period', type: 'text', isNullable: false },
+      { name: 'period_type', type: 'text', isNullable: false },
+      { name: 'statement_type', type: 'text', isNullable: false, hasDefault: true },
+      { name: 'reference_date', type: ['timestamp with time zone', 'timestamptz'], isNullable: false },
+      { name: 'filing_date', type: ['timestamp with time zone', 'timestamptz'], isNullable: true },
+      { name: 'source', type: 'text', isNullable: false, hasDefault: true },
+      { name: 'source_reference', type: 'text', isNullable: true },
+      { name: 'version', type: ['integer', 'int4'], isNullable: false, hasDefault: true },
+      { name: 'is_restated', type: 'boolean', isNullable: false, hasDefault: true },
+      { name: 'currency', type: 'text', isNullable: false, hasDefault: true },
+      { name: 'net_revenue', type: 'numeric', isNullable: true },
+      { name: 'ebitda', type: 'numeric', isNullable: true },
+      { name: 'net_income', type: 'numeric', isNullable: true },
+      { name: 'total_equity', type: 'numeric', isNullable: true },
+      { name: 'total_assets', type: 'numeric', isNullable: true },
+      { name: 'gross_debt', type: 'numeric', isNullable: true },
+      { name: 'cash_equivalents', type: 'numeric', isNullable: true },
+      { name: 'shares_count', type: 'numeric', isNullable: true },
+      { name: 'dividends_declared', type: 'numeric', isNullable: true },
+      { name: 'notes', type: 'text', isNullable: true },
+      { name: 'created_by', type: 'uuid', isNullable: true },
+      { name: 'created_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: false, hasDefault: true },
+      { name: 'updated_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: false, hasDefault: true },
+    ],
+  },
 };
+
 
 /**
  * Inspeciona o catálogo físico do PostgreSQL e valida integralmente os elementos da Matriz Formal:
