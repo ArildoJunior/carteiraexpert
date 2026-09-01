@@ -59,23 +59,46 @@ Para garantir desempenho e evitar inconsistências, posições e métricas anal�
 
 ## 5. Estrutura Física do Banco de Dados
 
-O banco de dados relacional é composto exatamente por **19 tabelas físicas oficiais**:
-1. `audit_logs`
-2. `users`
-3. `sessions`
-4. `password_reset_tokens`
-5. `auth_rate_limits`
-6. `user_consents`
-7. `portfolios`
-8. `assets`
-9. `portfolio_events`
-10. `subscription_offers`
-11. `subscription_rights`
-12. `subscription_exercises`
-13. `market_quotes`
-14. `exchange_rates`
-15. `commercial_plans`
-16. `plan_entitlements`
-17. `user_plans`
-18. `billing_subscriptions`
-19. `payment_events`
+O banco de dados relacional é composto exatamente por **32 tabelas físicas de aplicação** (além da tabela de controle de migração `__drizzle_migrations`), organizadas nos seguintes domínios:
+
+### 5.1. Domínio Patrimonial e Negócio (6 tabelas)
+1. `portfolios` — Carteiras de investimento vinculadas individualmente aos usuários.
+2. `assets` — Catálogo canônico de instrumentos financeiros (globais e customizados).
+3. `portfolio_events` — Fatos históricos financeiros e operacionais imutáveis.
+4. `subscription_offers` — Ofertas de subscrição de ativos reguladas pelo mercado.
+5. `subscription_rights` — Lotes de direitos de subscrição atribuídos a carteiras.
+6. `subscription_exercises` — Registros de exercício atômico de direitos de subscrição.
+
+### 5.2. Dados de Mercado, Cotações e Fundamentos (7 tabelas)
+7. `market_quotes` — Cotações consolidadas recentes com status de defasagem (EOD, realtime).
+8. `exchange_rates` — Taxas de câmbio históricas e diárias entre pares de moedas.
+9. `b3_historical_quotes` — Séries históricas de negociação B3 COTAHIST (granularidade de pregão).
+10. `asset_fundamentals` — Demonstrações contábeis oficiais versionadas (DFP/ITR) da CVM.
+11. `cvm_companies` — Cadastro oficial de companhias abertas da CVM (Resolução 80).
+12. `cvm_company_assets` — De-Para auditado entre Companhias CVM e Ativos do Catálogo.
+13. `user_chart_preferences` — Preferências de visualização gráfica por usuário e contexto.
+
+### 5.3. Ingestão, Arquivos e Processamento em Lote (5 tabelas)
+14. `b3_cotahist_batches` — Rastreabilidade e auditoria de arquivos COTAHIST da B3.
+15. `cvm_source_files` — Rastreabilidade e integridade (SHA-256) de arquivos baixados da CVM.
+16. `cvm_ingestion_runs` — Execuções de parsers CVM com controle de concorrência e lease locks.
+17. `import_batches` — Lotes de importação de documentos de custódia e notas do usuário.
+18. `import_batch_items` — Itens brutos extraídos para conciliação antes da criação de eventos.
+
+### 5.4. Planos, Assinaturas e Grupos Multitenant (8 tabelas)
+19. `commercial_plans` — Definição dos planos comerciais da plataforma.
+20. `plan_entitlements` — Limites e capacidades operacionais por plano.
+21. `user_plans` — Vínculo vigente do usuário com seu plano comercial.
+22. `billing_subscriptions` — Assinaturas ativas integradas a gateway de pagamento.
+23. `payment_events` — Histórico de cobranças, faturas e liquidações financeiras.
+24. `billing_groups` — Grupos de faturamento compartilhado (Plano Família/Compartilhado).
+25. `billing_group_members` — Membros participantes de um grupo de faturamento compartilhado.
+26. `billing_group_invitations` — Convites formais emitidos para participação em grupos.
+
+### 5.5. Identidade, Autenticação e Auditoria (6 tabelas)
+27. `users` — Contas de usuários do sistema com credenciais e flags de segurança.
+28. `sessions` — Sessões ativas de autenticação vinculadas a tokens opacos.
+29. `password_reset_tokens` — Tokens temporários para redefinição de credenciais.
+30. `auth_rate_limits` — Controle de taxa contra tentativas abusivas de autenticação.
+31. `user_consents` — Registro de consentimento aos Termos de Uso e Políticas LGPD.
+32. `audit_logs` — Trilha de auditoria transversal de segurança e mutações de dados.

@@ -45,10 +45,13 @@ O serviço valida os dados com Zod e `Decimal` (`src/modules/market-data/domain/
 
 Caso já exista cotação para o mesmo ativo e data em `market_quotes`, o registro só é substituído se o novo payload apresentar qualidade igual ou superior.
 
-### 2.4. Persistência Relacional
-- **`market_quotes`:** `asset_id`, `quote_date`, `price`, `currency`, `source`, `delay_status`. Chave única `uq_market_quotes_asset_date`.
-- **`exchange_rates`:** `from_currency`, `to_currency`, `rate_date`, `rate`, `source`, `delay_status`. Chave única `uq_exchange_rates_pair_date`.
-- As tabelas registram a fonte e data de referência; não possuem coluna `created_by` obrigatória no schema físico.
+### 2.4. Persistência Relacional de Mercado e Fundamentos
+- **`market_quotes`:** Cotações recentes (`asset_id`, `quote_date`, `price`, `currency`, `source`, `delay_status`). Chave única `uq_market_quotes_asset_date`.
+- **`exchange_rates`:** Taxas de câmbio (`from_currency`, `to_currency`, `rate_date`, `rate`, `source`, `delay_status`). Chave única `uq_exchange_rates_pair_date`.
+- **`b3_historical_quotes`:** Séries históricas de pregão da B3 (`trade_date`, `ticker`, `bdi_code`, `market_type`, `close_price`, `isin`, `asset_id`). Chave única `uq_b3_historical_quotes_record_hash`.
+- **`cvm_companies`:** Cadastro de companhias abertas CVM (`cvm_code`, `cnpj`, `legal_name`, `status`). Chaves únicas em `cvm_code` e `cnpj`.
+- **`cvm_company_assets`:** De-Para institucional entre companhias e ativos (`company_id`, `asset_id`, `status`). Índice único parcial para status `APPROVED`.
+- **`asset_fundamentals`:** Demonstrações financeiras contábeis versionadas (`asset_id`, `reference_period`, `period_type`, `statement_type`, `version`, `is_restated`, agregados contábeis com `NUMERIC`). Chave única de versionamento `uq_asset_fundamentals_versioning`.
 
 ## 3. Tratamento de Cotações nos Motores de Domínio
 
@@ -71,8 +74,9 @@ O motor de evolução temporal (`src/modules/portfolio/domain/portfolio-evolutio
 | Script CLI administrativo de ingestão (`scripts/ingest-market-data.ts`) | Implementado | **Implementado e validado** |
 | Serviço de ingestão e normalização (`MarketDataIngestionService`) | Implementado | **Implementado e validado** |
 | Persistência e consulta local (`market_quotes` e `exchange_rates`) | Implementado | **Implementado e validado** |
-| Tratamento de cotações obsoletas, ausentes e divergência cambial | Implementado | **Implementado e validado** |
-| Ingestão Histórica B3 COTAHIST / Atualização Diária (Pacote 06.03) | Especificado em ADR-010 | **Planejado / Especificado para implementação** |
+| Base de Cotações Históricas B3 COTAHIST (`b3_historical_quotes`) | Implementado | **Implementado e validado** |
+| Ingestão e Demonstrações Contábeis CVM DFP (`asset_fundamentals`) | Implementado | **Implementado e validado** |
+| Catálogo Canônico Unificado de Ativos (ADR-011) | Especificado em ADR-011 | **Documentado (Implementação técnica pendente)** |
 | Sincronização automática em background / Cron jobs periódicos | Não implementado | **Planejado, não implementado** |
 | Provedores comerciais pagos com SLA dedicado (ADR-008) | Não implementado | **Planejado, não implementado** |
 | Streaming em tempo real via WebSocket | Não implementado | **Planejado, não implementado** |

@@ -10,6 +10,7 @@ coverage/
 
 # Variáveis de ambiente e segredos
 .env
+.env.local
 .env.*
 !.env.example
 
@@ -35,5 +36,5 @@ test-results/
 playwright-report/
 blob-report/
 playwright/.cache/
-# Arquivos locais COTAHIST - n�o versionar
+# Arquivos locais COTAHIST - não versionar
 .local-data/

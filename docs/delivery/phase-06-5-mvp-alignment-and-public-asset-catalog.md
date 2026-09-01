@@ -44,6 +44,7 @@ A Fase 06.5 consolidou o estado do produto alcançado até a Fase 06, corrigiu a
 ### 2.6. Isolamento e Segurança Multitenant
 - **Exclusão Rigorosa de Ativos Privados:** Todas as consultas públicas filtram estritamente `isCustom = false` e `userId IS NULL`. Ativos privados/customizados de usuários jamais são expostos em endpoints públicos, sitemaps ou buscas.
 - **Lançamento em Carteira Autenticado:** Reutilização estrita dos serviços auditados `createPortfolioEvent` e `TransactionModal`. Rejeição com rollback e auditoria em `audit_logs` para tentativas de acesso indevido (IDOR) e bloqueio de carteiras congeladas.
+- **Nota Técnica sobre Identificadores Virtuais (`b3_TICKER`):** Para permitir a navegação visual de ativos do COTAHIST ainda não cadastrados na tabela `assets`, o serviço de catálogo utilizou provisoriamente o prefixo `b3_TICKER`. Conforme documentado na `ADR-011`, a evolução canônica formalmente aprovada prevê a materialização desses ativos em `portfolio.assets` para viabilizar lançamentos em carteira e demonstrativos contábeis para todo o mercado.
 
 ---
 
