@@ -88,6 +88,47 @@ function formatDate(dateStr: string | null | undefined): string {
   }
 }
 
+function formatCleanSourceReference(sourceRef: string | null | undefined): React.ReactNode {
+  if (!sourceRef) return null;
+  const trimmed = sourceRef.trim();
+
+  // Se for um JSON de metadados internos de ingestão, não expor os campos técnicos/UUIDs
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed.source === 'cvm_dfp') {
+        const year = parsed.referenceDate ? parsed.referenceDate.slice(0, 4) : '';
+        return (
+          <span>
+            • Documento:{' '}
+            <span className="font-medium text-text-secondary">
+              DFP {year ? `(${year})` : ''}
+            </span>
+          </span>
+        );
+      }
+      if (parsed.source === 'cvm_itr') {
+        return (
+          <span>
+            • Documento: <span className="font-medium text-text-secondary">ITR</span>
+          </span>
+        );
+      }
+      // Outros JSONs internos: suprimir para não expor IDs/UUIDs técnicos
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  // Se for um código de protocolo textual legível (ex: DFP-2024-009512 ou ITR-2025-PETR4)
+  return (
+    <span>
+      • Protocolo: <span className="font-medium text-text-secondary">{trimmed}</span>
+    </span>
+  );
+}
+
 export function AssetFundamentalsCard({
   fundamentals,
   isLoading = false,
@@ -162,21 +203,24 @@ export function AssetFundamentalsCard({
   const quoteAudit = indicators.quoteAudit;
   const isConsolidated = statement.statementType === 'CONSOLIDATED';
   const isCvmSource = statement.source.toLowerCase() === 'cvm';
+  const isVersionRestated = statement.isRestated || statement.version > 1;
 
   return (
     <div className="rounded-xl border border-border-theme bg-surface p-6 shadow-xs space-y-6">
-      {/* Header do Card de Fundamentos */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border-theme">
-        <div>
+      {/* 1. Cabeçalho: Hierarquia Lógica das Demonstrações */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border-theme">
+        <div className="space-y-1.5">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="text-lg font-bold text-text-primary">
               Demonstrações e Indicadores Fundamentais
             </h3>
-            <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-brand/10 text-brand border border-brand/20">
+            {/* 1.1 Período de Referência */}
+            <span className="px-2.5 py-0.5 rounded-md text-xs font-bold bg-brand/10 text-brand border border-brand/20">
               {statement.referencePeriod}
             </span>
+            {/* 1.2 Tipo de Demonstração */}
             <span
-              className={`px-2 py-0.5 rounded text-[11px] font-semibold border ${
+              className={`px-2.5 py-0.5 rounded-md text-xs font-semibold border ${
                 isConsolidated
                   ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
                   : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
@@ -184,72 +228,99 @@ export function AssetFundamentalsCard({
             >
               {isConsolidated ? 'Consolidado' : 'Individual'}
             </span>
-            <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-surface-elevated border border-border-theme text-text-muted">
-              v{statement.version} {statement.isRestated && '(Reapresentado)'}
-            </span>
-            {statement.isRestated && (
-              <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                Retificado
+            {/* 1.3 Status e Versão (Unificado sem Duplicidade) */}
+            {isVersionRestated ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                v{statement.version} • Retificado
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium bg-surface-elevated border border-border-theme text-text-secondary">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                v{statement.version} • Original
               </span>
             )}
           </div>
-          <p className="text-xs text-text-muted mt-1">
-            Fonte oficial:{' '}
+
+          {/* 1.4 Fonte Oficial Limpa (Sem JSON Bruto) */}
+          <p className="text-xs text-text-muted flex items-center gap-1.5 flex-wrap">
+            <span>Fonte oficial:</span>
             <span className="font-semibold text-text-secondary">
               {isCvmSource ? 'CVM (Comissão de Valores Mobiliários)' : statement.source.toUpperCase()}
             </span>
-            {statement.sourceReference && ` • Protocolo: ${statement.sourceReference}`}
+            {formatCleanSourceReference(statement.sourceReference)}
           </p>
         </div>
 
-        {/* Datas Oficiais */}
-        <div className="text-left sm:text-right text-xs space-y-0.5">
+        {/* 1.5 Datas Oficiais (Data-base e Divulgação) */}
+        <div className="flex flex-wrap md:flex-col md:items-end gap-x-4 gap-y-1 text-xs">
           <div className="text-text-muted">
-            Data-base: <span className="font-medium text-text-primary">{formatDate(statement.referenceDate)}</span>
+            Data-base:{' '}
+            <span className="font-semibold text-text-primary">
+              {formatDate(statement.referenceDate)}
+            </span>
           </div>
           {statement.filingDate && (
             <div className="text-text-muted">
               Divulgação:{' '}
-              <span className="font-medium text-text-primary">{formatDate(statement.filingDate)}</span>
+              <span className="font-semibold text-text-primary">
+                {formatDate(statement.filingDate)}
+              </span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Banner de Informações Corporativas CVM (quando disponível) */}
+      {/* 2. Informações Corporativas CVM Homologadas */}
       {cvmCompany && (
-        <div className="rounded-lg bg-surface-elevated/50 border border-border-theme p-3 text-xs space-y-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="rounded-lg bg-surface-elevated/60 border border-border-theme p-4 text-xs space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <span className="text-text-muted">Companhia Aberta Registrada: </span>
-              <span className="font-bold text-text-primary">{cvmCompany.legalName}</span>
-              {cvmCompany.tradeName && cvmCompany.tradeName !== cvmCompany.legalName && (
-                <span className="text-text-muted"> ({cvmCompany.tradeName})</span>
-              )}
+              <div className="text-[11px] font-medium text-text-muted uppercase tracking-wider">
+                Companhia Aberta Registrada
+              </div>
+              <div className="text-sm font-bold text-text-primary mt-0.5">
+                {cvmCompany.legalName}
+                {cvmCompany.tradeName && cvmCompany.tradeName !== cvmCompany.legalName && (
+                  <span className="font-normal text-text-muted ml-1.5">
+                    ({cvmCompany.tradeName})
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-3 text-[11px]">
+
+            <div className="flex items-center gap-4 text-xs">
               <div>
                 <span className="text-text-muted">CNPJ: </span>
-                <span className="font-semibold text-text-secondary">{formatCnpj(cvmCompany.cnpj)}</span>
+                <span className="font-semibold text-text-secondary font-mono">
+                  {formatCnpj(cvmCompany.cnpj)}
+                </span>
               </div>
               <div>
                 <span className="text-text-muted">Cód. CVM: </span>
-                <span className="font-semibold text-text-secondary">{cvmCompany.cvmCode}</span>
+                <span className="font-semibold text-text-secondary font-mono">
+                  {cvmCompany.cvmCode}
+                </span>
               </div>
             </div>
           </div>
+
           {(cvmCompany.industrySector || cvmCompany.marketType) && (
-            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-border-theme/60 text-[11px] text-text-muted">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-2.5 border-t border-border-theme/60 text-[11px] text-text-muted">
               {cvmCompany.industrySector && (
                 <div>
                   <span>Setor CVM: </span>
-                  <span className="font-medium text-text-secondary">{cvmCompany.industrySector}</span>
+                  <span className="font-semibold text-text-secondary">
+                    {cvmCompany.industrySector}
+                  </span>
                 </div>
               )}
               {cvmCompany.marketType && (
                 <div>
-                  <span>• Mercado: </span>
-                  <span className="font-medium text-text-secondary">{cvmCompany.marketType}</span>
+                  <span>Segmento de Mercado: </span>
+                  <span className="font-semibold text-text-secondary">
+                    {cvmCompany.marketType}
+                  </span>
                 </div>
               )}
             </div>

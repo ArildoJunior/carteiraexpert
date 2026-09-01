@@ -193,8 +193,8 @@ describe('AssetFundamentalsCard — Testes Unitários de UI (jsdom)', () => {
     expect(text).toContain('009512');
     expect(text).toContain('Petróleo e Gás');
     expect(text).toContain('BOLSA');
-    expect(text).toContain('Retificado');
-    expect(text).toContain('v2 (Reapresentado)');
+    expect(text).toContain('v2 • Retificado');
+    expect(text).toContain('DFP-2024-009512');
     expect(text).toContain('R$ 511.000.000.000,00');
     expect(text).toContain('R$ 124.000.000.000,00');
     expect(text).toContain('R$ 280.000.000.000,00');
@@ -307,5 +307,139 @@ describe('AssetFundamentalsCard — Testes Unitários de UI (jsdom)', () => {
 
     const text = container?.textContent ?? '';
     expect(text).toContain('Aviso: Cotação e demonstrativo contábil possuem moedas diferentes');
+  });
+
+  it('não deve exibir JSON bruto de protocolo e metadados técnicos de ingestão', async () => {
+    const mockJsonProtocol: AssetFundamentalsViewData = {
+      statement: {
+        referencePeriod: '2024-FY',
+        periodType: 'annual',
+        statementType: 'CONSOLIDATED',
+        referenceDate: '2024-12-31',
+        filingDate: null,
+        source: 'cvm',
+        sourceReference: JSON.stringify({
+          source: 'cvm_dfp',
+          fileId: '429a070e-d83b-4a71-8b9b-f2f20eb17dd6',
+          runId: '2d4068da-c0de-48cd-a53d-a4e8b8abafa6',
+          cnpj: '42771949000135',
+          cvmCode: '024058',
+          referenceDate: '2024-12-31',
+          periodType: 'annual',
+          statementType: 'CONSOLIDATED',
+          exerciseOrder: 'ÚLTIMO',
+          version: 2,
+          parserVersion: '1.0.0',
+        }),
+        version: 2,
+        isRestated: true,
+        currency: 'BRL',
+        netRevenue: '1000000.0000',
+        ebitda: '200000.0000',
+        netIncome: '100000.0000',
+        totalEquity: '500000.0000',
+        totalAssets: '1500000.0000',
+        grossDebt: '400000.0000',
+        cashEquivalents: '100000.0000',
+        sharesCount: '1000000.0000000000',
+        dividendsDeclared: null,
+        notes: null,
+      },
+      indicators: {
+        netDebt: '300000.0000',
+        netMargin: '0.1000',
+        ebitdaMargin: '0.2000',
+        roe: '0.2000',
+        roa: '0.0667',
+        lpa: '0.1000',
+        vpa: '0.5000',
+        netDebtToEbitda: '1.50',
+        peRatio: null,
+        pbRatio: null,
+        dividendYield: null,
+        quoteAudit: null,
+        currencyMismatch: false,
+      },
+      cvmCompany: {
+        cnpj: '42771949000135',
+        cvmCode: '024058',
+        legalName: 'ALLIANÇA SAÚDE E PARTICIPAÇÕES S.A.',
+        tradeName: 'ALLIANÇA',
+        industrySector: 'Serviços Médicos',
+        marketType: 'NOVO MERCADO',
+      },
+    };
+
+    await act(async () => {
+      root?.render(<AssetFundamentalsCard fundamentals={mockJsonProtocol} />);
+    });
+
+    const text = container?.textContent ?? '';
+    // Confirma que o JSON bruto NÃO aparece
+    expect(text).not.toContain('{"source"');
+    expect(text).not.toContain('fileId');
+    expect(text).not.toContain('runId');
+    expect(text).not.toContain('429a070e');
+    expect(text).not.toContain('2d4068da');
+    expect(text).not.toContain('parserVersion');
+
+    // Confirma que as informações úteis e legíveis aparecem
+    expect(text).toContain('ALLIANÇA SAÚDE E PARTICIPAÇÕES S.A.');
+    expect(text).toContain('42.771.949/0001-35');
+    expect(text).toContain('024058');
+    expect(text).toContain('DFP (2024)');
+    expect(text).toContain('v2 • Retificado');
+    expect(text).not.toContain('v2 (Reapresentado) Retificado'); // Sem duplicidade
+  });
+
+  it('renderiza v1 Original sem indicação indevida de retificação', async () => {
+    const mockV1: AssetFundamentalsViewData = {
+      statement: {
+        referencePeriod: '2024-FY',
+        periodType: 'annual',
+        statementType: 'CONSOLIDATED',
+        referenceDate: '2024-12-31',
+        filingDate: null,
+        source: 'cvm',
+        sourceReference: null,
+        version: 1,
+        isRestated: false,
+        currency: 'BRL',
+        netRevenue: '1000000.0000',
+        ebitda: '200000.0000',
+        netIncome: '100000.0000',
+        totalEquity: '500000.0000',
+        totalAssets: '1500000.0000',
+        grossDebt: '400000.0000',
+        cashEquivalents: '100000.0000',
+        sharesCount: '1000000.0000000000',
+        dividendsDeclared: null,
+        notes: null,
+      },
+      indicators: {
+        netDebt: '300000.0000',
+        netMargin: '0.1000',
+        ebitdaMargin: '0.2000',
+        roe: '0.2000',
+        roa: '0.0667',
+        lpa: '0.1000',
+        vpa: '0.5000',
+        netDebtToEbitda: '1.50',
+        peRatio: null,
+        pbRatio: null,
+        dividendYield: null,
+        quoteAudit: null,
+        currencyMismatch: false,
+      },
+    };
+
+    await act(async () => {
+      root?.render(<AssetFundamentalsCard fundamentals={mockV1} />);
+    });
+
+    const text = container?.textContent ?? '';
+    expect(text).toContain('v1 • Original');
+    expect(text).not.toContain('Retificado');
+    expect(text).not.toContain('Reapresentado');
   });
 });
