@@ -1,4 +1,6 @@
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import {
   normalizeCnpjDigits,
   normalizeCvmCodeDigits,
@@ -47,6 +49,30 @@ export interface CvmEligibleApplyCandidate {
   source?: string;
 }
 
+export interface CvmCadastralManifestItem {
+  ticker: string;
+  asset_id: string;
+  asset_type: string;
+  cnpj: string;
+  cvm_code: string;
+  company_name: string;
+  trade_name?: string | null;
+  industry_sector?: string | null;
+  company_status: string;
+  share_class: string;
+  source_file: string;
+  source_hash: string;
+}
+
+export interface CvmCadastralManifest {
+  version: string;
+  description: string;
+  total_items: number;
+  fca_sha256?: string;
+  cad_sha256?: string;
+  items: CvmCadastralManifestItem[];
+}
+
 export interface CvmApplyBatchParams {
   sql: any;
   eligibleItems: CvmEligibleApplyCandidate[];
@@ -88,6 +114,107 @@ export interface CvmApplyBatchResult {
  * Opera exclusivamente sobre cvm_companies e cvm_company_assets.
  */
 export class CvmCadastralApplyService {
+  /**
+   * Carrega e valida um manifesto cadastral versionado no disco.
+   */
+  public loadAndValidateManifest(params?: {
+    manifestPath?: string;
+    expectedHash?: string;
+  }): { manifest: CvmCadastralManifest; candidates: CvmEligibleApplyCandidate[]; calculatedHash: string } {
+    const defaultPath = path.resolve(__dirname, '../domain/cvm-cadastral-manifest-2026.json');
+    const filePath = params?.manifestPath || defaultPath;
+
+    if (!fs.existsSync(filePath)) {
+      throw new CvmCadastralApplyValidationError(`Manifesto cadastral não encontrado no caminho: ${filePath}`);
+    }
+
+    const rawContent = fs.readFileSync(filePath, 'utf-8');
+    const calculatedHash = crypto.createHash('sha256').update(rawContent).digest('hex');
+
+    if (params?.expectedHash && params.expectedHash.toLowerCase() !== calculatedHash.toLowerCase()) {
+      throw new CvmCadastralApplyValidationError(
+        `Hash SHA-256 do manifesto divergente do esperado. Esperado: ${params.expectedHash}, Calculado: ${calculatedHash}`
+      );
+    }
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(rawContent);
+    } catch {
+      throw new CvmCadastralApplyValidationError(`Formato JSON inválido no arquivo de manifesto: ${filePath}`);
+    }
+
+    if (!parsed || !Array.isArray(parsed.items) || typeof parsed.total_items !== 'number') {
+      throw new CvmCadastralApplyValidationError(
+        'Estrutura do manifesto inválida: esperado objeto com total_items e array items.'
+      );
+    }
+
+    const candidates: CvmEligibleApplyCandidate[] = [];
+
+    for (const item of parsed.items) {
+      if (!item.ticker || !item.asset_id || !item.cnpj || !item.cvm_code || !item.company_name) {
+        throw new CvmCadastralApplyValidationError(
+          `Item incompleto no manifesto para o ticker ${item.ticker || 'DESCONHECIDO'}`
+        );
+      }
+
+      if (item.asset_type !== 'stock') {
+        throw new CvmCadastralApplyValidationError(
+          `Manifesto contém ativo OUT_OF_SCOPE: ${item.ticker} (${item.asset_type})`
+        );
+      }
+
+      if (item.company_status !== 'ATIVO') {
+        throw new CvmCadastralApplyValidationError(
+          `Manifesto contém ativo com status não-ATIVO: ${item.ticker} (${item.company_status})`
+        );
+      }
+
+      const normCnpj = normalizeCnpjDigits(item.cnpj);
+      if (!normCnpj || normCnpj.length !== 14) {
+        throw new CvmCadastralApplyValidationError(
+          `CNPJ inválido no manifesto para ${item.ticker}: ${item.cnpj}`
+        );
+      }
+
+      const normCvm = normalizeCvmCodeDigits(item.cvm_code);
+      if (!normCvm || normCvm.length !== 6) {
+        throw new CvmCadastralApplyValidationError(
+          `Código CVM inválido no manifesto para ${item.ticker}: ${item.cvm_code}`
+        );
+      }
+
+      const normClass = normalizeCvmShareClass(item.share_class);
+      if (!normClass) {
+        throw new CvmCadastralApplyValidationError(
+          `Classe de ação inválida no manifesto para ${item.ticker}: ${item.share_class}`
+        );
+      }
+
+      candidates.push({
+        assetId: item.asset_id,
+        ticker: item.ticker.trim().toUpperCase(),
+        cnpj: normCnpj,
+        cvmCode: normCvm,
+        legalName: item.company_name,
+        tradeName: item.trade_name || null,
+        industrySector: item.industry_sector || null,
+        marketType: 'BOLSA',
+        companyStatus: item.company_status,
+        shareClass: normClass,
+        justification: `Homologação cadastral CVM a partir de manifesto versionado (${item.company_name}).`,
+        source: 'fca_cad_batch_manifest_2026',
+      });
+    }
+
+    return {
+      manifest: parsed as CvmCadastralManifest,
+      candidates,
+      calculatedHash,
+    };
+  }
+
   public async applyBatch(params: CvmApplyBatchParams): Promise<CvmApplyBatchResult> {
     const {
       sql,

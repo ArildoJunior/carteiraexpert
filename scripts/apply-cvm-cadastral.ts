@@ -8,7 +8,8 @@
  * 4. Transação única com rollback automático em caso de erro;
  * 5. Idempotência estrita: preserva vínculos já existentes sem duplicar chaves;
  * 6. Proteção absoluta de vínculos CURATED_SEED e ativos OUT_OF_SCOPE;
- * 7. Nunca imprime senhas, tokens ou URLs completas de banco de dados.
+ * 7. Execução reproduzível em qualquer ambiente a partir do manifesto versionado;
+ * 8. Nunca imprime senhas, tokens ou URLs completas de banco de dados.
  */
 
 import postgres from 'postgres';
@@ -18,17 +19,6 @@ import {
   CvmCadastralApplyService,
   type CvmEligibleApplyCandidate,
 } from '../src/modules/market-data/server/cvm-cadastral-apply.service';
-import {
-  calculateFileSha256,
-  createLineStream,
-} from '../src/modules/market-data/server/cvm-cadastral-dry-run.service';
-import { parseCvmCadStream } from '../src/modules/market-data/domain/cvm-cad-parser';
-import { parseCvmFcaStream } from '../src/modules/market-data/domain/cvm-fca-parser';
-import {
-  normalizeCnpjDigits,
-  normalizeCvmCodeDigits,
-  normalizeCvmShareClass,
-} from '../src/modules/market-data/domain/cvm-matching-engine';
 
 function maskConnectionString(url: string): string {
   try {
@@ -44,8 +34,11 @@ async function main() {
   const allowProduction = args.includes('--allow-production');
   const isDryRun = args.includes('--dry-run');
 
-  let targetEnvArg = args.find((a) => a.startsWith('--env='))?.split('=')[1];
+  const targetEnvArg = args.find((a) => a.startsWith('--env='))?.split('=')[1];
   const targetEnv = targetEnvArg || process.env.TARGET_ENV || process.env.NODE_ENV;
+
+  const manifestPathArg = args.find((a) => a.startsWith('--manifest-path='))?.split('=')[1];
+  const manifestHashArg = args.find((a) => a.startsWith('--manifest-hash='))?.split('=')[1];
 
   console.log('\x1b[34m[CVM-APPLY] Inicializando rotina oficial de replicação cadastral CVM...\x1b[0m');
 
@@ -69,7 +62,23 @@ async function main() {
     process.exit(1);
   }
 
-  // 1. Carregamento de variáveis de ambiente
+  // 1. Carregamento e validação do manifesto versionado
+  const service = new CvmCadastralApplyService();
+  const defaultManifestPath = path.resolve(__dirname, '../src/modules/market-data/domain/cvm-cadastral-manifest-2026.json');
+  const manifestFile = manifestPathArg || defaultManifestPath;
+
+  console.log(`[INFO] Carregando manifesto versionado: ${manifestFile}`);
+
+  const { manifest, candidates: eligibleItems, calculatedHash } = service.loadAndValidateManifest({
+    manifestPath: manifestFile,
+    expectedHash: manifestHashArg,
+  });
+
+  console.log(`[INTEGRIDADE] Versão do Manifesto: \x1b[32m${manifest.version}\x1b[0m`);
+  console.log(`[INTEGRIDADE] SHA-256 do Manifesto: \x1b[36m${calculatedHash}\x1b[0m`);
+  console.log(`[INFO] Candidatos elegíveis validados: \x1b[32m${eligibleItems.length}\x1b[0m`);
+
+  // 2. Carregamento de variáveis de ambiente
   const envPath = path.resolve(process.cwd(), '.env');
   let databaseUrl = process.env.DATABASE_URL;
   if (fs.existsSync(envPath)) {
@@ -90,45 +99,9 @@ async function main() {
   console.log(`[INFO] Ambiente-alvo: \x1b[32m${normalizedEnv}\x1b[0m`);
   console.log(`[INFO] Banco de dados: \x1b[36m${maskConnectionString(databaseUrl)}\x1b[0m`);
 
-  const cvmDataDir = path.resolve(process.cwd(), '.local-data', 'cvm');
-  const cadPath = path.join(cvmDataDir, 'cad_cia_aberta.csv');
-  const fcaPath = path.join(cvmDataDir, 'fca_cia_aberta_valor_mobiliario.csv');
-
-  if (!fs.existsSync(cadPath) || !fs.existsSync(fcaPath)) {
-    console.error(
-      `\x1b[31m[ERRO] Arquivos oficiais CVM não encontrados no diretório: ${cvmDataDir}\x1b[0m`
-    );
-    process.exit(1);
-  }
-
-  const cadSha256 = await calculateFileSha256(cadPath);
-  const fcaSha256 = await calculateFileSha256(fcaPath);
-
-  console.log(`[INTEGRIDADE] CAD SHA-256: ${cadSha256}`);
-  console.log(`[INTEGRIDADE] FCA SHA-256: ${fcaSha256}`);
-
   const sql = postgres(databaseUrl, { max: 1 });
 
   try {
-    // 2. Parse das fontes oficiais
-    const cadLineStream = createLineStream(cadPath, 'latin1');
-    const { companies: cadCompanies } = await parseCvmCadStream(cadLineStream);
-    const companiesByCnpj = new Map();
-    for (const c of cadCompanies.values()) {
-      const norm = normalizeCnpjDigits(c.cnpj);
-      if (norm) companiesByCnpj.set(norm, c);
-    }
-
-    const fcaLineStream = createLineStream(fcaPath, 'latin1');
-    const { mappings: fcaMappings } = await parseCvmFcaStream(fcaLineStream);
-    const fcaByTicker = new Map();
-    for (const m of fcaMappings) {
-      const t = m.ticker.trim().toUpperCase();
-      const list = fcaByTicker.get(t) || [];
-      list.push(m);
-      fcaByTicker.set(t, list);
-    }
-
     // 3. Consulta de ativos canônicos de ações
     const rawAssets = await sql`
       SELECT id, ticker, name, asset_type, market, currency, isin, provenance
@@ -174,59 +147,16 @@ async function main() {
       matchMethod: r.match_method,
     }));
 
-    // 5. Construção dos candidatos elegíveis
-    const curatedTickers = new Set(['PETR4', 'VALE3', 'ITUB4', 'BBDC4']);
-    const eligibleItems: CvmEligibleApplyCandidate[] = [];
-
-    for (const asset of canonicalAssets) {
-      const ticker = asset.ticker.toUpperCase();
-      if (curatedTickers.has(ticker)) continue;
-
-      const fcaRecords = fcaByTicker.get(ticker) || [];
-      if (fcaRecords.length === 0) continue;
-
-      let matchedCompany = null;
-      let matchedMapping = null;
-
-      for (const m of fcaRecords) {
-        const normCnpj = normalizeCnpjDigits(m.cnpj);
-        if (!normCnpj) continue;
-        const comp = companiesByCnpj.get(normCnpj);
-        if (comp && comp.status === 'ATIVO') {
-          matchedCompany = comp;
-          matchedMapping = m;
-          break;
-        }
-      }
-
-      if (matchedCompany) {
-        eligibleItems.push({
-          assetId: asset.id,
-          ticker,
-          cnpj: matchedCompany.cnpj,
-          cvmCode: matchedCompany.cvmCode,
-          legalName: matchedCompany.legalName,
-          tradeName: matchedCompany.tradeName,
-          industrySector: matchedCompany.industrySector,
-          marketType: matchedCompany.marketType || 'BOLSA',
-          companyStatus: matchedCompany.status,
-          shareClass: normalizeCvmShareClass(matchedMapping.shareClass) || 'ON',
-          justification: `Homologação em lote de ativo canônico com correspondência exata no FCA 2026 e cadastro ativo na CVM (${matchedCompany.legalName}).`,
-          source: 'fca_cad_batch_manifest_2026',
-        });
-      }
-    }
-
-    console.log(`[INFO] Candidatos tecnicamente elegíveis identificados: ${eligibleItems.length}`);
-
     if (isDryRun) {
       console.log('\x1b[33m[DRY-RUN] Modo de simulação ativado. Nenhuma escrita foi realizada.\x1b[0m');
+      console.log(`[DRY-RUN] Total de candidatos no manifesto: ${eligibleItems.length}`);
+      console.log(`[DRY-RUN] Ativos canônicos no banco: ${canonicalAssets.length}`);
+      console.log(`[DRY-RUN] Vínculos existentes no banco: ${existingBindings.length}`);
       await sql.end();
       return;
     }
 
-    // 6. Execução do serviço de persistência
-    const service = new CvmCadastralApplyService();
+    // 5. Execução do serviço de persistência transacional
     const result = await service.applyBatch({
       sql,
       eligibleItems,
