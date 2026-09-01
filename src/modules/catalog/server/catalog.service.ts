@@ -85,10 +85,13 @@ export async function getPublicCatalogList(
   const params = catalogFilterSchema.parse(rawParams);
   const trimmedQuery = params.query?.trim();
 
-  // 1. Busca todos os ativos cadastrados na tabela assets compatíveis com os filtros
+  // 1. Busca todos os ativos cadastrados na tabela assets compatíveis com os filtros e governança canônica estrita
   const assetConditions = [
     eq(assets.isCustom, false),
     isNull(assets.userId),
+    sql`assets.is_visible_catalog = true`,
+    sql`assets.is_tradeable = true`,
+    sql`assets.status = 'active'`,
   ];
 
   if (params.category) {
@@ -411,6 +414,9 @@ export async function getPublicAssetDetailByTicker(
     eq(assets.isCustom, false),
     isNull(assets.userId),
     eq(assets.ticker, normalizedTicker),
+    sql`assets.is_visible_catalog = true`,
+    sql`assets.is_tradeable = true`,
+    sql`assets.status = 'active'`,
   ];
 
   if (category) {
@@ -710,6 +716,9 @@ export async function getPublicSitemapAssets(
       and(
         eq(assets.isCustom, false),
         isNull(assets.userId),
+        sql`assets.is_visible_catalog = true`,
+        sql`assets.is_tradeable = true`,
+        sql`assets.status = 'active'`,
         inArray(assets.assetType, TRADITIONAL_ASSET_TYPES)
       )
     )

@@ -120,6 +120,13 @@
       "when": 1788000000000,
       "tag": "0016_add_cvm_asset_bindings_unique_active",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1788100000000,
+      "tag": "0017_canonical_asset_catalog",
+      "breakpoints": true
     }
   ]
 }
