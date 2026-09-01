@@ -5,6 +5,7 @@ import { users } from '@/lib/db/schema/identity';
 import { assets } from '@/lib/db/schema/portfolio';
 import { marketQuotes } from '@/lib/db/schema/market-data';
 import { assetFundamentals } from '@/lib/db/schema/market-fundamentals';
+import { cvmCompanies, cvmCompanyAssets } from '@/lib/db/schema/cvm-market-data';
 import {
   saveAssetFundamentals,
   getRepresentativeFundamentals,
@@ -205,6 +206,43 @@ describe('Integration — FundamentalsService', () => {
     expect(viewData?.indicators.quoteAudit?.quotePriceUsed).toBe('40.0000');
     expect(viewData?.indicators.quoteAudit?.currency).toBe('BRL');
     expect(viewData?.indicators.currencyMismatch).toBe(false);
+  });
+
+  it('retorna metadados oficiais da companhia CVM quando vínculo APPROVED estiver presente', async () => {
+    // 1. Cadastra companhia CVM
+    const companyId = crypto.randomUUID();
+    const cnpj = `11222333${Date.now().toString().slice(-6)}`;
+    const cvmCode = `${Date.now().toString().slice(-6)}`;
+
+    await db.insert(cvmCompanies).values({
+      id: companyId,
+      cnpj,
+      cvmCode,
+      legalName: 'EMPRESA TESTE CVM S.A.',
+      tradeName: 'EMPRESA TESTE',
+      industrySector: 'Tecnologia da Informação',
+      marketType: 'BOLSA',
+      status: 'ATIVO',
+    });
+
+    // 2. Cria vínculo APPROVED para o ativo público
+    await db.insert(cvmCompanyAssets).values({
+      id: crypto.randomUUID(),
+      companyId,
+      assetId: publicAssetId,
+      status: 'APPROVED',
+      matchMethod: 'MANUAL',
+      source: 'test_seed',
+    });
+
+    const viewData = await getPublicAssetFundamentalsWithIndicators(publicTicker);
+
+    expect(viewData).not.toBeNull();
+    expect(viewData?.cvmCompany).not.toBeNull();
+    expect(viewData?.cvmCompany?.cnpj).toBe(cnpj);
+    expect(viewData?.cvmCompany?.cvmCode).toBe(cvmCode);
+    expect(viewData?.cvmCompany?.legalName).toBe('EMPRESA TESTE CVM S.A.');
+    expect(viewData?.cvmCompany?.industrySector).toBe('Tecnologia da Informação');
   });
 
   it('isola dados e não retorna fundamentos para ticker de ativo customizado/privado', async () => {

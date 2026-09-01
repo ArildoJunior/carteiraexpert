@@ -62,6 +62,15 @@ export interface CalculatedFundamentalIndicators {
   currencyMismatch: boolean;
 }
 
+export interface CvmCompanyMetadata {
+  cnpj: string;
+  cvmCode: string;
+  legalName: string;
+  tradeName?: string | null;
+  industrySector?: string | null;
+  marketType?: string | null;
+}
+
 export interface AssetFundamentalsViewData {
   statement: {
     referencePeriod: string;
@@ -86,4 +95,5 @@ export interface AssetFundamentalsViewData {
     notes: string | null;
   };
   indicators: CalculatedFundamentalIndicators;
+  cvmCompany?: CvmCompanyMetadata | null;
 }

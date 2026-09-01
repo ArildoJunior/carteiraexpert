@@ -6,11 +6,14 @@ import {
   getPublicAssetDetailByTicker,
   getPublicAssetPriceHistory,
 } from '@/modules/catalog/server/catalog.service';
+import { getPublicAssetFundamentalsWithIndicators } from '@/modules/market-data';
 import { PublicNavbar } from '@/modules/catalog/ui/PublicNavbar';
 import { PublicFooter } from '@/modules/catalog/ui/PublicFooter';
 import { AssetDetailView } from '@/modules/catalog/ui/AssetDetailView';
 
 import type { CatalogHistoryPeriod } from '@/modules/catalog/domain/catalog.schema';
+
+export const dynamic = 'force-dynamic';
 
 interface BdrDetailPageProps {
   params: Promise<{ ticker: string }>;
@@ -56,7 +59,10 @@ export default async function BdrDetailPage({ params, searchParams }: BdrDetailP
     ? sParams.period
     : '1M';
 
-  const history = await getPublicAssetPriceHistory(asset.id, period);
+  const [history, fundamentalsData] = await Promise.all([
+    getPublicAssetPriceHistory(asset.id, period),
+    getPublicAssetFundamentalsWithIndicators(asset.ticker),
+  ]);
 
   let userPortfolios: Array<{ id: string; name: string; baseCurrency: string; status: string }> = [];
   if (user) {
@@ -77,6 +83,7 @@ export default async function BdrDetailPage({ params, searchParams }: BdrDetailP
           asset={asset}
           history={history}
           initialPeriod={period}
+          fundamentalsData={fundamentalsData}
           userPortfolios={userPortfolios}
           isAuthenticated={!!user}
           currentUrl={`/bdrs/${asset.ticker}`}

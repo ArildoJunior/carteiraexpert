@@ -17,6 +17,8 @@ import { AssetDetailView } from '@/modules/catalog/ui/AssetDetailView';
 
 import type { CatalogHistoryPeriod } from '@/modules/catalog/domain/catalog.schema';
 
+export const dynamic = 'force-dynamic';
+
 interface AcaoDetailPageProps {
   params: Promise<{ ticker: string }>;
   searchParams?: Promise<{

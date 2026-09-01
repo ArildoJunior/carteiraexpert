@@ -39,6 +39,24 @@ describe('AssetFundamentalsCard — Testes Unitários de UI (jsdom)', () => {
 
     expect(container?.textContent).toContain('Demonstrações Contábeis e Fundamentos');
     expect(container?.textContent).toContain('ainda não cadastradas para este ativo no catálogo público');
+    expect(container?.textContent).toContain('Fonte oficial CVM / B3');
+  });
+
+  it('renderiza estado de carregamento com skeleton animado', async () => {
+    await act(async () => {
+      root?.render(<AssetFundamentalsCard isLoading={true} />);
+    });
+
+    expect(container?.querySelector('.animate-pulse')).not.toBeNull();
+  });
+
+  it('renderiza estado de erro com mensagem explicativa', async () => {
+    await act(async () => {
+      root?.render(<AssetFundamentalsCard error="Falha de conexão com a base de dados" />);
+    });
+
+    expect(container?.textContent).toContain('Não foi possível carregar as demonstrações contábeis');
+    expect(container?.textContent).toContain('Falha de conexão com a base de dados');
   });
 
   it('renderiza dados fundamentais completos com indicadores e aviso legal', async () => {
@@ -107,6 +125,132 @@ describe('AssetFundamentalsCard — Testes Unitários de UI (jsdom)', () => {
     expect(text).toContain('R$ 3,00'); // LPA
     expect(text).toContain('R$ 16,00'); // VPA
     expect(text).toContain('Finalidade Informativa e Educacional');
+  });
+
+  it('renderiza metadados oficiais da companhia CVM quando disponíveis', async () => {
+    const mockWithCompany: AssetFundamentalsViewData = {
+      statement: {
+        referencePeriod: '2024-FY',
+        periodType: 'annual',
+        statementType: 'CONSOLIDATED',
+        referenceDate: '2024-12-31',
+        filingDate: '2025-03-01',
+        source: 'cvm',
+        sourceReference: 'DFP-2024-009512',
+        version: 2,
+        isRestated: true,
+        currency: 'BRL',
+        netRevenue: '511000000000.0000',
+        ebitda: '250000000000.0000',
+        netIncome: '124000000000.0000',
+        totalEquity: '410000000000.0000',
+        totalAssets: '1065000000000.0000',
+        grossDebt: '280000000000.0000',
+        cashEquivalents: '70000000000.0000',
+        sharesCount: '13044496930.0000000000',
+        dividendsDeclared: '40000000000.0000',
+        notes: null,
+      },
+      indicators: {
+        netDebt: '210000000000.0000',
+        netMargin: '0.2427',
+        ebitdaMargin: '0.4892',
+        roe: '0.3024',
+        roa: '0.1164',
+        lpa: '9.5059',
+        vpa: '31.4309',
+        netDebtToEbitda: '0.84',
+        peRatio: '4.58',
+        pbRatio: '1.39',
+        dividendYield: '0.0705',
+        quoteAudit: {
+          quotePriceUsed: '43.5500',
+          quoteDateUsed: '2026-08-28T18:00:00.000Z',
+          quoteSource: 'cotahist',
+          quoteDelayStatus: 'eod',
+          isQuoteStale: false,
+          currency: 'BRL',
+        },
+        currencyMismatch: false,
+      },
+      cvmCompany: {
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        legalName: 'PETRÓLEO BRASILEIRO S.A. - PETROBRAS',
+        tradeName: 'PETROBRAS',
+        industrySector: 'Petróleo e Gás',
+        marketType: 'BOLSA',
+      },
+    };
+
+    await act(async () => {
+      root?.render(<AssetFundamentalsCard fundamentals={mockWithCompany} />);
+    });
+
+    const text = container?.textContent ?? '';
+    expect(text).toContain('PETRÓLEO BRASILEIRO S.A. - PETROBRAS');
+    expect(text).toContain('33.000.167/0001-01');
+    expect(text).toContain('009512');
+    expect(text).toContain('Petróleo e Gás');
+    expect(text).toContain('BOLSA');
+    expect(text).toContain('Retificado');
+    expect(text).toContain('v2 (Reapresentado)');
+    expect(text).toContain('R$ 511.000.000.000,00');
+    expect(text).toContain('R$ 124.000.000.000,00');
+    expect(text).toContain('R$ 280.000.000.000,00');
+    expect(text).toContain('13.044.496.930');
+  });
+
+  it('renderiza valores negativos e demonstração individual corretamente', async () => {
+    const mockNegative: AssetFundamentalsViewData = {
+      statement: {
+        referencePeriod: '2024-FY',
+        periodType: 'annual',
+        statementType: 'INDIVIDUAL',
+        referenceDate: '2024-12-31',
+        filingDate: null,
+        source: 'cvm',
+        sourceReference: null,
+        version: 1,
+        isRestated: false,
+        currency: 'BRL',
+        netRevenue: '100000000.0000',
+        ebitda: '-20000000.0000',
+        netIncome: '-50000000.0000', // Prejuízo
+        totalEquity: '-120000000.0000', // Passivo a descoberto
+        totalAssets: '500000000.0000',
+        grossDebt: '200000000.0000',
+        cashEquivalents: '10000000.0000',
+        sharesCount: '10000000.0000000000',
+        dividendsDeclared: null,
+        notes: null,
+      },
+      indicators: {
+        netDebt: '190000000.0000',
+        netMargin: '-0.5000',
+        ebitdaMargin: '-0.2000',
+        roe: null,
+        roa: null,
+        lpa: null,
+        vpa: null,
+        netDebtToEbitda: null,
+        peRatio: null,
+        pbRatio: null,
+        dividendYield: null,
+        quoteAudit: null,
+        currencyMismatch: false,
+      },
+    };
+
+    await act(async () => {
+      root?.render(<AssetFundamentalsCard fundamentals={mockNegative} />);
+    });
+
+    const text = container?.textContent ?? '';
+    expect(text).toContain('Individual');
+    expect(text).toContain('-R$ 50.000.000,00');
+    expect(text).toContain('-R$ 120.000.000,00');
+    expect(text).toContain('-50,00%');
   });
 
   it('exibe alerta de incompatibilidade de moeda quando currencyMismatch for true', async () => {

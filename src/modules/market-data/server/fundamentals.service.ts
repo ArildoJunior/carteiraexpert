@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { db, type DbExecutor } from '@/lib/db';
 import { assets } from '@/lib/db/schema/portfolio';
 import { assetFundamentals } from '@/lib/db/schema/market-fundamentals';
+import { cvmCompanies, cvmCompanyAssets } from '@/lib/db/schema/cvm-market-data';
 import { eq, and, isNull, desc, asc, sql } from 'drizzle-orm';
 import { Decimal } from '@/lib/decimal';
 import {
@@ -11,6 +12,7 @@ import {
 import type {
   RawAssetFundamentalStatement,
   AssetFundamentalsViewData,
+  CvmCompanyMetadata,
   StatementPeriodType,
   StatementType,
 } from '../domain/fundamentals.types';
@@ -221,6 +223,41 @@ export async function getPublicAssetFundamentalsWithIndicators(
 
   const indicators = calculateFundamentalIndicators(statement, quoteContext);
 
+  let cvmCompany: CvmCompanyMetadata | null = null;
+  try {
+    const [companyRow] = await executor
+      .select({
+        cnpj: cvmCompanies.cnpj,
+        cvmCode: cvmCompanies.cvmCode,
+        legalName: cvmCompanies.legalName,
+        tradeName: cvmCompanies.tradeName,
+        industrySector: cvmCompanies.industrySector,
+        marketType: cvmCompanies.marketType,
+      })
+      .from(cvmCompanyAssets)
+      .innerJoin(cvmCompanies, eq(cvmCompanyAssets.companyId, cvmCompanies.id))
+      .where(
+        and(
+          eq(cvmCompanyAssets.assetId, asset.id),
+          eq(cvmCompanyAssets.status, 'APPROVED')
+        )
+      )
+      .limit(1);
+
+    if (companyRow) {
+      cvmCompany = {
+        cnpj: companyRow.cnpj,
+        cvmCode: companyRow.cvmCode,
+        legalName: companyRow.legalName,
+        tradeName: companyRow.tradeName,
+        industrySector: companyRow.industrySector,
+        marketType: companyRow.marketType,
+      };
+    }
+  } catch {
+    cvmCompany = null;
+  }
+
   return {
     statement: {
       referencePeriod: statement.referencePeriod,
@@ -245,5 +282,6 @@ export async function getPublicAssetFundamentalsWithIndicators(
       notes: statement.notes,
     },
     indicators,
+    cvmCompany,
   };
 }
