@@ -30,6 +30,7 @@ Thumbs.db
 # Arquivos temporários
 tmp/
 temp/
+artifacts/
 
 # Playwright
 test-results/

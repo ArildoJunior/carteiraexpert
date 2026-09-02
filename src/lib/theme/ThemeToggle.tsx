@@ -4,7 +4,15 @@ import { useState, useRef, useEffect } from 'react';
 import { useTheme } from './ThemeContext';
 import type { ThemePreference } from './theme.types';
 
-export function ThemeToggle({ className = '' }: { className?: string }) {
+export function ThemeToggle({
+  className = '',
+  id = 'theme-toggle-btn',
+  dropdownPlacement = 'bottom',
+}: {
+  className?: string;
+  id?: string;
+  dropdownPlacement?: 'top' | 'bottom';
+}) {
   const { theme, resolvedTheme, setTheme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -46,7 +54,7 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
     <div className={`relative inline-block text-left ${className}`} ref={dropdownRef}>
       <button
         type="button"
-        id="theme-toggle-btn"
+        id={id}
         aria-label="Alternar tema de visualização (claro, escuro ou automático do sistema)"
         aria-expanded={isOpen}
         aria-haspopup="true"
@@ -96,8 +104,10 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
         <div
           role="menu"
           aria-orientation="vertical"
-          aria-labelledby="theme-toggle-btn"
-          className="absolute right-0 mt-2 w-36 rounded-xl border border-border-theme bg-surface-elevated shadow-xl py-1 z-50 text-xs focus:outline-none"
+          aria-labelledby={id}
+          className={`absolute right-0 w-36 rounded-xl border border-border-theme bg-surface-elevated shadow-xl py-1 z-50 text-xs focus:outline-none ${
+            dropdownPlacement === 'top' ? 'bottom-full mb-2' : 'mt-2'
+          }`}
         >
           {options.map((opt) => (
             <button

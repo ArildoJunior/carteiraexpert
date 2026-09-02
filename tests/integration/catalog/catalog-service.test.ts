@@ -5,7 +5,7 @@ import { assets, portfolios, portfolioEvents } from '@/lib/db/schema/portfolio';
 import { marketQuotes } from '@/lib/db/schema/market-data';
 import { users } from '@/lib/db/schema/identity';
 import { auditLogs } from '@/lib/db/schema/audit';
-import { eq, inArray } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import {
   getPublicCatalogList,
   getPublicAssetDetailByTicker,
@@ -111,6 +111,11 @@ describe('Catálogo Público — Testes de Integração (PostgreSQL Real)', () =
         userId: testUser1.id,
       },
     ]);
+
+    // Atualiza os ativos públicos para estarem em conformidade com as regras de governança canônica do catálogo (ADR-011)
+    await db.execute(
+      sql`UPDATE assets SET is_visible_catalog = true, is_tradeable = true, status = 'active', provenance = 'curated_seed' WHERE id IN (${publicStockAssetId}, ${publicFiiAssetId})`
+    );
 
     // 3. Insere cotações históricas para o ativo público de ação
     const today = new Date();
@@ -623,6 +628,10 @@ describe('Catálogo Público — Testes de Integração (PostgreSQL Real)', () =
           userId: testUser1.id,
         },
       ]);
+
+      await db.execute(
+        sql`UPDATE assets SET is_visible_catalog = true, is_tradeable = true, status = 'active', provenance = 'curated_seed' WHERE id = ${publicAssetUuid}`
+      );
 
       // 2. Consulta listagem pública
       const catalogResult = await getPublicCatalogList({ query: collisionTicker });

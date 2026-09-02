@@ -40,17 +40,32 @@ export function RecentActivityFeed({ events }: RecentActivityFeedProps) {
     return (
       <div
         id="empty-recent-activities"
-        className="bg-surface border border-border-theme rounded-2xl p-8 text-center space-y-3 shadow-sm"
+        className="bg-surface border border-border-theme rounded-2xl p-8 sm:p-10 text-center space-y-4 shadow-xs"
       >
-        <div className="w-12 h-12 rounded-full bg-background flex items-center justify-center text-text-secondary text-xl font-bold mx-auto">
-          ⚡
+        <div className="w-12 h-12 rounded-2xl bg-surface-elevated border border-border-theme flex items-center justify-center text-text-secondary mx-auto shadow-xs">
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M13 10V3L4 14h7v7l9-11h-7z"
+            />
+          </svg>
         </div>
-        <p className="text-sm font-medium text-text-primary">
-          Nenhuma operação recente registrada.
-        </p>
-        <p className="text-xs text-text-secondary max-w-sm mx-auto">
-          Suas compras e vendas manuais aparecerão aqui organizadas cronologicamente por carteira.
-        </p>
+        <div className="space-y-1">
+          <p className="text-sm font-semibold text-text-primary">
+            Nenhuma operação recente registrada.
+          </p>
+          <p className="text-xs text-text-secondary max-w-sm mx-auto">
+            Suas compras e vendas manuais aparecerão aqui organizadas cronologicamente por carteira.
+          </p>
+        </div>
       </div>
     );
   }
@@ -58,17 +73,17 @@ export function RecentActivityFeed({ events }: RecentActivityFeedProps) {
   return (
     <div
       id="dashboard-recent-activity-section"
-      className="bg-surface border border-border-theme rounded-2xl overflow-hidden shadow-sm"
+      className="bg-surface border border-border-theme rounded-2xl overflow-hidden shadow-xs"
     >
-      <div className="px-6 py-4 border-b border-border-theme flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-bold text-text-primary flex items-center gap-2.5">
+      <div className="px-5 sm:px-6 py-4 border-b border-border-theme/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="space-y-0.5">
+          <h2 className="text-lg font-bold text-text-primary flex items-center gap-2.5 tracking-tight">
             <span>Atividades Recentes</span>
-            <span className="text-xs font-normal bg-background text-text-secondary px-2 py-0.5 rounded-full border border-border-theme">
+            <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-surface-elevated text-text-secondary border border-border-theme">
               Últimas {events.length}
             </span>
           </h2>
-          <p className="text-xs text-text-secondary mt-0.5">
+          <p className="text-xs text-text-secondary">
             Histórico consolidado de compras e vendas ativas entre todas as suas carteiras.
           </p>
         </div>
@@ -76,7 +91,7 @@ export function RecentActivityFeed({ events }: RecentActivityFeedProps) {
         <Link
           id="btn-view-all-history-from-dashboard"
           href="/history"
-          className="text-xs font-semibold text-action-primary hover:underline transition-colors"
+          className="text-xs font-semibold text-action-primary hover:text-action-primary-hover hover:underline transition-colors self-start sm:self-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary rounded-md px-1 py-0.5"
         >
           Ver extrato completo →
         </Link>
@@ -88,17 +103,17 @@ export function RecentActivityFeed({ events }: RecentActivityFeedProps) {
           className="w-full text-left border-collapse text-sm"
         >
           <thead>
-            <tr className="border-b border-border-theme bg-background/50 text-[11px] font-semibold text-text-secondary uppercase tracking-wider">
-              <th className="px-6 py-3.5">Tipo</th>
+            <tr className="border-b border-border-theme/60 bg-background/50 text-[10px] font-semibold text-text-secondary uppercase tracking-wider">
+              <th className="px-5 sm:px-6 py-3.5">Tipo</th>
               <th className="px-4 py-3.5">Carteira</th>
               <th className="px-4 py-3.5">Ativo</th>
               <th className="px-4 py-3.5">Data</th>
               <th className="px-4 py-3.5 text-right">Quantidade</th>
               <th className="px-4 py-3.5 text-right">Preço Unitário</th>
-              <th className="px-6 py-3.5 text-right">Taxas</th>
+              <th className="px-5 sm:px-6 py-3.5 text-right">Taxas</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border-theme/50 text-text-primary">
+          <tbody className="divide-y divide-border-theme/40 text-text-primary">
             {events.map((event) => {
               const isBuy = event.type === 'BUY';
               const isSell = event.type === 'SELL';
@@ -121,48 +136,56 @@ export function RecentActivityFeed({ events }: RecentActivityFeedProps) {
                 <tr
                   key={event.id}
                   id={`recent-event-row-${event.id}`}
-                  className="hover:bg-surface-elevated/50 transition-colors"
+                  className="hover:bg-surface-elevated/40 transition-colors"
                 >
                   {/* Tipo */}
-                  <td className="px-6 py-3.5 whitespace-nowrap">
+                  <td className="px-5 sm:px-6 py-3.5 whitespace-nowrap">
                     {isBuy && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-positive-text/10 text-positive-text border border-positive-text/30">
-                        🟢 Compra
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        Compra
                       </span>
                     )}
                     {isSell && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-action-primary/10 text-action-primary border border-action-primary/30">
-                        🔵 Venda
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
+                        <span className="w-1.5 h-1.5 rounded-full bg-sky-500" />
+                        Venda
                       </span>
                     )}
                     {isSplit && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-500 border border-indigo-500/30">
-                        🔀 Desdobramento
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                        Desdobramento
                       </span>
                     )}
                     {isGrouping && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-300 border border-amber-500/30">
-                        🔄 Grupamento
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                        Grupamento
                       </span>
                     )}
                     {isBonus && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-pink-500/10 text-pink-500 border border-pink-500/30">
-                        🎁 Bonificação
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-pink-500/10 text-pink-600 dark:text-pink-400 border border-pink-500/20">
+                        <span className="w-1.5 h-1.5 rounded-full bg-pink-500" />
+                        Bonificação
                       </span>
                     )}
                     {isDividend && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-positive-text/10 text-positive-text border border-positive-text/30">
-                        💵 Dividendo
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        Dividendo
                       </span>
                     )}
                     {isJcp && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-500/10 text-teal-600 dark:text-teal-300 border border-teal-500/30">
-                        🏛️ JCP
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20">
+                        <span className="w-1.5 h-1.5 rounded-full bg-teal-500" />
+                        JCP
                       </span>
                     )}
                     {isAdjustment && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30">
-                        ⚖️ {event.direction === 'OUT' ? 'Ajuste (Saída)' : 'Ajuste (Entrada)'}
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
+                        <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                        {event.direction === 'OUT' ? 'Ajuste (Saída)' : 'Ajuste (Entrada)'}
                       </span>
                     )}
                   </td>
@@ -171,7 +194,7 @@ export function RecentActivityFeed({ events }: RecentActivityFeedProps) {
                   <td className="px-4 py-3.5 whitespace-nowrap">
                     <Link
                       href={`/portfolios/${event.portfolioId}`}
-                      className="font-medium text-action-primary hover:underline transition-colors"
+                      className="font-medium text-action-primary hover:underline transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-action-primary rounded"
                       id={`recent-event-portfolio-${event.id}`}
                     >
                       {event.portfolioName}
@@ -180,14 +203,14 @@ export function RecentActivityFeed({ events }: RecentActivityFeedProps) {
 
                   {/* Ativo */}
                   <td className="px-4 py-3.5">
-                    <div className="flex flex-col">
+                    <div className="flex flex-col min-w-0">
                       <span
                         id={`recent-event-ticker-${event.id}`}
                         className="font-bold text-text-primary tracking-wide"
                       >
                         {event.assetTicker}
                       </span>
-                      <span className="text-xs text-text-secondary truncate max-w-[160px]">
+                      <span className="text-xs text-text-secondary truncate max-w-[180px]">
                         {event.assetName}
                       </span>
                     </div>
@@ -199,7 +222,7 @@ export function RecentActivityFeed({ events }: RecentActivityFeedProps) {
                   </td>
 
                   {/* Quantidade / Fator */}
-                  <td className="px-4 py-3.5 text-right font-mono tabular-nums font-medium text-text-primary whitespace-nowrap">
+                  <td className="px-4 py-3.5 text-right font-mono tabular-nums font-semibold text-text-primary whitespace-nowrap">
                     {isSplit && `Fator 1:${formatQuantity(event.quantity)}`}
                     {isGrouping && `Fator ${formatQuantity(event.quantity)}:1`}
                     {isBonus && `+${formatQuantity(event.quantity)}`}
@@ -208,7 +231,7 @@ export function RecentActivityFeed({ events }: RecentActivityFeedProps) {
                   </td>
 
                   {/* Preço Unitário */}
-                  <td className="px-4 py-3.5 text-right font-mono tabular-nums font-medium text-text-primary whitespace-nowrap">
+                  <td className="px-4 py-3.5 text-right font-mono tabular-nums font-semibold text-text-primary whitespace-nowrap">
                     {isSplit || isGrouping ? (
                       '—'
                     ) : isBonus ? (
@@ -219,7 +242,7 @@ export function RecentActivityFeed({ events }: RecentActivityFeedProps) {
                   </td>
 
                   {/* Taxas */}
-                  <td className="px-6 py-3.5 text-right font-mono tabular-nums text-xs text-text-secondary whitespace-nowrap">
+                  <td className="px-5 sm:px-6 py-3.5 text-right font-mono tabular-nums text-xs text-text-secondary whitespace-nowrap">
                     {isJcp
                       ? `IRRF ${formatMoney(event.fees, event.currency)}`
                       : isSplit || isGrouping || isBonus

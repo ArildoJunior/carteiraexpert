@@ -340,13 +340,33 @@ export function DashboardAllocationCharts({
     <div
       id="dashboard-allocation-charts-container"
       data-sync-status={syncStatus}
-      className="bg-surface border border-border-theme rounded-2xl p-5 sm:p-6 shadow-sm space-y-6 text-text-primary"
+      className="bg-surface border border-border-theme rounded-2xl p-5 sm:p-6 shadow-xs space-y-6 text-text-primary"
     >
       {/* ─── Header do Gráfico ────────────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border-theme">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border-theme/60">
         <div>
           <div className="flex items-center gap-2.5">
-            <span className="text-xl">📊</span>
+            <div className="w-8 h-8 rounded-xl bg-action-primary/10 border border-action-primary/20 flex items-center justify-center text-action-primary shrink-0">
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"
+                />
+              </svg>
+            </div>
             <h2 className="text-lg font-bold text-text-primary tracking-tight">
               Alocação Consolidada
             </h2>
@@ -363,16 +383,16 @@ export function DashboardAllocationCharts({
         {/* Controles de Visualização */}
         <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto">
           {/* Seletor de Agrupamento */}
-          <div className="flex bg-background border border-border-theme p-1 rounded-xl text-xs font-semibold">
+          <div className="flex bg-background border border-border-theme p-1 rounded-xl text-xs font-semibold shadow-xs">
             <button
               id="dashboard-chart-tab-asset_type"
               type="button"
               aria-pressed={groupingType === 'asset_type'}
               onClick={() => handleGroupingChange('asset_type')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
+              className={`px-3 py-1.5 rounded-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary ${
                 groupingType === 'asset_type'
-                  ? 'bg-action-primary text-action-primary-text shadow-sm'
-                  : 'text-text-secondary hover:text-text-primary'
+                  ? 'bg-action-primary text-action-primary-text shadow-xs'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
               }`}
             >
               Por Classe
@@ -382,10 +402,10 @@ export function DashboardAllocationCharts({
               type="button"
               aria-pressed={groupingType === 'portfolio'}
               onClick={() => handleGroupingChange('portfolio')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
+              className={`px-3 py-1.5 rounded-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary ${
                 groupingType === 'portfolio'
-                  ? 'bg-action-primary text-action-primary-text shadow-sm'
-                  : 'text-text-secondary hover:text-text-primary'
+                  ? 'bg-action-primary text-action-primary-text shadow-xs'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
               }`}
             >
               Por Carteira
@@ -395,10 +415,10 @@ export function DashboardAllocationCharts({
               type="button"
               aria-pressed={groupingType === 'currency'}
               onClick={() => handleGroupingChange('currency')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
+              className={`px-3 py-1.5 rounded-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary ${
                 groupingType === 'currency'
-                  ? 'bg-action-primary text-action-primary-text shadow-sm'
-                  : 'text-text-secondary hover:text-text-primary'
+                  ? 'bg-action-primary text-action-primary-text shadow-xs'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
               }`}
             >
               Por Moeda
@@ -406,16 +426,16 @@ export function DashboardAllocationCharts({
           </div>
 
           {/* Seletor de Base (Mercado vs Custo) */}
-          <div className="flex bg-background border border-border-theme p-1 rounded-xl text-xs font-semibold">
+          <div className="flex bg-background border border-border-theme p-1 rounded-xl text-xs font-semibold shadow-xs">
             <button
               id="dashboard-chart-basis-market_value"
               type="button"
               aria-pressed={basis === 'market_value'}
               onClick={() => handleBasisChange('market_value')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
+              className={`px-3 py-1.5 rounded-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary ${
                 basis === 'market_value'
-                  ? 'bg-action-primary text-action-primary-text shadow-sm'
-                  : 'text-text-secondary hover:text-text-primary'
+                  ? 'bg-action-primary text-action-primary-text shadow-xs'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
               }`}
             >
               Valor a Mercado
@@ -425,10 +445,10 @@ export function DashboardAllocationCharts({
               type="button"
               aria-pressed={basis === 'cost_basis'}
               onClick={() => handleBasisChange('cost_basis')}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
+              className={`px-3 py-1.5 rounded-lg transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary ${
                 basis === 'cost_basis'
-                  ? 'bg-action-primary text-action-primary-text shadow-sm'
-                  : 'text-text-secondary hover:text-text-primary'
+                  ? 'bg-action-primary text-action-primary-text shadow-xs'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated'
               }`}
             >
               Custo de Aquisição
@@ -441,10 +461,23 @@ export function DashboardAllocationCharts({
       {basis === 'market_value' && chartData.isPartiallyQuoted && (
         <div
           id="dashboard-chart-unquoted-warning"
-          className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-700 dark:text-amber-300"
+          className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-700 dark:text-amber-300 shadow-xs"
         >
-          <div className="flex items-center gap-2">
-            <span>⚠️</span>
+          <div className="flex items-center gap-2.5">
+            <svg
+              className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
             <span>
               <strong>{chartData.unquotedPositionsCount}</strong>{' '}
               {chartData.unquotedPositionsCount === 1 ? 'posição' : 'posições'} (custo de{' '}
@@ -456,7 +489,7 @@ export function DashboardAllocationCharts({
           <button
             type="button"
             onClick={() => handleBasisChange('cost_basis')}
-            className="text-amber-700 dark:text-amber-200 underline font-semibold hover:opacity-80 shrink-0 self-start sm:self-auto"
+            className="text-amber-700 dark:text-amber-200 underline font-semibold hover:opacity-80 shrink-0 self-start sm:self-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 rounded px-1"
           >
             Ver por Custo de Aquisição →
           </button>
@@ -467,22 +500,37 @@ export function DashboardAllocationCharts({
       {basis === 'market_value' && chartData.hasOnlyUnquotedPositions ? (
         <div
           id="dashboard-chart-only-unquoted-state"
-          className="py-12 px-4 text-center space-y-3 bg-background border border-dashed border-border-theme rounded-2xl"
+          className="py-12 px-4 text-center space-y-4 bg-background/50 border border-dashed border-border-theme rounded-2xl shadow-xs"
         >
-          <div className="w-12 h-12 rounded-full bg-surface-elevated flex items-center justify-center text-xl mx-auto">
-            📉
+          <div className="w-12 h-12 rounded-2xl bg-surface-elevated border border-border-theme flex items-center justify-center text-text-secondary mx-auto shadow-xs">
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+              />
+            </svg>
           </div>
-          <h3 className="text-sm font-bold text-text-primary">
-            Sem cotações de mercado disponíveis
-          </h3>
-          <p className="text-xs text-text-secondary max-w-md mx-auto">
-            Nenhum ativo consolidado possui cotação cadastrada no banco interno para marcação a mercado.
-          </p>
+          <div className="space-y-1">
+            <h3 className="text-sm font-bold text-text-primary">
+              Sem cotações de mercado disponíveis
+            </h3>
+            <p className="text-xs text-text-secondary max-w-md mx-auto">
+              Nenhum ativo consolidado possui cotação cadastrada no banco interno para marcação a mercado.
+            </p>
+          </div>
           <button
             id="dashboard-chart-switch-to-cost-btn"
             type="button"
             onClick={() => handleBasisChange('cost_basis')}
-            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-action-primary-text bg-action-primary hover:opacity-90 rounded-xl transition-all shadow-sm"
+            className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-action-primary-text bg-action-primary hover:bg-action-primary-hover rounded-xl transition-all shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary"
           >
             Visualizar por Custo de Aquisição
           </button>
@@ -542,7 +590,7 @@ export function DashboardAllocationCharts({
           </div>
 
           {/* Lista de Legendas e Percentuais */}
-          <div className="lg:col-span-6 space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+          <div className="lg:col-span-6 space-y-2 max-h-[300px] overflow-y-auto pr-1">
             {chartData.slices.map((slice, index) => {
               const isHovered = activeIndex === index;
 
@@ -563,15 +611,15 @@ export function DashboardAllocationCharts({
                       setActiveIndex(activeIndex === index ? null : index);
                     }
                   }}
-                  className={`flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-action-primary ${
+                  className={`flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary ${
                     isHovered
-                      ? 'bg-surface-elevated border-action-primary/50 shadow-md translate-x-1'
-                      : 'bg-background border-border-theme hover:bg-surface-elevated'
+                      ? 'bg-surface-elevated border-action-primary/50 shadow-sm translate-x-1'
+                      : 'bg-background/70 border-border-theme hover:bg-surface-elevated'
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <span
-                      className="w-3 h-3 rounded-full shrink-0 shadow-sm"
+                      className="w-3 h-3 rounded-full shrink-0 shadow-xs"
                       style={{ backgroundColor: slice.color }}
                     />
                     <div className="min-w-0">

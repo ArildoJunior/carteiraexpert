@@ -75,9 +75,10 @@ test.describe('Catálogo Público de Ativos — E2E', () => {
     for (const item of globalAssets) {
       const assetId = crypto.randomUUID();
       await queryClient`
-        INSERT INTO assets (id, ticker, name, asset_type, market, currency, is_custom, user_id, created_at, updated_at)
-        VALUES (${assetId}, ${item.ticker}, ${item.name}, ${item.assetType}, ${item.market}, ${item.currency}, false, NULL, ${now}, ${now})
-        ON CONFLICT (ticker, market) WHERE is_custom = false AND user_id IS NULL DO NOTHING
+        INSERT INTO assets (id, ticker, name, asset_type, market, currency, is_custom, user_id, is_visible_catalog, is_tradeable, status, provenance, created_at, updated_at)
+        VALUES (${assetId}, ${item.ticker}, ${item.name}, ${item.assetType}, ${item.market}, ${item.currency}, false, NULL, true, true, 'active', 'curated_seed', ${now}, ${now})
+        ON CONFLICT (ticker, market) WHERE is_custom = false AND user_id IS NULL
+        DO UPDATE SET is_visible_catalog = true, is_tradeable = true, status = 'active', provenance = 'curated_seed'
       `;
 
       const [persistedAsset] = await queryClient`
@@ -215,19 +216,17 @@ test.describe('Catálogo Público de Ativos — E2E', () => {
     await page.click('#register-submit');
     await page.waitForURL('**/dashboard');
 
-    // 2. No desktop, valida a presença do Catálogo de Ativos no DashboardNavbar
-    const dashCatalogBtn = page.locator('#dashboard-nav-link-catalog');
-    await expect(dashCatalogBtn).toBeVisible();
-    await expect(dashCatalogBtn).toContainText('Catálogo de Ativos');
+    // 2. No desktop, valida a presença dos links de mercado na Sidebar
+    const navLinkAcoes = page.locator('#nav-link-acoes');
+    await expect(navLinkAcoes).toBeVisible();
+    await expect(navLinkAcoes).toContainText('Ações');
 
-    // Abre o dropdown e navega para Ações a partir do Dashboard
-    await dashCatalogBtn.click();
-    await expect(page.locator('#dashboard-nav-catalog-dropdown-menu')).toBeVisible();
-    await page.click('#dashboard-nav-link-acoes');
+    // Navega para Ações a partir da Sidebar do Dashboard
+    await navLinkAcoes.click();
     await page.waitForURL('**/acoes');
     await expect(page.locator('h1')).toContainText('Ações Brasileiras');
 
-    // Retorna ao Dashboard pelo link da navbar
+    // Retorna ao Dashboard pelo link da navbar pública
     await page.click('#btn-nav-dashboard');
     await page.waitForURL('**/dashboard');
 
@@ -239,7 +238,7 @@ test.describe('Catálogo Público de Ativos — E2E', () => {
     await expect(page.locator('#dashboard-mobile-menu')).toBeVisible();
 
     // Navega para FIIs a partir do menu mobile autenticado
-    await page.click('#dashboard-mobile-link-fiis');
+    await page.click('#mobile-nav-link-fiis');
     await page.waitForURL('**/fiis');
     await expect(page.locator('h1')).toContainText('Fundos Imobiliários');
   });

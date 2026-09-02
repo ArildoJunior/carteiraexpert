@@ -99,7 +99,7 @@ test.describe('E2E: Módulo de Importações e Navegação (Fase 07)', () => {
       buffer: Buffer.from(csvContent, 'utf-8'),
     });
 
-    await expect(page.locator('text=operacoes_revisao.csv')).toBeVisible();
+    await expect(page.locator('#import-drop-zone').getByText('operacoes_revisao.csv')).toBeVisible();
     await page.click('#btn-submit-upload');
     await page.waitForURL(/\/import\/[0-9a-f-]+/);
     userABatchUrl = page.url();
@@ -156,8 +156,8 @@ test.describe('E2E: Módulo de Importações e Navegação (Fase 07)', () => {
     // 10. Histórico
     await page.click('#btn-back-to-imports');
     await page.waitForURL('**/import');
-    await expect(page.locator('text=operacoes_revisao.csv')).toBeVisible();
-    await expect(page.locator('text=Confirmado')).toBeVisible();
+    await expect(page.locator('[title="operacoes_revisao.csv"]')).toBeVisible();
+    await expect(page.locator('table').getByText('Confirmado')).toBeVisible();
   });
 
   test('4. Isolamento multiusuário: Usuário B não pode acessar o lote do Usuário A', async ({
