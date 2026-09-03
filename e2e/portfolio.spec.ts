@@ -182,8 +182,11 @@ test.describe('E2E: Carteiras, Posições e Operações Manuais (Pacote 03.02)',
     ).toContainText('+R$ 200,00'); // (40 * 30) - (40 * 25) = +200
 
     // 10. Cancela a operação de Venda com justificativa obrigatória
-    const cancelButtons = page.locator('button:has-text("Cancelar")');
-    await cancelButtons.first().click();
+    const sellRow = page.locator('#portfolio-events-table tbody tr', {
+      hasText: 'Venda',
+    });
+    await expect(sellRow).toBeVisible();
+    await sellRow.locator('button:has-text("Cancelar")').click();
 
     await expect(page.locator('#cancel-event-modal-title')).toBeVisible();
     await page.fill(
@@ -192,6 +195,9 @@ test.describe('E2E: Carteiras, Posições e Operações Manuais (Pacote 03.02)',
     );
     await page.click('#confirm-cancel-event-submit');
     await expect(page.locator('#cancel-event-modal-title')).not.toBeVisible();
+
+    // Aguarda sincronização do extrato refletindo a exclusão da operação cancelada
+    await expect(sellRow).not.toBeVisible();
 
     // Valida que a posição foi restabelecida para 100 ações
     await expect(

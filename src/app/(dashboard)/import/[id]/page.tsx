@@ -67,7 +67,7 @@ export default async function ImportBatchDetailPage({
 
   return (
     <ImportBatchReviewView
-      key={`${serializedBatch.id}-${serializedBatch.validRecords}-${serializedBatch.warningRecords}-${serializedBatch.status}-${serializedBatch.updatedAt}`}
+      key={serializedBatch.id}
       batch={serializedBatch}
       items={serializedItems}
     />

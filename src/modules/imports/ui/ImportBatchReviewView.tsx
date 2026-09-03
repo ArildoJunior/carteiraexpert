@@ -28,6 +28,10 @@ export function ImportBatchReviewView({
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [isPending, startTransition] = useTransition();
 
+  useEffect(() => {
+    setItems(initialItems);
+  }, [initialItems]);
+
   // Modais de edição e resolução
   const [editingItem, setEditingItem] = useState<SerializedImportBatchItem | null>(null);
   const [resolvingItem, setResolvingItem] = useState<SerializedImportBatchItem | null>(null);
