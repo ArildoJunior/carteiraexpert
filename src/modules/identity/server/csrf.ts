@@ -15,23 +15,13 @@ import type { NextRequest } from 'next/server';
 //    como origens confiáveis por si só. Toda validação compara estritamente contra origens
 //    explicitamente configuradas em ALLOWED_ORIGINS (ou padrões locais em desenvolvimento).
 
+import { validateAllowedOrigins } from '../../../lib/env/allowed-origins';
+
 const MUTABLE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 function getAllowedOrigins(): string[] {
-  const raw = process.env.ALLOWED_ORIGINS ?? '';
-  if (!raw) {
-    // Em desenvolvimento ou teste local sem ALLOWED_ORIGINS configurada, permite portas locais conhecidas
-    if (process.env.NODE_ENV !== 'production') {
-      return [
-        'http://localhost:3000',
-        'http://127.0.0.1:3000',
-        'http://localhost:3005',
-        'http://127.0.0.1:3005',
-      ];
-    }
-    return [];
-  }
-  return raw.split(',').map((o) => o.trim()).filter(Boolean);
+  const result = validateAllowedOrigins(process.env.ALLOWED_ORIGINS, process.env.NODE_ENV);
+  return result.origins;
 }
 
 function extractOriginFromReferer(referer: string | null): string | null {

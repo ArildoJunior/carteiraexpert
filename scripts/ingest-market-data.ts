@@ -179,17 +179,24 @@ async function main() {
     process.exit(1);
   }
 
-  const postgres = (await import('postgres')).default;
-  const { drizzle } = await import('drizzle-orm/postgres-js');
-  const { eq, sql } = await import('drizzle-orm');
-  const schema = await import('../src/lib/db/schema');
-  const { users } = await import('../src/lib/db/schema/identity');
+  const { withAdvisoryLock, ADVISORY_LOCK_KEYS } = await import(
+    '../src/lib/db/advisory-lock'
+  );
 
-  const queryClient = postgres(connectionString);
-  const db: Database = drizzle(queryClient, { schema });
+  const lockResult = await withAdvisoryLock(
+    ADVISORY_LOCK_KEYS.MARKET_DATA_RUNNER,
+    async () => {
+      const postgres = (await import('postgres')).default;
+      const { drizzle } = await import('drizzle-orm/postgres-js');
+      const { eq, sql } = await import('drizzle-orm');
+      const schema = await import('../src/lib/db/schema');
+      const { users } = await import('../src/lib/db/schema/identity');
 
-  try {
-    // ─── Identificação do Operador para Auditoria ─────────────────────────────
+      const queryClient = postgres(connectionString);
+      const db: Database = drizzle(queryClient, { schema });
+
+      try {
+        // ─── Identificação do Operador para Auditoria ─────────────────────────────
     let operatorUser: SafeUser | null = null;
     let operatorUserId: string | undefined = undefined;
 
@@ -470,9 +477,17 @@ async function main() {
     } else {
       console.log('⚠️ Ingestão finalizada com falhas em um ou mais itens.');
     }
-    console.log('======================================================\n');
-  } finally {
-    await queryClient.end();
+      } finally {
+        await queryClient.end();
+      }
+    },
+    { connectionString }
+  );
+
+  if (!lockResult.acquired) {
+    console.error('\n❌ ERRO DE CONCORRÊNCIA: Execução de ingestão de dados de mercado bloqueada.');
+    console.error(`   ${lockResult.lockedReason}\n`);
+    process.exit(1);
   }
 }
 

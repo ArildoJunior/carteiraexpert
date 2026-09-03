@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import { headers } from 'next/headers';
 import './globals.css';
 import { ThemeProvider } from '@/lib/theme/ThemeContext';
 import { themeScriptInline } from '@/lib/theme/theme-script';
@@ -15,7 +16,10 @@ export const metadata: Metadata = {
   description: 'Plataforma inteligente para consolidação e acompanhamento patrimonial.',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const headerList = await headers();
+  const nonce = headerList.get('x-nonce') ?? undefined;
+
   return (
     <html
       lang="pt-BR"
@@ -25,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script
           id="theme-initializer-script"
+          nonce={nonce}
           dangerouslySetInnerHTML={{ __html: themeScriptInline }}
         />
       </head>

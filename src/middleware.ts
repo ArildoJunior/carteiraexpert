@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { SESSION_COOKIE_NAME } from './modules/identity/domain/session-constants';
 import { checkCsrf } from './modules/identity/server/csrf';
+import { buildCspHeader, getStaticSecurityHeaders } from './lib/security/headers';
 
 // ─── Rotas públicas ───────────────────────────────────────────────────────────
 // Acessíveis sem sessão válida.
@@ -21,6 +22,7 @@ const PUBLIC_STATIC_PATHS = new Set([
   '/bdrs',
   '/sitemap.xml',
   '/robots.txt',
+  '/api/health',
 ]);
 
 function isPublicPath(pathname: string): boolean {
@@ -42,25 +44,67 @@ function isApiRoute(pathname: string): boolean {
   return pathname.startsWith('/api/');
 }
 
+function applySecurityHeaders(res: NextResponse, cspHeader: string): NextResponse {
+  const staticHeaders = getStaticSecurityHeaders();
+  for (const h of staticHeaders) {
+    if (!res.headers.has(h.key)) {
+      res.headers.set(h.key, h.value);
+    }
+  }
+  if (!res.headers.has('Content-Security-Policy')) {
+    res.headers.set('Content-Security-Policy', cspHeader);
+  }
+  return res;
+}
+
 export function middleware(req: NextRequest): NextResponse {
   const { pathname } = req.nextUrl;
+
+  // ── Geração de Nonce por requisição para CSP ─────────────────────────────
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
+  const cspHeader = buildCspHeader({ nonce });
+
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set('x-nonce', nonce);
+  requestHeaders.set('Content-Security-Policy', cspHeader);
+
+  // ── Rotas públicas do catálogo, landing page, health check e sitemap ───────
+  if (isPublicPath(pathname)) {
+    const res = NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
+    return applySecurityHeaders(res, cspHeader);
+  }
+
+  // ── Rotas de jobs agendados (autenticação server-to-server via CRON_SECRET) ──
+  // Agendadores externos (Cloud Scheduler, cron) não possuem origin/referer nem cookies.
+  // A autenticação segura e a rejeição de query string ocorrem no Route Handler via validateCronAuth.
+  if (pathname.startsWith('/api/jobs/')) {
+    const res = NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
+    return applySecurityHeaders(res, cspHeader);
+  }
 
   // ── Proteção CSRF para Route Handlers mutáveis ────────────────────────────
   if (isApiRoute(pathname)) {
     const csrf = checkCsrf(req);
     if (!csrf.allowed) {
-      return NextResponse.json(
-        { error: 'Requisição rejeitada: origin inválida.' },
-        { status: 403 }
+      return applySecurityHeaders(
+        NextResponse.json(
+          { error: 'Requisição rejeitada: origin inválida.' },
+          { status: 403 }
+        ),
+        cspHeader
       );
     }
   }
 
   // ── Verificação de sessão (baseada apenas no cookie, sem DB no Edge) ──────
-  // NOTA: O Edge Runtime não pode acessar o PostgreSQL. A validação completa
-  // da sessão (tokenHash + expiresAt + revokedAt) ocorre no server-side de
-  // cada Server Component / Route Handler via getCurrentUser().
-  // O middleware verifica apenas a PRESENÇA do cookie como proteção de rota.
   const sessionToken = req.cookies.get(SESSION_COOKIE_NAME)?.value?.trim();
   const hasSessionCookie = Boolean(
     sessionToken && sessionToken.length >= 32 && sessionToken !== 'deleted'
@@ -71,31 +115,39 @@ export function middleware(req: NextRequest): NextResponse {
   // Formulários de autenticação (login, register, etc.)
   if (AUTH_FORM_PATHS.has(pathname)) {
     if (hasSessionCookie && !req.nextUrl.searchParams.has('redirect')) {
-      // Usuário já autenticado: redireciona para dashboard
-      return NextResponse.redirect(new URL('/dashboard', req.url));
+      return applySecurityHeaders(
+        NextResponse.redirect(new URL('/dashboard', req.url)),
+        cspHeader
+      );
     }
-    return NextResponse.next();
-  }
-
-  // Rotas públicas do catálogo, landing page e sitemap
-  if (isPublicPath(pathname)) {
-    return NextResponse.next();
+    const res = NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
+    return applySecurityHeaders(res, cspHeader);
   }
 
   // Rotas protegidas: exige cookie de sessão presente
   if (!hasSessionCookie) {
-    // API: retorna 401
     if (isApiRoute(pathname)) {
-      return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 });
+      return applySecurityHeaders(
+        NextResponse.json({ error: 'Não autorizado.' }, { status: 401 }),
+        cspHeader
+      );
     }
-    // Páginas: redireciona para login
     const url = req.nextUrl.clone();
     url.pathname = '/login';
     url.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(url);
+    return applySecurityHeaders(NextResponse.redirect(url), cspHeader);
   }
 
-  return NextResponse.next();
+  const res = NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
+  return applySecurityHeaders(res, cspHeader);
 }
 
 // ─── Configuração do matcher ──────────────────────────────────────────────────

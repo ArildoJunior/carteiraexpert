@@ -12,6 +12,8 @@ const envSchema = z.object({
   }),
 });
 
+import { validateAllowedOrigins } from '../env/allowed-origins';
+
 // Startup Guard — valida segredos obrigatórios em produção.
 // AUTH_SECRET: segredo de sessão (min 32 chars).
 // AUTH_RATE_LIMIT_SECRET: segredo de HMAC do rate limiter (min 32 chars).
@@ -20,7 +22,9 @@ const authEnvSchema = z.object({
   AUTH_RATE_LIMIT_SECRET: z.string().min(32, 'AUTH_RATE_LIMIT_SECRET deve ter no mínimo 32 caracteres.'),
 });
 
-if (process.env.NODE_ENV === 'production') {
+const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
+
+if (process.env.NODE_ENV === 'production' && !isBuildPhase) {
   try {
     authEnvSchema.parse({
       AUTH_SECRET: process.env.AUTH_SECRET,
@@ -31,18 +35,32 @@ if (process.env.NODE_ENV === 'production') {
       'FATAL: Segredos de autenticação inválidos ou ausentes. A inicialização da aplicação foi abortada por segurança.'
     );
   }
+
+  const allowedOriginsValidation = validateAllowedOrigins(process.env.ALLOWED_ORIGINS, 'production');
+  if (!allowedOriginsValidation.valid) {
+    throw new Error(
+      `FATAL: Configuração de ALLOWED_ORIGINS inválida para produção: ${allowedOriginsValidation.error}. A inicialização da aplicação foi abortada por segurança.`
+    );
+  }
 }
 
-// Identifica se estamos em ambiente de testes (unitários ou integração)
-const isTestEnv = process.env.VITEST === 'true';
+// Identifica se estamos em ambiente de testes (unitários, integração ou E2E do Playwright)
+const isVitestTest = process.env.VITEST === 'true';
+const isE2eTest = process.env.PLAYWRIGHT_TEST === 'true';
+const isTestEnv = isVitestTest;
 
 let databaseUrl = '';
 
 if (!isTestEnv) {
-  // Proteção para não expor a string de conexão nos logs/erros em produção/dev
+  // Em testes E2E do Playwright, prioriza estritamente DATABASE_URL_TEST para isolamento do banco
+  const rawUrl =
+    isE2eTest && process.env.DATABASE_URL_TEST
+      ? process.env.DATABASE_URL_TEST
+      : process.env.DATABASE_URL;
+
   try {
     const parsed = envSchema.parse({
-      DATABASE_URL: process.env.DATABASE_URL,
+      DATABASE_URL: rawUrl,
     });
     databaseUrl = parsed.DATABASE_URL;
   } catch (error) {

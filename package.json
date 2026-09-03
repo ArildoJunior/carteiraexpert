@@ -19,6 +19,8 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "db:verify": "tsx scripts/verify-schema.ts",
     "db:seed:dev": "tsx scripts/seed-dev.ts",
+    "db:backup": "tsx scripts/backup-db.ts",
+    "db:restore": "tsx scripts/restore-db.ts",
     "market:ingest": "tsx scripts/ingest-market-data.ts"
   },
   "dependencies": {

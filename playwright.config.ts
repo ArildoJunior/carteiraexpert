@@ -77,8 +77,11 @@ export default defineConfig({
     reuseExistingServer: false, // Garante que o Playwright sempre inicie um processo novo
     timeout: 120 * 1000, // Tempo limite para o servidor iniciar
     env: {
+      NODE_ENV: 'production',
       DATABASE_URL: process.env.DATABASE_URL_TEST,
+      DATABASE_URL_TEST: process.env.DATABASE_URL_TEST,
       ALLOWED_ORIGINS: 'http://localhost:3005,http://127.0.0.1:3005',
+      PLAYWRIGHT_TEST: 'true',
     },
   },
 });
