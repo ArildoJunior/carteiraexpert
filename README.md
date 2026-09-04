@@ -10,20 +10,25 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 
 - **Fase 01 — Fundação Técnica:** Concluída (Arquitetura modular, motor financeiro baseado em `Decimal`, auditoria imutável e infraestrutura de testes).
 - **Fase 02 — Identidade, Acesso e Segurança:** Concluída (Cadastro, login com Argon2id, sessões em banco com SHA-256, controle de taxa com HMAC-SHA256, recuperação de senha atômica, consentimentos versionados LGPD *append-only* e motor de verificação física de schema).
-- **Fase 03 — Carteiras, Ativos e Posições:** Concluída e Publicada (Pacotes 03.00-E, 03.01-D, 03.02, 03.03 e 03.04 — Gestão de carteiras, ativos globais e customizados, lançamentos manuais de Compra, Venda e Ajustes Manuais (`MANUAL_ADJUSTMENT`) com direção explícita (`IN` e `OUT`), motor de custo médio ponderado, validação temporal de vendas e saídas com bloqueio de saldo descoberto, apuração de PnL realizado, tratamento de `REVERSAL` como evento neutro no cálculo contábil, dashboard consolidado e extrato de histórico paginado com filtros avançados).
-- **Fase 04 — Eventos Corporativos e Subscrições:**
-  - **Pacote 04.01 — Split e Grupamento de Ativos:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Processamento determinístico de desdobramentos e grupamentos, preservação do custo de aquisição invariante, identificação de frações em `Decimal`, recálculo automático de quantidade e custo médio, e extrato `/history` integrado).
-  - **Pacote 04.02 — Bonificação, Dividendos e JCP:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Bonificação de ações com custo atribuído opcional, recebimento de proventos em dinheiro — dividendos isentos e Juros sobre Capital Próprio com apuração líquida e retenção de 15% de IRRF —, exigência mandatória de Data de Pagamento e Data-Com, totalização em `totalIncomeReceived`).
-  - **Pacote 04.03 — Subscrições e Direitos Societários:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Modelo relacional de 3 entidades em `subscription_offers`, `subscription_rights` e `subscription_exercises`, controle de status do direito, liquidação financeira atômica gerando evento operacional `BUY` com controle de idempotência via `idempotencyKey`, 4 modais dedicados na interface e cobertura completa por testes unitários, integração e E2E).
-- **Fase 05 — Planos Comerciais, Assinaturas e Entitlements:** **PARCIALMENTE IMPLEMENTADA E VALIDADA**
-  - **Pacote 05.01 — Entitlements e Quotas por Plano:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Catálogo comercial em `commercial_plans` com planos `free` e `pro`, fonte única da quota numérica em `max_active_portfolios`, associação vigente por usuário em `user_plans`, fallback puro sem efeitos colaterais em `getUserEffectivePlan`, bloqueio server-side via `assertCanCreatePortfolio` com lock pessimista `FOR UPDATE`, downgrade transacional com congelamento idempotente de excedentes em status `frozen`, bloqueio estrito de todas as mutações financeiras em carteiras congeladas via `assertPortfolioWritable`, permissão de soft delete para liberação de quota, auditoria em `audit_logs` e badge visual de quotas em `/portfolios`).
-  - **Pacote 05.02 — Estrutura de Assinaturas e Pagamentos:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Tabelas `billing_subscriptions` e `payment_events` com migração `0008`, máquina de estados de faturamento, idempotência estrita por `idempotency_key`, sincronização atômica e transacional com `user_plans`, fallback e congelamento automático em caso de inadimplência (`unpaid`), interface agnóstica `PaymentGatewayAdapter` e adaptador `MockPaymentGatewayAdapter` para testes sem chamadas externas, e resumo de faturamento seguro na UI).
-  - **Pacote 05.03 — Experiência Comercial de Planos:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Página dedicada `/plans` no dashboard, visão comparativa transparente de recursos entre Free e Pro, uso de quotas em tempo real, alertas contextuais para carteiras congeladas e períodos de carência, ausência de checkout falso ou formulários de pagamento, e botão de upgrade desabilitado com aviso informativo de que pagamentos automáticos estão em desenvolvimento).
-- **Fase 06 — Dados de Mercado, Valuation e Gráficos:** **PACOTES 06.01 E 06.02 HOMOLOGADOS COM SUCESSO (`PASS`); PACOTE 06.03 PLANEJADO (ADR-010)** (Persistência relacional em `market_quotes` e `exchange_rates`, adaptadores `ManualPayloadAdapter`, `MockProviderAdapter` e conector externo público `BrapiAdapter`, serviço de ingestão `MarketDataIngestionService` com ranking de qualidade, motores de valuation e evolução patrimonial diária, gráficos Recharts de alocação por ativo/classe/moeda e evolução temporal "Mercado vs. Custo", e persistência atômica de preferências visuais por usuário e área na tabela `user_chart_preferences` via migração `0010` com fila serializada anti-concorrência `ChartPreferenceSyncQueue`, coalescência e isolamento rigoroso entre dados financeiros e preferências visuais. O **Pacote 06.03** encontra-se especificado e planejado conforme ADR-010 para ingestão de séries históricas B3 COTAHIST via upload privado; sincronização automática em background / cron jobs agendados e WebSockets permanecem como capacidades planejadas de infraestrutura futura).
-- **Fase 06.5 — Alinhamento do MVP e Catálogo Público de Ativos:** **HOMOLOGADA COM SUCESSO (`PASS`)** (Entrega da camada pública de descoberta e consulta com módulo `src/modules/catalog/`, rotas oficiais por categoria `/acoes`, `/fiis`, `/etfs`, `/bdrs`, busca global `/ativos`, páginas individuais por ticker, cálculo determinístico de variação diária no fuso `America/Sao_Paulo` com `Decimal`, indicador de frescor `QuoteFreshnessBadge`, estado vazio informativo em BDRs, SEO com `sitemap.ts` e `robots.ts`, Landing Page institucional complementar em `/`, página de erro 404 padronizada e lançamento em carteira autenticado com ativo pré-selecionado).
-- **Fase 07 — Importações Revisáveis:** **HOMOLOGADA COM SUCESSO (`PASS`)** (Módulo `src/modules/imports/` entregue em conformidade com o ADR-007; tabelas `import_batches` e `import_batch_items` via migração `0011_add_imports_module.sql`; parsers CSV com auto-detecção de layout para `carteiraexpert_csv`, `b3_trades_csv` e `b3_movements_csv`; limite uniforme de 5 MB; deduplicação por hash de arquivo SHA-256 e linha; tela de upload `/import` com drag-and-drop; central de revisão `/import/[id]` com KPIs em tempo real, filtros por abas, edição de itens com `Decimal`, marcação/exclusão por linha e resolução explícita de ativos não mapeados; confirmação transacional atômica com lock pessimista `FOR UPDATE`, gravação em `portfolio_events` com `source = 'csv_import'` e bloqueio de edição pós-finalização; proteção IDOR rigorosa e 100% de aprovação nos testes unitários, integração e E2E multi-browser).
-- **Sistema Global de Tema e Identidade Visual:** Concluído (Suporte nativo aos temas Claro, Escuro e Automático com `prefers-color-scheme`, tokens semânticos, persistência em `localStorage` e script anti-FOUC no `<head>`).
-- **Próxima Fase Prevista:** **Fase 08 — Ativos Globais e Criptoativos** (ou expansão da Fase 05 com gateways e compartilhamento).
+- **Fase 03 — Carteiras, Ativos e Posições:** Concluída e Publicada (Pacotes 03.00-E, 03.01-D, 03.02, 03.03 e 03.04 — Gestão de carteiras com finalidade explícita, ativos globais e customizados, lançamentos manuais de Compra, Venda e Ajustes Manuais (`MANUAL_ADJUSTMENT`) com direção explícita (`IN` e `OUT`), motor de custo médio ponderado, validação temporal de vendas e saídas com bloqueio de saldo descoberto, apuração de PnL realizado, tratamento de `REVERSAL` como evento neutro no cálculo contábil, dashboard consolidado e extrato de histórico paginado com filtros avançados).
+- **Fase 04 — Eventos Corporativos e Subscrições:** Concluída e Homologada (Split, grupamento, bonificação de ações, proventos em dinheiro — dividendos isentos e JCP líquido com retenção de 15% de IRRF —, e ciclo de vida completo de direitos e subscrições societárias).
+- **Fase 05 — Planos Comerciais, Assinaturas e Entitlements:** Parcialmente Implementada (Pacotes 05.01, 05.02 e 05.03 homologados — catálogo comercial Free/Pro, quotas de carteiras ativas com lock pessimista, downgrade idempotente com congelamento `frozen`, eventos de faturamento e página `/plans`).
+- **Fase 06 — Dados de Mercado, Valuation e Gráficos:** Parcialmente Implementada (Pacotes 06.01 e 06.02 homologados — cotações, taxas de câmbio, adaptadores BRAPI/Manual/Mock, valuation determinístico, gráficos Recharts e persistência atômica de preferências em `user_chart_preferences`).
+- **Fase 06.5 — Alinhamento do MVP e Catálogo Público de Ativos:** Concluída e Homologada (Camada pública de descoberta com rotas `/acoes`, `/fiis`, `/etfs`, `/bdrs`, busca global `/ativos`, SEO e Landing Page `/`).
+- **Fase 07 — Importações Revisáveis:** Concluída e Homologada (ADR-007, parsers CSV com auto-detecção para B3 e formato canônico, limite de 5 MB, deduplicação em 2 níveis, central de revisão `/import/[id]`, resolução explícita de ativos e confirmação atômica em `portfolio_events`).
+- **Plano Mestre de Conclusão Funcional (Etapas 1 a 10):**
+  - **Etapa 1 — Resiliência Operacional, Segurança e Health Check:** Concluída (Commit `c4ee5cf`, Route Handler `/api/health`, error boundaries, headers HTTP de segurança, runner `/api/jobs/ingest` e scripts de backup/restore).
+  - **Etapa 2 — Documentação Operacional de Ingestão e Backup:** Concluída (Commit `64cc2e8`, playbooks operacionais `docs/operations/backup-and-restore.md` e `docs/operations/market-data-ingestion.md`).
+  - **Etapa 3 — Finalidades de Carteira (`REAL`, `ESTUDO`, `ANALISE`) e Dashboard Contextual:** Concluída (Commit `f30faf8`, migração `0018_add_portfolio_purpose.sql`, atributo `purpose: 'REAL' | 'ESTUDO' | 'ANALISE'`, índice único parcial `idx_unique_user_real_portfolio` e `DashboardContextSelector`).
+  - **Etapa 4 — Gestão de Caixa e Movimentações Monetárias:** Concluída e Publicada (Commit `40341ba`, migração `0019_add_cash_accounts_and_transactions.sql`, tabelas `cash_accounts` e `cash_transactions`, saldos determinísticos em `Decimal`, validação de saldo não negativo, tela `/portfolios/[id]/cash`).
+  - **Etapa 5 — Instituições e Contas de Custódia:** Concluída e Publicada (Commit `78f2a5c`, migração `0020_add_custody_entities.sql`, ADR-012, tabelas `custody_institutions` com seed canônico e `custody_accounts`, associação opcional `ON DELETE SET NULL` em eventos, contas de caixa e importações, proteção IDOR e filtro de custódia em `/history`).
+  - **Etapas 6 a 10:** Planejadas:
+    - **Etapa 6 — Modelos Teóricos de Valuation (Bazin, Graham, DCF):** Motores matemáticos puros em `Decimal` baseados em dados contábeis CVM (`asset_fundamentals`), com avisos regulatórios formais obrigatórios.
+    - **Etapa 7 — Simulador de Aportes, Juros Compostos e Projeções:** Motor determinístico de projeção com premissas configuráveis pelo usuário, sem promessa de rentabilidade.
+    - **Etapa 8 — Módulo Operacional de Opções:** Cadastro e custódia de derivativos, controle de vencimentos, alertas D-5/D-0 e gregas informativas.
+    - **Etapa 9 — Módulo Fiscal Dedicado e Relatórios Auxiliares de IRPF:** Módulo `src/modules/tax/`, isenção de R$ 20k em ações, compensação de prejuízos e relatório anual auxiliar para IRPF.
+    - **Etapa 10 — IA Editorial Interna com Fluxo de Revisão Humana Obrigatória:** Pipeline editorial interno para documentos públicos de RI, com rascunhos apoiados por IA e aprovação humana mandatória pré-publicação.
+- **Próxima Etapa:** **Etapa 6 — Modelos Teóricos de Valuation (Bazin, Graham, DCF)**.
 
 ---
 
@@ -44,9 +49,11 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 
 ### 3. Carteiras, Ativos e Eventos Patrimoniais
 - **Gestão de Carteiras via UI (`/portfolios`):** Criação, edição, listagem em grade e exclusão lógica auditada de carteiras por usuário.
+- **Finalidade da Carteira (`purpose`):** Classificação obrigatória entre `REAL` (carteira de patrimônio real), `ESTUDO` (carteira de simulação/estudo) e `ANALISE` (análise de carteira hipotética), com restrição física única de carteira ativa `REAL` por usuário (`idx_unique_user_real_portfolio`).
 - **Visão Detalhada da Carteira (`/portfolios/[id]`):** Cabeçalho com métricas da carteira, quadro de posições consolidadas em custódia, extrato cronológico de operações ativas e ações de lançamento.
 - **Ativos Globais e Customizados:** Autocomplete debounced com busca server-side no lançamento de operações e modal para cadastro rápido de ativos customizados por usuário com ticker único.
 - **Registro Manual de Operações e Ajustes:** Modal para lançamento de ordens de Compra (`BUY`), Venda (`SELL`) e Ajuste Manual (`MANUAL_ADJUSTMENT`) com seleção condicional obrigatória de direção (`IN` ou `OUT`), indicação em tempo real de quantidade disponível em custódia para vendas e ajustes de saída, datas de negociação/liquidação, quantidade, preço unitário, taxas e notas.
+- **Associação com Conta de Custódia:** Suporte a vínculo opcional de eventos operacionais a uma conta de custódia cadastrada (`custodyAccountId`), com desvinculação graciosa (`ON DELETE SET NULL`) em caso de exclusão da conta.
 - **Cancelamento Auditado com Justificativa:** Cancelamento seguro com exclusão lógica (`deletedAt: NOW()`), motivo obrigatório (mínimo de 5 caracteres), validação de linha temporal e registro em `audit_logs`.
 - **Isolamento Multiusuário e Proteção IDOR:** Bloqueio e auditoria de qualquer tentativa de acesso a carteiras, ativos, posições ou extratos de outros usuários.
 - **Segregação Transacional e Injeção de Auditoria:** Arquitetura com separação estrita entre coordenadores e transações atômicas `...InTransaction`, com rollback físico comprovado no PostgreSQL.
@@ -63,10 +70,10 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 - **Proteção Contra Concorrência:** Bloqueio pessimista no PostgreSQL (`FOR UPDATE`) para serialização de transações na carteira.
 
 ### 5. Histórico e Dashboard Consolidado
-- **Dashboard Consolidado SSR (`/dashboard`):** Visão geral patrimonial em Server Component com cálculo em tempo real e revalidação sob demanda.
+- **Dashboard Contextual SSR (`/dashboard`):** Exibição automática e contextual da carteira com finalidade `REAL` do usuário autenticado. Caso o usuário possua apenas carteiras de estudo/análise ou nenhuma carteira, um banner contextual convida à criação da carteira Real ou direciona para `/portfolios`.
 - **Segregação por Moeda Base:** Agrupamento estrito de métricas por moeda (`BRL`, `USD`, `EUR`), sem conversão cambial fictícia.
 - **Métricas Consolidadas:** Custo total de aquisição em custódia, PnL realizado acumulado de vendas, taxas acumuladas, proventos acumulados, contagem de ativos distintos e carteiras ativas.
-- **Feed Unificado e Extrato Geral (`/history`):** Extrato cronológico multicarteiras de compras, vendas, ajustes e eventos corporativos, com filtros avançados por carteira, tipo de operação, ativo e período de datas.
+- **Feed Unificado e Extrato Geral (`/history`):** Extrato cronológico multicarteiras de compras, vendas, ajustes e eventos corporativos, com filtros avançados por carteira, conta de custódia (`custodyAccountId`), tipo de operação, ativo e período de datas.
 - **Exclusão de Soft Deletes:** Desconsideração estrita de eventos e carteiras canceladas/excluídas em todas as consultas e agregações.
 
 ### 6. Eventos Corporativos e Subscrições (Fase 04)
@@ -112,8 +119,21 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 - **Imutabilidade e Rejeição de Lote:** Transição para estados terminais (`confirmed` ou `rejected`) com bloqueio estrito de novas alterações (`ImportBatchNotEditableError`) e registro em `audit_logs`.
 - **Proteção IDOR e Isolamento:** Todas as rotas `/import` e `/import/[id]`, Server Actions e consultas validam autenticação e posse exclusiva do usuário autenticado no servidor.
 
-### 11. Integridade de Schema, Contratos e Banco de Dados
-- **Schema Guardian:** Validação física em tempo de execução (`assertSchemaCompatible`) e via CLI (`db:verify`) inspecionando o catálogo PostgreSQL (**25 tabelas oficiais validadas**).
+### 11. Gestão de Caixa e Movimentações Monetárias (Etapa 4 — Commit `40341ba`)
+- **Contas de Caixa por Carteira (`cash_accounts`):** Suporte a múltiplas contas monetárias por carteira, com identificação de nome, moeda (`currency`), tipo (`CHECKING`, `INVESTMENT`, `SAVINGS`, `OTHER`), status (`ACTIVE`, `ARCHIVED`), saldo inicial e saldo acumulado determinístico. Migração `0019_add_cash_accounts.sql`.
+- **Transações de Caixa (`cash_transactions`):** Registro de aportes (`DEPOSIT`), retiradas (`WITHDRAWAL`), transferências entre contas (`TRANSFER_IN`, `TRANSFER_OUT`), proventos recebidos (`INCOME`), despesas/taxas (`EXPENSE`) e ajustes manuais (`ADJUSTMENT`).
+- **Precisão e Integridade:** Cálculos executados exclusivamente em `Decimal` e persistidos em `NUMERIC(18, 4)`. Validação temporal e bloqueio estrito de saldo negativo em contas que não permitem cheque especial.
+- **Interface e Operações (`/portfolios/[id]/cash`):** Visão consolidada de saldos por moeda e conta, extrato de transações monetárias com paginação, filtros e modais de lançamento e transferência entre contas.
+
+### 12. Instituições e Contas de Custódia (Etapa 5 — Commit `78f2a5c`)
+- **Catálogo Canônico de Instituições (`custody_institutions`):** Tabela pública/canônica com identificação padronizada de bancos, corretoras e exchanges (nome, código de compensação B3/Febraban, país de origem, tipo de instituição). Seed inicial com 8 instituições brasileiras e globais (XP, BTG Pactual, NuInvest, Clear, Banco Inter, Avenue Securities, Interactive Brokers, Binance). Migração `0020_add_custody_entities.sql` e ADR-012.
+- **Contas de Custódia por Carteira (`custody_accounts`):** Vínculo de custódia no âmbito de cada carteira com identificador da instituição parceira, código/número da conta, apelido amigável e status (`ACTIVE`, `ARCHIVED`).
+- **Vínculos Opcionais e Desacoplamento Gracioso:** Suporte a chave estrangeira opcional `custody_account_id` em eventos operacionais (`portfolio_events`), contas de caixa (`cash_accounts`) e lotes de importação (`import_batches`), configurada com `ON DELETE SET NULL` para preservar o histórico contábil caso uma conta de custódia seja excluída.
+- **Segurança e Auditoria:** Proteção IDOR mandatória validada no servidor (`assertPortfolioOwnership`) e rastreabilidade total de criações, alterações e arquivamentos em `audit_logs`.
+- **Filtro de Custódia Integrado:** Extrato multicarteiras `/history` com seletor de filtro por conta de custódia, permitindo conferência isolada por instituição.
+
+### 13. Integridade de Schema, Contratos e Banco de Dados
+- **Schema Guardian:** Validação física em tempo de execução (`assertSchemaCompatible`) e via CLI (`db:verify`) inspecionando o catálogo PostgreSQL (**36 tabelas oficiais validadas**).
 - **Contratos Drizzle Tipados:** Exportação canônica de `Database`, `DatabaseTransaction`, `DbExecutor`, `SchemaQueryExecutor` e `AuditExecutor`, com eliminação de `any` em assinaturas e callbacks.
 - **Fixture Estática de Tipos:** Arquivo `tests/types/database-contracts.test-d.ts` validando compatibilidade estrutural e rejeição em tempo de compilação via `@ts-expect-error`.
 - **Migrações Versionadas:** Script de migração (`scripts/migrate.ts`) com pre-flight check e trava de segurança exigindo `ALLOW_DATABASE_MUTATION=true` para o banco principal.
@@ -141,7 +161,7 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 
 ```text
 carteiraexpert/
-├── drizzle/                     # Migrações versionadas SQL (0000 a 0011)
+├── drizzle/                     # Migrações versionadas SQL (0000 a 0020)
 │   └── migrations/
 ├── scripts/                     # Scripts de manutenção e infraestrutura
 │   ├── ingest-market-data.ts    # Ingestão administrativa de dados de mercado (BRAPI / Manual)
@@ -152,34 +172,34 @@ carteiraexpert/
 │   ├── app/                     # Next.js App Router
 │   │   ├── (auth)/              # Rotas públicas (login, register, forgot-password, reset-password)
 │   │   ├── (dashboard)/         # Área autenticada protegida com verificação de termos
-│   │   │   ├── dashboard/       # Dashboard consolidado de carteiras
-│   │   │   ├── history/         # Extrato cronológico paginado com filtros avançados
+│   │   │   ├── dashboard/       # Dashboard contextual de carteira REAL (/dashboard)
+│   │   │   ├── history/         # Extrato cronológico paginado com filtros avançados (carteira, custódia, tipo, ativo, datas)
 │   │   │   ├── import/          # Listagem de lotes (/import) e central de revisão (/import/[id])
 │   │   │   ├── plans/           # Página de planos, quotas e transparência comercial
-│   │   │   └── portfolios/      # Listagem (/portfolios) e detalhes (/portfolios/[id])
+│   │   │   └── portfolios/      # Listagem (/portfolios), detalhes (/portfolios/[id]) e gestão de caixa (/portfolios/[id]/cash)
 │   │   ├── (public)/            # Catálogo público de ativos (/acoes, /fiis, /etfs, /bdrs, /ativos)
 │   │   ├── terms-acceptance/    # Tela isolada de consentimentos pendentes LGPD
 │   │   ├── layout.tsx           # Layout raiz com script anti-FOUC e ThemeProvider
 │   │   └── globals.css          # Variáveis CSS semânticas e Tailwind inline theme
 │   ├── lib/
-│   │   ├── db/                  # Cliente PostgreSQL, contratos canônicos, auditoria e schemas (25 tabelas)
+│   │   ├── db/                  # Cliente PostgreSQL, contratos canônicos, auditoria e schemas (36 tabelas físicas)
 │   │   └── theme/               # Provedor, hook useTheme, alternador e tokens semânticos
 │   ├── middleware.ts            # Proteção de rotas no Edge
 │   └── modules/
 │       ├── identity/            # Módulo de autenticação, sessões, segurança e termos LGPD
 │       ├── plans/               # Módulo de planos comerciais, entitlements, quotas e interface
 │       ├── billing/             # Módulo de assinaturas comerciais, eventos de pagamento e gateways
-│       ├── portfolio/           # Módulo de carteiras, ativos, motor de posições, valuation, gráficos e preferências
+│       ├── portfolio/           # Módulo de carteiras, ativos, motor de posições, valuation, caixa, custódia e gráficos
 │       ├── corporate-actions/   # Módulo de ações corporativas (split, grupamento, bonificação, proventos e subscrições)
-│       ├── market-data/         # Módulo de cotações, câmbio, adaptadores (Manual, Mock, BRAPI) e ingestão
+│       ├── market-data/         # Módulo de cotações, câmbio, adaptadores (Manual, Mock, BRAPI, COTAHIST) e ingestão
 │       ├── catalog/             # Módulo do catálogo público de ativos, SEO e páginas por categoria
 │       └── imports/             # Módulo de importações revisáveis (parsers CSV, deduplicação, revisão e confirmação)
 ├── tests/
-│   ├── unit/                    # Testes unitários puros (motores, schemas, tema, planos, billing, gráficos, importações)
-│   ├── integration/             # Testes de integração com PostgreSQL real (carteiras, planos, billing, market data, importações)
+│   ├── unit/                    # Testes unitários puros (87 arquivos, 1.059 testes)
+│   ├── integration/             # Testes de integração com PostgreSQL (50 arquivos, 471 testes)
 │   └── types/                   # Fixtures de tipagem estática (database-contracts.test-d.ts)
-├── e2e/                         # Testes end-to-end com Playwright (autenticação, termos, carteiras, planos, catálogo, importações)
-└── docs/                        # Documentação técnica, arquitetura, ADRs e status de entrega
+├── e2e/                         # Testes end-to-end com Playwright (12 arquivos, 168 testes em Chromium, Firefox e WebKit)
+└── docs/                        # Documentação técnica, arquitetura, ADRs (001 a 012) e status de entrega
 ```
 
 ---
@@ -220,14 +240,14 @@ pnpm lint:fix         # Corrigir problemas de lint automaticamente
 pnpm format:fix       # Verificar e aplicar formatação
 
 # Testes
-pnpm test:unit        # Testes unitários (Vitest — 54 arquivos, 704 testes)
-pnpm test:integration # Testes de integração com PostgreSQL (Vitest — 32 arquivos, 337 testes)
-pnpm test:e2e         # Testes End-to-End no Chromium, Firefox e WebKit (Playwright — 10 arquivos, 126 testes)
+pnpm test:unit        # Testes unitários (Vitest — 87 arquivos, 1.059 testes)
+pnpm test:integration # Testes de integração com PostgreSQL (Vitest — 50 arquivos, 471 testes)
+pnpm test:e2e         # Testes End-to-End no Chromium, Firefox e WebKit (Playwright — 12 arquivos, 168 testes)
 
 # Banco de Dados e Migrações
-# Inspecionar catálogo físico no banco de desenvolvimento/produção (25 tabelas)
+# Inspecionar catálogo físico no banco de desenvolvimento/produção (36 tabelas)
 pnpm db:verify
-# Inspecionar catálogo físico no banco de testes automatizados (25 tabelas)
+# Inspecionar catálogo físico no banco de testes automatizados (36 tabelas)
 pnpm db:verify -- --test
 # Executar migrações pendentes no banco principal (PowerShell no Windows)
 $env:ALLOW_DATABASE_MUTATION="true"; pnpm db:migrate
@@ -246,11 +266,13 @@ pnpm market:ingest    # Executar script administrativo de ingestão de dados de 
 
 ## Capacidades Planejadas (Não Implementadas)
 
-As seguintes funcionalidades representam direcionamentos no roadmap e permanecem como capacidades planejadas para fases futuras:
+As seguintes funcionalidades representam direcionamentos no roadmap e permanecem como capacidades planejadas para as próximas etapas e fases futuras:
 
-1. **Fase 05 (Expansão) — Pagamentos e Compartilhamento:** Gateways de pagamento (Stripe/Asaas/MercadoPago), webhooks, cron jobs de expiração de assinatura e gestão de grupos compartilhados com faturamento unificado e segregação estrita de dados financeiros (ADR-004).
-2. **Fase 07 (Expansão) — Importações Avançadas:** Upload de planilhas binárias `.xlsx`, extração assíncrona de notas de corretagem em PDF e armazenamento em bucket privado com URLs assinadas.
-3. **Fase 09 — Opções e Módulo Fiscal Dedicado:** Cadastro e acompanhamento de contratos de opções, modelos teóricos de valuation (Bazin, Graham, Lynch, DCF), simulações de aportes futuros, módulo fiscal dedicado (`src/modules/tax/`) e relatórios anuais auxiliares para IRPF.
-4. **Fase 10 — IA Editorial Interna:** Pipeline editorial interno com apoio de IA e revisão humana mandatória para elaboração de resumos corporativos.
-5. **Gestão de Caixa e Custódia Institucional:** Saldos em moeda corrente, depósitos/retiradas bancárias e vinculação formal de corretoras e contas de custódia.
-6. **Automação e Ingestão de Market Data:** Ingestão de séries históricas e dados diários da B3 via arquivos COTAHIST com upload privado e processamento assíncrono (Pacote 06.03 / ADR-010), jobs agendados (cron jobs) e streaming de cotações via WebSocket.
+1. **Etapa 6 — Modelos Teóricos de Valuation (Bazin, Graham, DCF):** Motores de cálculo determinísticos baseados em `Decimal` sobre demonstrativos CVM (`asset_fundamentals`), com avisos regulatórios obrigatórios.
+2. **Etapa 7 — Simulador de Aportes, Juros Compostos e Projeções:** Simulação determinística de acumulação patrimonial, cálculo de juros compostos e projeção de proventos com premissas transparentes configuráveis pelo usuário.
+3. **Etapa 8 — Módulo Operacional de Opções:** Cadastro e custódia de contratos de derivativos, controle de vencimentos, alertas de proximidade (D-5/D-0) e cálculo descritivo de gregas fundamentais (sem envio de ordens ou rolagem).
+4. **Etapa 9 — Módulo Fiscal Dedicado e Relatórios Auxiliares de IRPF:** Módulo `src/modules/tax/`, apuração de ganhos líquidos mensais, isenção de R$ 20k em ações, compensação de prejuízos e relatório anual auxiliar para declaração do IRPF (sem emissão de DARF).
+5. **Etapa 10 — IA Editorial Interna com Fluxo de Revisão Humana Obrigatória:** Pipeline editorial interno para comunicados e DFPs da CVM, com rascunhos apoiados por IA e aprovação humana mandatória pré-publicação.
+6. **Fase 05 (Expansão) — Pagamentos Reais e Grupos Compartilhados:** Gateways de pagamento reais (Stripe/Asaas), webhooks ativos e cobrança compartilhada de grupos (ADR-004).
+7. **Fase 07 (Expansão) — Importações Avançadas:** Upload de planilhas binárias `.xlsx`, extratos bancários/corretora (OFX) e extração assistida de notas de corretagem em PDF com bucket privado e URLs temporárias assinadas.
+8. **Automação Contínua da Ingestão de Mercado:** Rotinas agendadas em background (cron jobs / workers) para execução periódica pós-fechamento B3/CVM e streaming de cotações via WebSocket.

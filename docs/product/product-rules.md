@@ -4,21 +4,20 @@
 
 - A carteira é a unidade patrimonial e analítica independente do usuário.
 - Uma carteira não representa uma corretora nem uma conta bancária.
-- A carteira deverá futuramente permitir a consolidação de ativos, saldos de caixa, eventos e posições provenientes de várias instituições ou origens de custódia. Essas capacidades ainda não estão implementadas.
-- Como regra de produto, carteiras diferentes não deverão ser somadas automaticamente no dashboard padrão. No estado atual, o dashboard principal ainda agrega as carteiras ativas do usuário, conforme registrado na seção 3.
+- A carteira consolida ativos, contas e saldos de caixa, eventos operacionais e posições com suporte à vinculação de contas e instituições de custódia.
+- Como regra de produto, carteiras com finalidades distintas não são mescladas na visão patrimonial padrão. O dashboard contextual permite alternar entre o contexto consolidado da carteira `REAL` ou focar em uma carteira específica.
 
-### Finalidades Aprovadas
+### Finalidades Aprovadas e Implementadas
 As finalidades oficiais de carteira no produto são:
 - `REAL`: carteira de patrimônio real e histórico operacional efetivo do usuário.
 - `ESTUDO`: carteira hipotética para estudos, acompanhamento de teses e aprendizado.
-- `ANALISE`: finalidade aprovada para simulações, modelagem de cenários e análises comparativas. A rotulagem da interface e a identificação no código e no banco ainda dependem da implementação formal das finalidades.
+- `ANALISE`: carteira aprovada para simulações, modelagem de cenários e análises comparativas.
 
 ### Regras de Negócio e Estado da Implementação
 - **Múltiplas carteiras estruturais por usuário:** *Implementado e validado no código* (o modelo e as Server Actions permitem a criação de múltiplas carteiras independentes por usuário).
-- **Finalidade `REAL`:** *Regra de produto aprovada, implementação formal pendente* (o modelo atual aceita múltiplas carteiras, mas ainda não possui o atributo formal de finalidade).
-- **Múltiplas carteiras `REAL` para o mesmo usuário:** *Regra de produto aprovada, ainda sem atributo formal de finalidade no código* (não há restrição a apenas uma carteira).
-- **Finalidades `ESTUDO` e `ANALISE`:** *Regra de produto aprovada, implementação formal pendente* (as carteiras de estudo e análise não devem contaminar ou alterar as carteiras reais).
-- **Diferenciação formal de finalidades:** o código atual não diferencia carteiras por finalidade no schema de banco de dados.
+- **Finalidades `REAL`, `ESTUDO` e `ANALISE`:** *Implementado e validado no código* (coluna `purpose` com enum e constraint física `chk_portfolios_purpose` via migração `0018_add_portfolio_purpose.sql`).
+- **Unicidade da carteira `REAL` ativa:** *Implementado e validado no banco* (o índice único parcial `idx_unique_user_real_portfolio` impõe no máximo uma carteira com `purpose = 'REAL'` ativa e não deletada por usuário; múltiplas carteiras de `ESTUDO` e `ANALISE` são permitidas).
+- **Segregação patrimonial:** *Implementado e validado no código* (carteiras de estudo e análise não contaminam o cálculo patrimonial da carteira real).
 
 ## 2. Limites de Carteiras e Política de Downgrade
 
@@ -38,15 +37,13 @@ Quando um usuário possuir mais de 2 carteiras ativas e retornar ao plano Free (
 - **Formulação canônica:** *"Free: até 2 carteiras ativas. Carteiras excedentes: preservadas, congeladas e somente leitura."*
 
 ### Estado da Implementação
-Essas são regras de produto aprovadas. O enforcement de planos, limites quantitativos, status congelado (`frozen`), downgrade e reativação ainda não está implementado no código atual (*Regra de produto aprovada, implementação pendente*).
+*Implementado e validado no código* (Fase 05 — Pacotes 05.01, 05.02 e 05.03). Quotas numéricas derivadas de `commercial_plans.max_active_portfolios`, validação server-side via `assertCanCreatePortfolio` com lock pessimista `FOR UPDATE`, transição atômica de downgrade via `applyPlanDowngradeInTransaction`, bloqueio rigoroso de mutações em carteiras `frozen` via `assertPortfolioWritable` e gerenciamento na página `/plans`.
 
 ## 3. Dashboard e Contexto Operacional
 
-- **Regra de produto aprovada:** o dashboard padrão deverá operar sobre uma **carteira selecionada** ou contexto selecionado, sem somar automaticamente todas as carteiras do usuário.
-- **Estado atual no código:** a rota principal `/dashboard` ainda agrega e totaliza todas as carteiras ativas do usuário por moeda base (*Contradito pelo código atual*).
-- **Visualização de carteira específica:** a rota `/portfolios/[id]` já opera estritamente sobre uma carteira específica (*Implementado e validado no código*).
-- **Seleção de carteira no dashboard principal:** está planejada para substituir a agregação automática (*Planejado, não implementado*).
-- **Carteira padrão configurável:** o usuário poderá definir qual carteira carregar inicialmente (*Planejado, não implementado*).
+- **Regra de produto:** o dashboard padrão opera sobre uma **carteira selecionada** ou contexto selecionado, sem somar indevidamente carteiras de finalidades distintas.
+- **Estado atual no código:** *Implementado e validado*. O seletor contextual (`DashboardContextSelector`) permite ao usuário alternar entre o contexto da carteira `REAL` ou visualizar uma carteira específica via parâmetro de URL (`/dashboard?portfolioId=...`), resolvendo deterministicamente para a carteira `REAL` ativa na ausência de parâmetro.
+- **Visualização de carteira específica:** a rota `/portfolios/[id]` opera estritamente sobre uma carteira específica (*Implementado e validado no código*).
 - **Terminologia oficial:** *carteira selecionada, contexto selecionado, dashboard da carteira, visão patrimonial da carteira, comparação explícita entre carteiras*.
 
 ## 4. Comparação entre Carteiras (Funcionalidade Planejada)
@@ -62,16 +59,29 @@ Essas são regras de produto aprovadas. O enforcement de planos, limites quantit
   - Não transforma carteiras em uma carteira consolidada permanente.
 - **Estado da implementação:** *Planejado, não implementado*. Não existem services, telas ou Server Actions de comparação entre carteiras. O modo "Mercado vs. Custo" da evolução patrimonial é uma comparação interna dentro da mesma carteira e não representa comparação entre carteiras distintas.
 
-## 5. Saldo de Caixa (Direção Aprovada)
+## 5. Saldo de Caixa (Módulo Implementado)
 
-- A carteira contemplará controle de saldo de caixa monetário (recursos aguardando investimento, conta corrente, liquidações de vendas, aportes, retiradas e saldos por moeda).
-- **Estado da implementação:** *Regra de produto aprovada, implementação pendente*. Atualmente não existem no banco ou no código: entidade de saldo de caixa, contas de liquidação/poupança, eventos de aporte/retirada/depósito/resgate, nem saldos segregados por moeda como caixa.
+- A carteira contempla controle determinístico de saldo de caixa monetário (recursos aguardando investimento, depósitos, retiradas, liquidação financeira de operações e saldos por moeda).
+- **Estado da implementação:** *Implementado e validado no código* (Etapa 4 — commit `40341ba`, migração `0019_add_cash_accounts_and_transactions.sql`).
+  - Tabelas `cash_accounts` e `cash_transactions` com suporte multi-moeda e precisão `NUMERIC(28, 10)` com `Decimal`.
+  - Operações de depósito (`DEPOSIT`), retirada (`WITHDRAWAL`), transferência (`TRANSFER`) e ajuste (`ADJUSTMENT`).
+  - Vínculo opcional de liquidação com eventos operacionais de carteira via `portfolio_event_id`.
+  - Vínculo opcional com contas de corretora/banco via `custody_account_id`.
+  - Cálculo determinístico de saldo com bloqueio de concorrência e rejeição de saques sem saldo suficiente.
 
-## 6. Custódia e Corretoras (Decisão Conceitual Aprovada)
+## 6. Custódia e Corretoras (Módulo Implementado)
 
-- Corretora, custodiante e conta de origem serão tratadas conceitualmente como entidades próprias de custódia vinculadas à carteira, e não como texto livre.
-- A modelagem futura permitirá múltiplas contas de custódia por carteira, consolidação de posições com detalhamento por instituição, rastreamento de origem e identificadores mascarados.
-- **Estado da implementação:** *Regra de produto aprovada, implementação pendente*. Atualmente não existem tabelas de corretora/custodiante, contas de custódia ou FKs de instituição nos eventos. O campo textual `source` não representa entidade de custódia, e a estrutura interna `custodyMap` nos motores serve apenas para consolidar posições de ativos, não comprovando custódia institucional.
+- Corretora, custodiante e conta de origem são tratadas formalmente como entidades relacionais próprias vinculadas à carteira, superando a dependência exclusiva de campos textuais livres.
+- **Estado da implementação:** *Implementado e validado no código* (Etapa 5 — commit `78f2a5c`, migração `0020_add_custody_entities.sql`, ADR-012).
+  - Tabela `custody_institutions`: catálogo canônico pré-populado com instituições financeiras e corretoras nacionais e internacionais (XP Investimentos, BTG Pactual, NuInvest, Clear Corretora, Banco Inter, Avenue Securities, Interactive Brokers — IBKR, Binance, entre outras), com unicidade de código (`code`) e status (`active`, `inactive`).
+  - Tabela `custody_accounts`: contas de custódia vinculadas a uma carteira (`portfolio_id`) e a uma instituição (`institution_id`), com identificador de conta (`account_number`), status (`active`, `archived`) e soft delete (`deleted_at`).
+  - Contas inativas ou arquivadas (`archived`) preservam integralmente o histórico de eventos sem permitir novos lançamentos.
+  - Vínculos opcionais em entidades do domínio patrimonial com regra de integridade `ON DELETE SET NULL`:
+    - `portfolio_events.custody_account_id`
+    - `cash_accounts.custody_account_id`
+    - `import_batches.custody_account_id`
+  - Filtro por instituição de custódia integrado e comprovado no extrato `/history`.
+  - O campo textual complementar `source` em `portfolio_events` permanece como identificador descritivo ou de importação (`'manual'`, `'csv_import'`), enquanto a instituição de custódia formal é referenciada via chave estrangeira.
 
 ## 7. Análise, Screening e Valuations
 

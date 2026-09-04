@@ -25,15 +25,8 @@ Orquestrados pelo módulo `src/modules/corporate-actions/` e persistidos na tabe
 ### 1.3. Direitos de Subscrição
 - **Subscrições:** Possuem modelo relacional próprio composto por três tabelas (`subscription_offers`, `subscription_rights`, `subscription_exercises`), no qual o exercício gera atomicamente um evento operacional do tipo `BUY` com controle de idempotência via `idempotencyKey`.
 
-### 1.4. Eventos Inexistentes no Banco Físico
-Não existem eventos formais ou tabelas no banco de dados para:
-- Depósito monetário;
-- Retirada monetária;
-- Aporte em dinheiro;
-- Resgate em dinheiro;
-- Transferência bancária;
-- Liquidação financeira de caixa;
-- Custódia institucional ou vinculação formal de corretoras.
+### 1.4. Relação com Contas de Caixa e Custódia Institucional
+Movimentações monetárias de caixa (depósitos, retiradas, transferências e liquidações) são gerenciadas em tabelas próprias no módulo de caixa (`cash_accounts` e `cash_transactions`). A vinculação a corretoras e instituições é realizada através das tabelas relacionais de custódia (`custody_institutions` e `custody_accounts`), associadas opcionalmente aos eventos de carteira via `custody_account_id`.
 
 ## 2. Campos Físicos do Schema (`portfolio_events`)
 
@@ -43,6 +36,7 @@ Os campos comprovados na tabela `portfolio_events` são:
 - `portfolioId`: Identificador da carteira associada (UUID, chave estrangeira para `portfolios.id`);
 - `assetId`: Identificador do ativo negociado (UUID, chave estrangeira para `assets.id`);
 - `type`: Tipo operacional (`BUY`, `SELL`, `TRANSFER_IN`, `TRANSFER_OUT`, `MANUAL_ADJUSTMENT`, `REVERSAL`);
+- `direction`: Direção contábil do ajuste (`IN` ou `OUT`, obrigatório para `MANUAL_ADJUSTMENT`, `NULL` para os demais tipos, validado por Zod e check constraint física `chk_portfolio_events_direction`);
 - `tradeDate`: Data e hora da operação em UTC (`TIMESTAMPTZ`, obrigatório);
 - `settlementDate`: Data e hora de liquidação em UTC (`TIMESTAMPTZ`, opcional);
 - `quantity`: Quantidade movimentada (`NUMERIC(28, 10)`, obrigatório, estritamente positiva `> 0`);
@@ -50,13 +44,14 @@ Os campos comprovados na tabela `portfolio_events` são:
 - `fees`: Taxas, emolumentos e corretagens (`NUMERIC(20, 8)`, obrigatório, não-negativo `>= 0`, padrão `0`);
 - `currency`: Moeda original da transação (`TEXT`, padrão `'BRL'`);
 - `notes`: Observações e anotações do usuário (`TEXT`, opcional);
-- `source`: Origem do lançamento (`TEXT`, padrão `'manual'`, preenchimento textual livre);
+- `source`: Origem do lançamento (`TEXT`, padrão `'manual'`, preenchimento textual complementar, ex: `'csv_import'`);
+- `custodyAccountId`: Identificador opcional da conta de custódia / corretora vinculada (UUID, chave estrangeira para `custody_accounts.id` com `ON DELETE SET NULL`);
 - `createdBy`: Identificador do usuário que realizou o lançamento (UUID, chave estrangeira para `users.id`);
 - `createdAt`: Data e hora de criação do registro em UTC (`TIMESTAMPTZ`);
 - `deletedAt`: Data e hora de cancelamento lógico / soft-delete em UTC (`TIMESTAMPTZ`, opcional);
 - `cancellationReason`: Justificativa auditável do cancelamento lógico (`TEXT`, opcional).
 
-*Nota:* Campos como `importJobId`, `metadata` ou `version` não existem na tabela física do banco de dados.
+*Nota:* Campos como `importJobId`, `metadata` ou `version` não existem na tabela física do banco de dados. A associação com lotes de importação é bidirecional via `import_batch_items.imported_portfolio_event_id`.
 
 ## 3. Regras de Negócio e Cálculo no Motor de Posições
 

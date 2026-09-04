@@ -33,11 +33,11 @@ Os seguintes itens representam direcionamentos da arquitetura ainda não present
 
 ## 4. Contexto Operacional do Dashboard e Carteiras
 
-- **Regra de Produto Aprovada:** O dashboard principal da plataforma deverá operar sobre uma **carteira selecionada** ou contexto selecionado pelo usuário, sem somar automaticamente o patrimônio de carteiras distintas.
+- **Regra de Produto:** O dashboard principal da plataforma opera sobre uma **carteira selecionada** ou contexto consolidado da carteira `REAL`, sem somar indevidamente carteiras de finalidades distintas (`ESTUDO`, `ANALISE`).
 - **Estado Atual da Implementação:**
-  - A rota `/portfolios/[id]` já opera estritamente sobre a carteira específica selecionada (*Implementado e validado no código*).
-  - A rota principal `/dashboard` ainda consolida e agrega todas as carteiras ativas do usuário por moeda base (*Contradito pelo código atual; transição planejada para dashboard contextual*).
-  - Seleção persistida de carteira no dashboard principal e carteira padrão configurável: *Planejadas, não implementadas*.
+  - A rota `/portfolios/[id]` opera estritamente sobre a carteira específica selecionada (*Implementado e validado no código*).
+  - A rota principal `/dashboard` disponibiliza o seletor contextual `DashboardContextSelector`, permitindo alternar entre a carteira com finalidade `REAL` e carteiras específicas via parâmetro de busca na URL (`/dashboard?portfolioId=...`). Na ausência de parâmetro, a rota resolve deterministicamente para a carteira `REAL` ativa do usuário autenticado (*Implementado e validado no código*).
+  - A unicidade da carteira `REAL` ativa por usuário é garantida no PostgreSQL pelo índice único parcial `idx_unique_user_real_portfolio`.
 
 ## 5. Fluxo Geral de Dados
 

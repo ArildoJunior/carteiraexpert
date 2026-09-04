@@ -2,92 +2,103 @@
 
 ## Última atualização
 
-2026-08-26
+2026-09-04
 
 ---
 
 ## Estado do Repositório Git
 
 - **Branch:** `main` (sincronizada com `origin/main`)
-- **Commit base:** `b7c9ee1` (feat(imports): add reviewable CSV import module)
-- **Estado da Working Tree:** Atualizações de documentação e homologação de produção da Fase 07.
+- **Commit base:** `78f2a5c` (`feat(custody): implementar instituições de custódia, contas de corretora e filtro no histórico`)
+- **Commits intermediários relevantes:** `40341ba` (`feat(cash): implementar contas de caixa e movimentações monetárias`) e `f30faf8` (`feat(portfolio): implementar unicidade de carteira REAL e dashboard contextual`)
+- **Estado da Working Tree:** Limpa, validada e sincronizada com as entregas das Etapas 1 a 5.
 
 ---
 
 ## Estado Geral
 
-A fundação técnica, a camada de identidade, segurança, governança, o módulo de carteiras com operações manuais e ajustes, motor de posições, dashboard consolidado, extrato de histórico, o suporte completo a eventos corporativos (Split, Grupamento, Bonificação, Dividendos, JCP e Subscrições), a camada comercial e de quotas por plano (Pacote 05.01), a infraestrutura de dados de mercado com adaptador BRAPI, o catálogo público de ativos (Fase 06.5), o módulo de importações revisáveis (Fase 07), a persistência de preferências de gráficos e o sistema global de temas encontram-se no seguinte status:
+A fundação técnica, a camada de identidade, segurança, governança, o módulo de carteiras com finalidades (`REAL`, `ESTUDO`, `ANALISE`), unicidade de carteira REAL, contas de caixa monetário, instituições e contas de custódia com filtro no histórico, motor de posições, dashboard contextual, extrato de histórico, eventos corporativos (Split, Grupamento, Bonificação, Dividendos, JCP e Subscrições), camada comercial de planos e quotas, infraestrutura de dados de mercado com adaptador BRAPI e ingestão COTAHIST/CVM, catálogo público de ativos (Fase 06.5), importações revisáveis (Fase 07), persistência de preferências de gráficos e sistema global de temas encontram-se no seguinte status:
 
-- **Fase 01 — Fundação Técnica:** **IMPLEMENTADA E VALIDADA** (Arquitetura modular monolítica, motor financeiro determinístico baseado em `Decimal`, persistência `NUMERIC`, infraestrutura de testes unitários, integração e E2E, e registro em `audit_logs` nos fluxos auditados).
-- **Fase 02 — Identidade, Acesso e Segurança:** **IMPLEMENTADA E VALIDADA NOS FLUXOS COMPROVADOS** (Cadastro, login com hash Argon2id com parâmetros seguros, sessões com hash SHA-256 no banco, controle de taxa stateless com HMAC-SHA256, redefinição atômica de senha, logout auditado, consentimentos versionados LGPD com trigger append-only em `user_consents`. As rotas e operações analisadas utilizam o identificador autenticado do usuário para restringir o acesso aos dados, com a cobertura completa de todas as rotas e serviços sujeita à validação contínua).
-- **Fase 03 — Carteiras, Ativos e Posições:** **IMPLEMENTADA E VALIDADA NOS FLUXOS COMPROVADOS** (Gestão de múltiplas carteiras estruturais, catálogo de ativos, tipos operacionais com processamento no motor de posições comprovado por testes — `BUY`, `SELL`, `TRANSFER_IN`, `TRANSFER_OUT` e `MANUAL_ADJUSTMENT` —, suporte completo a `MANUAL_ADJUSTMENT` com direção `IN` (entrada com incorporação de custo e recálculo do custo médio sem PnL) e `OUT` (saída proporcional ao custo médio sem PnL mercantil e com rejeição atômica de saldo insuficiente via `InsufficientPositionError`), validação estrita no schema Zod e constraint física no PostgreSQL via migração `0006_add_portfolio_events_direction.sql`, tratamento formal de `REVERSAL` como evento neutro/sem efeito contábil sobre posições, custo, PnL ou taxas, validação de consistência temporal com normalização de direção em `validateTimelineConsistency`, cancelamento lógico com justificativa, extrato `/history` paginado com filtros avançados e modal `TransactionModal` na interface com testes unitários, integração e E2E).
+- **Fase 01 — Fundação Técnica:** **IMPLEMENTADA E VALIDADA** (Arquitetura modular monolítica, motor financeiro determinístico baseado em `Decimal`, persistência `NUMERIC`, infraestrutura de testes unitários, integração e E2E, e registro em `audit_logs`).
+- **Fase 02 — Identidade, Acesso e Segurança:** **IMPLEMENTADA E VALIDADA NOS FLUXOS COMPROVADOS** (Cadastro, login com Argon2id, sessões em banco com token SHA-256, controle de taxa com HMAC-SHA256, redefinição atômica de senha, logout auditado, consentimentos versionados LGPD com trigger *append-only* em `user_consents`, isolamento multitenant no servidor).
+- **Etapa 1 — Resiliência Operacional, Segurança e Health Check:** **IMPLEMENTADA E VALIDADA** (Commit `c4ee5cf`, Route Handler `/api/health`, error boundaries, headers HTTP de segurança, runner `/api/jobs/ingest`, scripts de backup/restore).
+- **Etapa 2 — Documentação Operacional de Ingestão e Backup:** **IMPLEMENTADA E VALIDADA** (Commit `64cc2e8`, playbooks operacionais `docs/operations/backup-and-restore.md` e `docs/operations/market-data-ingestion.md`).
+- **Etapa 3 — Finalidades de Carteira (`REAL`, `ESTUDO`, `ANALISE`) e Dashboard Contextual:** **IMPLEMENTADA E VALIDADA** (Commit `f30faf8`, migração `0018_add_portfolio_purpose.sql`, índice parcial `idx_unique_user_real_portfolio`, constraint `chk_portfolios_purpose`, `DashboardContextSelector` via query string `/dashboard?portfolioId=...`).
+- **Etapa 4 — Contas de Caixa e Movimentações Monetárias:** **HOMOLOGADA COM SUCESSO (`PASS`)** (Commit `40341ba`, migração `0019_add_cash_accounts_and_transactions.sql`; tabelas `cash_accounts` e `cash_transactions` com suporte multi-moeda e precisão `NUMERIC(28, 10)` com `Decimal`; lançamentos de `DEPOSIT`, `WITHDRAWAL`, `TRANSFER` e `ADJUSTMENT`; lock pessimista `FOR UPDATE` para concorrência segura; liquidação opcional vinculada a eventos operacionais via `portfolio_event_id`; vínculo com contas de custódia via `custody_account_id`; componentes de interface e cobertura de testes unitários e de integração).
+- **Etapa 5 — Instituições de Custódia e Contas de Corretora:** **HOMOLOGADA COM SUCESSO (`PASS`)** (Commit `78f2a5c`, migração `0020_add_custody_entities.sql`, ADR-012; catálogo canônico em `custody_institutions` pré-populado com corretoras nacionais e internacionais como XP, BTG, NuInvest, Clear, Inter, Avenue, IBKR, Binance; contas de custódia do usuário por carteira em `custody_accounts` com suporte a status `active` e `archived`; vínculos opcionais com `ON DELETE SET NULL` em `portfolio_events.custody_account_id`, `cash_accounts.custody_account_id` e `import_batches.custody_account_id`; validação server-side anti-IDOR garantindo posse da carteira; filtro por instituição de custódia no extrato cronológico `/history`; cobertura completa por testes unitários, testes de integração e testes E2E Playwright).
 - **Fase 04 — Ações Corporativas e Subscrições:** **IMPLEMENTADA E VALIDADA NOS FLUXOS COMPROVADOS**
-  - **Pacote 04.01 — Split e Grupamento de Ativos:** Processamento determinístico de desdobramentos (`SPLIT`) e grupamentos (`GROUPING`), preservação do custo total de aquisição invariante, identificação de frações em `Decimal`, validação temporal e integração à interface e extrato.
-  - **Pacote 04.02 — Bonificação, Dividendos e JCP:** Processamento de bonificação de ações (`BONUS_SHARE`) com custo atribuído opcional e recálculo de custo médio, proventos em dinheiro — dividendos isentos (`DIVIDEND`) e Juros sobre Capital Próprio (`JCP`) com retenção de 15% de IRRF —, exigência de Data de Pagamento (`settlementDate`), validação de custódia na Data-Com (`tradeDate`) e totalização em `totalIncomeReceived`.
-  - **Pacote 04.03 — Subscrições e Direitos Societários:** Modelo relacional composto por 3 tabelas (`subscription_offers`, `subscription_rights`, `subscription_exercises`), controle de prazos e direitos por carteira, liquidação financeira com geração atômica de evento operacional `BUY` com chave `idempotencyKey`, 4 modais de UI e cobertura comprovada por testes unitários, integração e E2E (`e2e/subscription.spec.ts`).
+  - Pacote 04.01 — Split e Grupamento de Ativos: Desdobramentos (`SPLIT`) e grupamentos (`GROUPING`) determinísticos com preservação do custo de aquisição invariante e frações em `Decimal`.
+  - Pacote 04.02 — Bonificação, Dividendos e JCP: Bonificação em ações (`BONUS_SHARE`) com custo atribuído opcional, proventos em dinheiro (`DIVIDEND` e `JCP` com retenção de 15% de IRRF), Data-Com e Data de Pagamento obrigatória.
+  - Pacote 04.03 — Subscrições e Direitos Societários: Modelo relacional em 3 tabelas (`subscription_offers`, `subscription_rights`, `subscription_exercises`), liquidação atômica gerando evento `BUY` com chave `idempotencyKey` e cobertura E2E.
 - **Fase 05 — Planos, Entitlements e Assinaturas:** **PARCIALMENTE IMPLEMENTADA E VALIDADA**
-  - **Pacote 05.01 — Entitlements e Quotas por Plano:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Catálogo comercial com tabelas `commercial_plans`, `plan_entitlements` e `user_plans`, planos `free` (2 carteiras) e `pro` (10 carteiras) via migração `0007_add_commercial_plans_and_entitlements.sql`, fonte única de quota em `max_active_portfolios`, fallback sem efeitos colaterais em `getUserEffectivePlan`, bloqueio server-side via `assertCanCreatePortfolio` com lock concorrente `FOR UPDATE`, downgrade transacional com congelamento de excedentes em `frozen` e auditoria em `audit_logs`, bloqueio integral de mutações financeiras em carteiras congeladas via `assertPortfolioWritable`, permissão de soft delete para liberação voluntária de quota, badge visual e desabilitação na UI `/portfolios`, testes unitários, integração e E2E Playwright).
-  - **Pacote 05.02 — Estrutura de Assinaturas e Pagamentos:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Estrutura de assinaturas comerciais com tabelas `billing_subscriptions` e `payment_events` via migração `0008_add_billing_subscriptions_and_payment_events.sql`, máquina de estados de ciclo de vida de faturamento, idempotência estrita por `idempotency_key`, sincronização atômica transacional com `user_plans`, fallback automático para FREE com congelamento de carteiras excedentes em caso de inadimplência/cancelamento imediato, interface abstrata `PaymentGatewayAdapter`, adaptador `MockPaymentGatewayAdapter`, Server Action segura `getUserBillingSummaryAction` e painel informativo na UI `/portfolios`, testes unitários e de integração em PostgreSQL real).
-  - **Pacote 05.03 — Experiência Comercial de Planos:** **HOMOLOGADO COM SUCESSO (`PASS`)** (Página dedicada `/plans` no dashboard, visão comparativa de recursos, quotas e carteiras ativas/congeladas em tempo real, status da assinatura com períodos de carência, ausência de checkout falso ou formulários de pagamento, botão de upgrade desabilitado com aviso explicativo e testes automatizados unitários, integração e E2E Playwright).
-- **Fase 06 — Dados de Mercado, Valuation e Gráficos:** **PACOTES 06.01, 06.02 E 06.03 IMPLEMENTADOS E HOMOLOGADOS (`PASS`)** (Infraestrutura interna entregue: tabelas `market_quotes`, `exchange_rates`, `user_chart_preferences`, `b3_cotahist_batches` e `b3_historical_quotes` via migrações `0005`, `0010`, `0012` e `0013`, adaptadores `ManualPayloadAdapter`, `MockProviderAdapter` e conector externo público `BrapiAdapter`, script CLI `scripts/ingest-market-data.ts`, serviço de ingestão `MarketDataIngestionService` com ranking de qualidade, parser oficial de largura fixa `CotahistFixedLengthParser`, serviço de ingestão COTAHIST `CotahistIngestionService` com deduplicação de lotes e registros, motores determinísticos de valuation e evolução temporal diária "Mercado vs. Custo", gráficos Recharts de alocação por ativo/classe/moeda e evolução temporal com seletores interativos, persistência atômica de preferências visuais por usuário e área no PostgreSQL com fila serializada anti-concorrência `ChartPreferenceSyncQueue`, coalescência, proteção de estado local contra `router.refresh()` e isolamento multitenant estrito. O **Pacote 06.03** encontra-se implementado e homologado localmente conforme [ADR-010](../decisions/ADR-010-b3-eod-historical-ingestion.md) e [`phase-06-03-b3-historical-market-data-ingestion.md`](./phase-06-03-b3-historical-market-data-ingestion.md)).
-- **Fase 06.5 — Alinhamento do MVP e Catálogo Público de Ativos:** **HOMOLOGADA COM SUCESSO (`PASS`)** (Entrega da camada pública de descoberta e consulta com módulo `src/modules/catalog/`, rotas oficiais por categoria `/acoes`, `/fiis`, `/etfs`, `/bdrs`, busca global `/ativos`, páginas individuais por ticker, cálculo determinístico de variação diária no fuso `America/Sao_Paulo` com `Decimal`, indicador de frescor `QuoteFreshnessBadge`, estado vazio informativo em BDRs, SEO com `sitemap.ts` (limite seguro de 1.000 URLs e fallback) e `robots.ts`, Landing Page institucional complementar em `/`, página de erro 404 padronizada, lançamento em carteira própria autenticado com ativo pré-selecionado reutilizando `createPortfolioEvent` e `TransactionModal` com proteção integral contra IDOR e carteiras congeladas).
-- **Fase 07 — Importações Revisáveis:** **HOMOLOGADA COM SUCESSO (`PASS`)** (Módulo `src/modules/imports/` entregue em conformidade com o ADR-007; tabelas `import_batches` e `import_batch_items` via migração `0011_add_imports_module.sql`; parsers CSV com auto-detecção de layout para `carteiraexpert_csv`, `b3_trades_csv` e `b3_movements_csv`; limite uniforme de 5 MB; deduplicação por hash de arquivo SHA-256 e linha; tela de upload `/import` com drag-and-drop; central de revisão `/import/[id]` com KPIs em tempo real, filtros por abas, edição de itens com `Decimal`, marcação/exclusão por linha e resolução explícita de ativos não mapeados; confirmação transacional atômica com lock pessimista `FOR UPDATE`, gravação em `portfolio_events` com `source = 'csv_import'` e bloqueio de edição pós-finalização; proteção IDOR rigorosa e 100% de aprovação nos testes unitários, integração e E2E multi-browser).
-- **Fase 08 — Ativos Internacionais e Criptoativos:** **PARCIALMENTE IMPLEMENTADA** (Multi-moeda, `exchange_rates`, conversão cambial determinística no valuation e precisão `NUMERIC(28, 10)` para criptoativos entregues; swaps, exchanges via API e custódia on-chain permanecem planejados).
-- **Fase 09 — Projeções, Opções e Apoio Tributário:** **PARCIALMENTE IMPLEMENTADA NAS BASES** (Bases factuais de PnL realizado e IRRF sobre JCP entregues nos motores existentes; modelos teóricos Bazin/Graham/DCF, módulo operacional de opções e módulo fiscal dedicado permanecem planejados; DARF e IRPF completo estão fora do escopo permanente).
-- **Fase 10 — IA Editorial e Preparação de Lançamento:** **PLANEJADA, NÃO IMPLEMENTADA** (Diretrizes de governança editorial aprovadas; infraestrutura de LLM e preparação operacional permanecem planejadas).
-- **Sistema Global de Tema e Identidade Visual:** **IMPLEMENTADO E VALIDADO** (Suporte nativo a Claro, Escuro e Automático com `prefers-color-scheme`, hook `useTheme`, alternador acessível `ThemeToggle`, tokens semânticos, persistência sob `carteiraexpert_theme`, script anti-FOUC no `<head>`, 22 testes unitários dedicados e validação visual manual aprovada no navegador).
+  - Pacote 05.01 — Entitlements e Quotas por Plano: Catálogo comercial (`commercial_plans`, `plan_entitlements`, `user_plans`), planos Free (2 carteiras) e Pro (10 carteiras), validação server-side via `assertCanCreatePortfolio` com lock `FOR UPDATE`, downgrade transacional com congelamento de excedentes em `frozen` e bloqueio estrito de mutações via `assertPortfolioWritable`.
+  - Pacote 05.02 — Estrutura de Assinaturas e Pagamentos: Tabelas `billing_subscriptions` e `payment_events`, ciclo de vida de assinaturas, idempotência por `idempotency_key`, sincronização transacional com `user_plans`, fallback automático para Free em inadimplência (`unpaid`), interface `PaymentGatewayAdapter` e adaptador `MockPaymentGatewayAdapter`.
+  - Pacote 05.03 — Experiência Comercial de Planos: Página dedicada `/plans` com visão comparativa de quotas e transparência sem cobrança real.
+- **Fase 06 — Dados de Mercado, Valuation e Gráficos:** **PACOTES 06.01, 06.02 E 06.03 IMPLEMENTADOS E HOMOLOGADOS (`PASS`)** (Tabelas `market_quotes`, `exchange_rates`, `user_chart_preferences`, `b3_cotahist_batches` e `b3_historical_quotes` via migrações `0005`, `0010`, `0012` e `0013`; adaptadores `ManualPayloadAdapter`, `MockProviderAdapter` e conector público `BrapiAdapter`; serviço de ingestão `MarketDataIngestionService` com ranking de qualidade; parser oficial de largura fixa COTAHIST `CotahistFixedLengthParser`; serviço `CotahistIngestionService`; motores de valuation e evolução temporal diária "Mercado vs. Custo"; gráficos Recharts; persistência atômica de preferências em `user_chart_preferences` com fila serializada `ChartPreferenceSyncQueue` e isolamento multitenant).
+- **Fase 06.5 — Alinhamento do MVP e Catálogo Público de Ativos:** **HOMOLOGADA COM SUCESSO (`PASS`)** (Módulo `src/modules/catalog/`, rotas públicas `/acoes`, `/fiis`, `/etfs`, `/bdrs`, `/ativos`, páginas por ticker com variação diária no fuso São Paulo com `Decimal`, `QuoteFreshnessBadge`, SEO com `sitemap.ts` e `robots.ts`, Landing Page em `/`, página 404 padronizada e lançamento em carteira autenticado pré-selecionado).
+- **Fase 07 — Importações Revisáveis:** **HOMOLOGADA COM SUCESSO (`PASS`)** (Módulo `src/modules/imports/` com tabelas `import_batches` e `import_batch_items` via migração `0011`; parsers CSV com auto-detecção para `carteiraexpert_csv`, `b3_trades_csv` e `b3_movements_csv`; limite de 5 MB; deduplicação por hash SHA-256; tela de upload `/import`; central de revisão `/import/[id]` com KPIs em tempo real, edição com `Decimal`, exclusão por linha e resolução explícita de ativos; confirmação transacional atômica com lock `FOR UPDATE` gravando em `portfolio_events` com `source = 'csv_import'`).
+- **Fase 08 — Ativos Internacionais e Criptoativos:** **PARCIALMENTE IMPLEMENTADA** (Multi-moeda, `exchange_rates`, conversão cambial determinística no valuation e precisão `NUMERIC(28, 10)` para criptoativos entregues; custódia on-chain e conexão direta a exchanges via API permanecem planejadas).
+- **Fase 09 — Projeções, Opções e Apoio Tributário:** **PARCIALMENTE IMPLEMENTADA NAS BASES** (Bases factuais de PnL realizado e IRRF sobre JCP entregues; módulos dedicados de opções e fiscal permanecem planejados nas Etapas 8 e 9).
+- **Fase 10 — IA Editorial e Preparação de Lançamento:** **PLANEJADA, NÃO IMPLEMENTADA** (Diretrizes de governança editorial aprovadas no ADR-005; pipeline técnico planejado para a Etapa 10).
+- **Sistema Global de Tema e Identidade Visual:** **IMPLEMENTADO E VALIDADO** (Temas Claro, Escuro e Automático com `prefers-color-scheme`, hook `useTheme`, alternador acessível `ThemeToggle`, tokens semânticos, persistência sob `carteiraexpert_theme`, script anti-FOUC no `<head>`).
 
 ---
 
-## Catálogo Físico de Tabelas Validadas no PostgreSQL (27 tabelas)
+## Catálogo Físico de Tabelas Validadas no PostgreSQL (36 tabelas)
 
-O banco de dados relacional oficial do CarteiraExpert é composto exatamente pelas seguintes 27 tabelas físicas:
+O banco de dados relacional oficial do CarteiraExpert é composto exatamente pelas seguintes 36 tabelas físicas de aplicação (além da tabela de controle `__drizzle_migrations`, totalizando 37 tabelas):
 
-1. `audit_logs`: Trilha de auditoria e registro de alterações sensíveis;
-2. `users`: Contas de usuários autenticados;
-3. `sessions`: Sessões ativas com token em hash SHA-256;
+1. `audit_logs`: Trilha de auditoria e registro transversal de alterações sensíveis;
+2. `users`: Contas de usuários autenticados com credenciais seguras;
+3. `sessions`: Sessões ativas com token criptográfico em hash SHA-256;
 4. `password_reset_tokens`: Tokens temporários para redefinição atômica de senha;
-5. `auth_rate_limits`: Registros de controle de taxa de requisições de autenticação;
-6. `user_consents`: Registro versionado de termos LGPD com trigger *append-only*;
-7. `portfolios`: Carteiras de investimento estruturais (status: `active`, `archived`, `frozen`);
-8. `assets`: Catálogo unificado de ativos cadastrados e customizados;
-9. `portfolio_events`: Eventos operacionais de carteira (`BUY`, `SELL`, `TRANSFER_IN`, `TRANSFER_OUT`, `MANUAL_ADJUSTMENT`, `REVERSAL`) e societários (`SPLIT`, `GROUPING`, `BONUS_SHARE`, `DIVIDEND`, `JCP`), com coluna `direction` e constraint física condicional `chk_portfolio_events_direction`;
-10. `subscription_offers`: Ofertas societárias de direitos de subscrição;
+5. `auth_rate_limits`: Registros de controle de taxa contra força bruta com HMAC-SHA256;
+6. `user_consents`: Registro versionado de termos LGPD com trigger físico *append-only*;
+7. `portfolios`: Carteiras estruturais (`purpose`: `REAL`, `ESTUDO`, `ANALISE`; status: `active`, `archived`, `frozen`; índice único parcial `idx_unique_user_real_portfolio`);
+8. `assets`: Catálogo canônico unificado de instrumentos financeiros globais e customizados;
+9. `portfolio_events`: Eventos operacionais e societários (`BUY`, `SELL`, `TRANSFER_IN`, `TRANSFER_OUT`, `MANUAL_ADJUSTMENT`, `REVERSAL`), com coluna `direction` e chave estrangeira `custody_account_id` com `ON DELETE SET NULL`;
+10. `subscription_offers`: Ofertas societárias de direitos de subscrição reguladas pelo mercado;
 11. `subscription_rights`: Custódia de direitos de subscrição alocados por carteira;
-12. `subscription_exercises`: Exercício liquidado de direitos gerando evento `BUY`;
-13. `market_quotes`: Histórico e cotações locais de ativos;
-14. `exchange_rates`: Histórico e taxas de conversão cambial UTC;
+12. `subscription_exercises`: Exercício liquidado de direitos gerando evento `BUY` com chave `idempotencyKey`;
+13. `market_quotes`: Histórico e cotações locais de ativos com status de defasagem;
+14. `exchange_rates`: Histórico e taxas de conversão cambial diárias em UTC;
 15. `commercial_plans`: Catálogo de planos comerciais e quotas numéricas (`max_active_portfolios`);
 16. `plan_entitlements`: Chaves de autorização funcional (flags) por plano;
-17. `user_plans`: Associação vigente do usuário ao plano comercial com suporte a status (`active`, `past_due`, `cancelled`);
-18. `billing_subscriptions`: Ciclo de vida e estado contratual de assinaturas pagas com integridade relacional;
+17. `user_plans`: Associação vigente do usuário ao plano comercial com status (`active`, `past_due`, `cancelled`);
+18. `billing_subscriptions`: Ciclo de vida e estado contratual de assinaturas comerciais;
 19. `payment_events`: Registro auditável de eventos de pagamento com chave de idempotência única (`idempotency_key`);
-20. `billing_groups`: Grupos familiares e comerciais de faturamento compartilhado;
-21. `billing_group_members`: Membros vinculados a planos compartilhados com isolamento estrito de carteiras e dados patrimoniais;
+20. `billing_groups`: Grupos de faturamento compartilhado (Plano Família/Compartilhado);
+21. `billing_group_members`: Membros vinculados a planos compartilhados com isolamento estrito de dados patrimoniais;
 22. `billing_group_invitations`: Convites de membros para planos compartilhados com expiração e token único;
 23. `user_chart_preferences`: Preferências de visualização de gráficos por usuário e área (`portfolio_evolution`, `dashboard_allocation`, `portfolio_allocation`);
-24. `import_batches`: Lotes de importação de arquivos enviados pelos usuários com status, métricas e hash de deduplicação;
+24. `import_batches`: Lotes de importação CSV com status, métricas, hash de deduplicação e chave estrangeira `custody_account_id`;
 25. `import_batch_items`: Linhas individuais do lote com status de validação, hash de linha, erros/avisos, ativo resolvido e vínculo com evento gerado;
 26. `b3_cotahist_batches`: Lotes de ingestão de séries históricas e arquivos diários de fechamento da B3 (COTAHIST);
-27. `b3_historical_quotes`: Cotações oficiais de fechamento (EOD) da B3 com integridade referencial ao lote e ao catálogo de ativos.
+27. `b3_historical_quotes`: Cotações oficiais de fechamento (EOD) da B3 com integridade referencial ao lote e ao catálogo de ativos;
+28. `asset_fundamentals`: Demonstrações contábeis oficiais versionadas (DFP/ITR) da CVM com métricas fundamentalistas;
+29. `cvm_companies`: Cadastro oficial de companhias abertas da CVM (Resolução 80);
+30. `cvm_source_files`: Rastreabilidade e integridade (SHA-256) de arquivos brutos baixados da CVM;
+31. `cvm_ingestion_runs`: Execuções de parsers CVM com controle de concorrência e lease locks;
+32. `cvm_company_assets`: De-Para auditado entre Companhias CVM e Ativos do Catálogo Canônico;
+33. `cash_accounts`: Contas de caixa monetário por carteira, vinculáveis a contas de custódia (`custody_account_id`);
+34. `cash_transactions`: Movimentações de caixa (`DEPOSIT`, `WITHDRAWAL`, `TRANSFER`, `ADJUSTMENT`) com vínculo opcional a eventos de carteira (`portfolio_event_id`);
+35. `custody_institutions`: Catálogo canônico pré-populado de corretoras, bancos e exchanges nacionais e globais com unicidade de código (`code`);
+36. `custody_accounts`: Contas de custódia vinculadas à carteira e à instituição (`status`: `active`, `archived`), com integridade referencial `ON DELETE SET NULL`.
 
 ---
 
 ## Capacidades Pendentes ou no Roadmap
 
-Permanecem como regras de negócio aprovadas ou capacidades planejadas:
+Permanecem como regras de negócio aprovadas ou capacidades planejadas para as próximas etapas:
 
+- **Etapa 6 — Modelos Teóricos de Valuation:** Implementação de motores puros determinísticos baseados em `Decimal` para Preço Teto Bazin, Fórmula de Graham e DCF simplificado sobre dados da CVM (`asset_fundamentals`), acompanhados dos avisos regulatórios formais;
+- **Etapa 7 — Simulador de Aportes, Juros Compostos e Projeções:** Simulação determinística de acumulação patrimonial, cálculo de juros compostos e projeção de proventos com premissas transparentes configuráveis pelo usuário;
+- **Etapa 8 — Módulo Operacional de Opções:** Cadastro de contratos de derivativos, controle de vencimentos, alertas de proximidade (D-5/D-0) e cálculo descritivo de gregas informativas (sem envio ou rolagem de ordens);
+- **Etapa 9 — Módulo Fiscal Dedicado e Relatórios Auxiliares de IRPF:** Módulo `src/modules/tax/`, apuração mensal de ganhos líquidos, isenção de R$ 20k em ações, compensação de prejuízos acumulados e relatório auxiliar para declaração anual de IRPF (sem emissão de DARF);
+- **Etapa 10 — IA Editorial Interna com Fluxo de Revisão Humana Obrigatória:** Pipeline editorial interno apoiado por IA para documentos públicos de RI, com aprovação humana mandatória pré-publicação;
+- **Automação da Ingestão de Mercado:** Rotinas agendadas (cron jobs / workers em background) para execução periódica da ingestão e streaming via WebSocket;
 - **Expansão de Formatos de Importação:** Suporte a arquivos binários (`.xlsx`) e extração assistida de notas em PDF com bucket privado e workers assíncronos (Fase 07 expandida);
-- **Ingestão Histórica e Atualização Diária B3 (Pacote 06.03 / ADR-010):** Ingestão operacional implementada e homologada localmente via CLI e serviços; automação periódica por workers assíncronos/cron e aplicação em produção permanecem pendentes;
-- **Expansão de Gateways e Pagamentos:** Conexão de gateways reais (Stripe/Asaas), webhooks ativos com verificação de assinatura criptográfica e rotinas em background de expiração;
-- **Gestão de Caixa e Contas Bancárias:** Saldos em moeda, depósitos, saques, aportes em dinheiro e liquidação de caixa;
-- **Custódia Institucional:** Vinculação formal de corretoras, contas institucionais e custodiantes;
-- **Finalidades Formais de Carteira:** Atributo formal `purpose` (`REAL`, `ESTUDO`, `ANALISE`) e suporte a múltiplas carteiras `REAL`;
-- **Dashboard Contextual:** Transição do agregador atual de `/dashboard` para seleção contextual de carteira única;
-- **Automação de Ingestão de Mercado:** Rotinas agendadas (cron jobs / workers em background) para execução periódica da ingestão e streaming via WebSocket;
-- **Módulo Operacional de Opções:** Cadastro de derivativos, gregas, alertas e acompanhamento de vencimentos;
-- **Módulo Fiscal Dedicado:** Apuração mensal, compensação de prejuízos e relatórios auxiliares para IRPF;
-- **IA Editorial Interna:** Pipeline editorial interno com revisão humana obrigatória.
+- **Expansão de Gateways e Pagamentos:** Conexão de gateways reais (Stripe/Asaas), webhooks ativos com verificação de assinatura criptográfica e rotinas em background de expiração.
 
 ---
 
@@ -95,8 +106,8 @@ Permanecem como regras de negócio aprovadas ou capacidades planejadas:
 
 - [x] **Typecheck:** Arquitetura TypeScript em Strict Mode (`pnpm typecheck` aprovado com zero erros).
 - [x] **Lint:** Configuração Biome integrada para linting e formatação (`pnpm lint` e `biome check` aprovados com zero erros).
-- [x] **Testes Unitários:** Comprovados no repositório (**54 arquivos e 704 testes** via `pnpm run test:unit`, cobrindo importações, motores, schemas, gráficos, preferências, catálogo, dropdowns, billing, quotas e planos).
-- [x] **Testes de Integração:** Comprovados no repositório (**32 arquivos e 337 testes** via `pnpm run test:integration` em PostgreSQL real, cobrindo confirmação de importações, parsing, carteiras, catálogo público, preferências de gráficos, market data, planos e billing).
-- [x] **Testes End-to-End (E2E):** Suítes Playwright estruturadas (**10 arquivos e 126 testes aprovados** via `pnpm run test:e2e` cobrindo importações completas com resolução explícita de ativos e isolamento IDOR, autenticação, consentimento LGPD, carteiras, catálogo público desktop/mobile, quotas de planos, subscrições e preferências de gráficos em Chromium, Firefox e WebKit).
-- [x] **Verificação Física do Schema:** 25 tabelas físicas catalogadas e 100% validadas pelo Schema Guardian no banco de testes e no banco de desenvolvimento (`pnpm db:verify`).
+- [x] **Testes Unitários:** Comprovados no repositório (**87 arquivos e 1.059 testes aprovados** via `pnpm run test:unit`, cobrindo motores, schemas, gráficos, preferências, catálogo, billing, quotas, planos, contas de caixa e custódia).
+- [x] **Testes de Integração:** Comprovados no repositório (**50 arquivos e 471 testes aprovados** via `pnpm run test:integration` em PostgreSQL real, cobrindo confirmação de importações, parsing, carteiras, contas de caixa, custódia institucional, catálogo público, preferências de gráficos, market data, planos e billing).
+- [x] **Testes End-to-End (E2E):** Suítes Playwright estruturadas (**12 arquivos e 168 testes aprovados** via `pnpm run test:e2e` cobrindo contas de custódia, importações completas com resolução explícita de ativos e isolamento IDOR, autenticação, consentimento LGPD, carteiras, catálogo público desktop/mobile, quotas de planos, subscrições e preferências de gráficos em Chromium 56/56, Firefox 56/56 e WebKit 56/56).
+- [x] **Verificação Física do Schema:** 36 tabelas físicas catalogadas e 100% validadas pelo Schema Guardian no banco de testes e no banco de desenvolvimento (`pnpm db:verify` e `pnpm db:verify -- --test`).
 - [x] **Build de Produção:** Next.js 16 compilado com sucesso (Turbopack) com páginas estáticas/dinâmicas geradas.

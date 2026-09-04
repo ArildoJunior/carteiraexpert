@@ -21,7 +21,7 @@ O Plano Free oferece a experiência central de gestão e controle patrimonial co
 - **Eventos Corporativos e Subscrições:** processamento de splits, grupamentos, bonificações, proventos em dinheiro (dividendos e JCP) e subscrições (*Implementado e validado no código*).
 - **Visão Operacional e Dashboard:**
   - Histórico de eventos e visualização de carteira específica em `/portfolios/[id]` (*Implementado e validado no código*).
-  - Dashboard contextual por carteira selecionada: *regra de produto aprovada, mas ainda não implementada no dashboard principal. O dashboard atual ainda agrega carteiras ativas do usuário.*
+  - Dashboard contextual por carteira selecionada ou visão consolidada da carteira REAL (*Implementado e validado no código através do seletor contextual de carteiras no DashboardHeader*).
 - **Dados de Mercado:** cotações e taxas de câmbio servidas pelo banco interno a partir de ingestão com defasagem informada (*Implementado e validado no código*).
 - **Visualização Gráfica:** gráficos de alocação e evolução temporal por carteira em `/portfolios/[id]` (*Implementado e validado no código*).
 - **Apoio Tributário:** base factual parcialmente disponível por meio de PnL realizado, eventos de proventos e dados operacionais. Relatórios tributários específicos e exportações fiscais estruturadas são planejados ou ainda estão pendentes (*Parcialmente implementado*).

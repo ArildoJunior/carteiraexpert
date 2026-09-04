@@ -19,19 +19,22 @@ Este documento define os limites de responsabilidade, fronteiras arquiteturais e
 
 ### 1.2. `portfolio`
 - **Estado:** *Implementado e validado*.
-- **Código Principal:** `src/modules/portfolio/` e `src/lib/db/schema/portfolio.ts`.
+- **Código Principal:** `src/modules/portfolio/`, `src/lib/db/schema/portfolio.ts`, `src/lib/db/schema/cash.ts` e `src/lib/db/schema/custody.ts`.
 - **Responsabilidades:**
-  - CRUD de carteiras patrimoniais com isolamento por usuário (`portfolios`);
+  - CRUD de carteiras patrimoniais com isolamento por usuário e finalidades formais (`portfolios`, com `purpose: 'REAL' | 'ESTUDO' | 'ANALISE'` e unicidade da carteira `REAL` ativa);
   - Catálogo de ativos globais e ativos customizados (`assets`);
   - Lançamentos manuais de operações (`BUY`, `SELL`, `TRANSFER_IN`, `TRANSFER_OUT`, `MANUAL_ADJUSTMENT`, `REVERSAL`);
+  - Gestão de contas de caixa e movimentações monetárias (`cash_accounts`, `cash_transactions`);
+  - Gestão de instituições de custódia e contas de corretora (`custody_institutions`, `custody_accounts`) com vínculos opcionais `ON DELETE SET NULL`;
   - Motor determinístico de cálculo de posições, custo médio ponderado e PnL realizado (`position-engine.ts`);
   - Motor de evolução patrimonial temporal com replay de eventos (`portfolio-evolution-engine.ts`);
   - Motor de renderização de gráficos de alocação e evolução (`chart-engine.ts`);
-  - Extrato e visualização operacional da carteira selecionada em `/portfolios/[id]`.
+  - Extrato cronológico com filtros avançados (inclusive por instituição de custódia) em `/history`;
+  - Visualização operacional da carteira selecionada em `/portfolios/[id]` e Dashboard contextual.
 - **Limitações e Capacidades Futuras:**
   - Não cobre eventos societários complexos (delegados ao módulo `corporate-actions`);
-  - *Contas de Custódia e Corretoras:* Representam capacidades futuras aprovadas conceitualmente; não há entidades de custódia institucional no banco atual;
-  - *Saldo de Caixa:* Controle de saldo de caixa monetário é uma regra aprovada com implementação pendente.
+  - Módulo operacional de opções e derivativos (planejado para a Etapa 8);
+  - Ferramentas de valuation teórico Bazin/Graham/DCF (planejadas para a Etapa 6).
 
 ### 1.3. `corporate-actions`
 - **Estado:** *Implementado e validado*.
