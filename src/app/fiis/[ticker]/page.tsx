@@ -6,7 +6,10 @@ import {
   getPublicAssetDetailByTicker,
   getPublicAssetPriceHistory,
 } from '@/modules/catalog/server/catalog.service';
-import { getPublicAssetFundamentalsWithIndicators } from '@/modules/market-data';
+import {
+  getPublicAssetFundamentalsWithIndicators,
+  getPublicAssetTheoreticalValuation,
+} from '@/modules/market-data';
 import { PublicNavbar } from '@/modules/catalog/ui/PublicNavbar';
 import { PublicFooter } from '@/modules/catalog/ui/PublicFooter';
 import { AssetDetailView } from '@/modules/catalog/ui/AssetDetailView';
@@ -59,9 +62,10 @@ export default async function FiiDetailPage({ params, searchParams }: FiiDetailP
     ? sParams.period
     : '1M';
 
-  const [history, fundamentalsData] = await Promise.all([
+  const [history, fundamentalsData, valuationData] = await Promise.all([
     getPublicAssetPriceHistory(asset.id, period),
     getPublicAssetFundamentalsWithIndicators(asset.ticker),
+    getPublicAssetTheoreticalValuation(asset.ticker),
   ]);
 
   let userPortfolios: Array<{ id: string; name: string; baseCurrency: string; status: string }> = [];
@@ -84,6 +88,7 @@ export default async function FiiDetailPage({ params, searchParams }: FiiDetailP
           history={history}
           initialPeriod={period}
           fundamentalsData={fundamentalsData}
+          valuationData={valuationData}
           userPortfolios={userPortfolios}
           isAuthenticated={!!user}
           currentUrl={`/fiis/${asset.ticker}`}

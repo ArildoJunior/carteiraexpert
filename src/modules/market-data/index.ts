@@ -20,3 +20,7 @@ export * from './domain/fundamentals.types';
 export * from './domain/fundamentals.schema';
 export * from './domain/fundamentals-engine';
 export * from './server/fundamentals.service';
+export * from './domain/theoretical-valuation.types';
+export * from './domain/theoretical-valuation.schema';
+export * from './domain/theoretical-valuation-engine';
+export * from './server/theoretical-valuation.service';

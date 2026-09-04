@@ -14,8 +14,10 @@ import {
   B3HistoricalQuotesExplorer,
   type B3HistoricalQuotesResult,
   type AssetFundamentalsViewData,
+  type SerializedTheoreticalValuationResultSet,
 } from '@/modules/market-data';
 import { AssetFundamentalsCard } from './AssetFundamentalsCard';
+import { TheoreticalValuationCard } from './TheoreticalValuationCard';
 
 import type { CatalogHistoryPeriod } from '../domain/catalog.schema';
 
@@ -25,6 +27,7 @@ interface AssetDetailViewProps {
   initialPeriod?: CatalogHistoryPeriod;
   b3HistoricalResult?: B3HistoricalQuotesResult;
   fundamentalsData?: AssetFundamentalsViewData | null;
+  valuationData?: SerializedTheoreticalValuationResultSet | null;
   userPortfolios: UserPortfolioItem[];
   isAuthenticated: boolean;
   currentUrl: string;
@@ -36,6 +39,7 @@ export function AssetDetailView({
   initialPeriod = '1M',
   b3HistoricalResult,
   fundamentalsData,
+  valuationData,
   userPortfolios,
   isAuthenticated,
   currentUrl,
@@ -276,6 +280,9 @@ export function AssetDetailView({
           />
         </div>
       )}
+
+      {/* Modelos Teóricos de Valuation (Bazin, Graham e DCF) */}
+      <TheoreticalValuationCard valuationData={valuationData ?? null} />
 
       {/* Fundamentos e Indicadores Contábeis Oficiais */}
       <AssetFundamentalsCard fundamentals={fundamentalsData ?? null} />

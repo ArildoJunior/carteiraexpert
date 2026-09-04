@@ -5,3 +5,4 @@ export * from './server/catalog.service';
 export * from './ui/CatalogNavDropdown';
 export * from './ui/PublicNavbar';
 export * from './ui/PublicFooter';
+export * from './ui/TheoreticalValuationCard';

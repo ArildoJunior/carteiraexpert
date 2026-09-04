@@ -9,6 +9,7 @@ import {
 import {
   getB3HistoricalQuotes,
   getPublicAssetFundamentalsWithIndicators,
+  getPublicAssetTheoreticalValuation,
 } from '@/modules/market-data';
 import { PublicNavbar } from '@/modules/catalog/ui/PublicNavbar';
 
@@ -70,7 +71,7 @@ export default async function AcaoDetailPage({ params, searchParams }: AcaoDetai
   const page = Math.max(1, Number.parseInt(sParams.page || '1', 10) || 1);
   const limit = Math.min(50, Math.max(1, Number.parseInt(sParams.limit || '15', 10) || 15));
 
-  const [history, b3HistoricalResult, fundamentalsData] = await Promise.all([
+  const [history, b3HistoricalResult, fundamentalsData, valuationData] = await Promise.all([
     getPublicAssetPriceHistory(asset.id, period),
     getB3HistoricalQuotes({
       ticker: asset.ticker,
@@ -81,6 +82,7 @@ export default async function AcaoDetailPage({ params, searchParams }: AcaoDetai
       limit,
     }),
     getPublicAssetFundamentalsWithIndicators(asset.ticker),
+    getPublicAssetTheoreticalValuation(asset.ticker),
   ]);
 
   let userPortfolios: Array<{ id: string; name: string; baseCurrency: string; status: string }> = [];
@@ -104,6 +106,7 @@ export default async function AcaoDetailPage({ params, searchParams }: AcaoDetai
           initialPeriod={period}
           b3HistoricalResult={b3HistoricalResult}
           fundamentalsData={fundamentalsData}
+          valuationData={valuationData}
           userPortfolios={userPortfolios}
           isAuthenticated={!!user}
           currentUrl={`/acoes/${asset.ticker}`}
