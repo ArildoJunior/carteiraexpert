@@ -305,6 +305,7 @@ describe('Integração: Serviço de Evolução Patrimonial (PostgreSQL Real)', (
       {
         name: 'Carteira USD Test',
         baseCurrency: 'USD',
+        purpose: 'ESTUDO',
       },
       userA
     );

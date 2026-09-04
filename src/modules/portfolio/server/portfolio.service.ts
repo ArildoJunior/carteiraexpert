@@ -17,6 +17,7 @@ import type { Portfolio } from '../domain/portfolio.types';
 import {
   PortfolioNotFoundError,
   InvalidPortfolioStatusTransitionError,
+  DuplicateRealPortfolioError,
 } from '../domain/errors';
 import {
   assertCanCreatePortfolio,
@@ -39,22 +40,58 @@ export async function createPortfolioInTransaction(
   // 1. Valida se o usuário pode criar uma nova carteira ativa de acordo com seu plano
   await assertCanCreatePortfolio(user.id, tx);
 
+  // 2. Valida se o usuário já possui uma carteira REAL ativa/não excluída
+  if (input.purpose === 'REAL') {
+    const existingReal = await tx
+      .select({ id: portfolios.id })
+      .from(portfolios)
+      .where(
+        and(
+          eq(portfolios.userId, user.id),
+          eq(portfolios.purpose, 'REAL'),
+          isNull(portfolios.deletedAt)
+        )
+      )
+      .limit(1);
+
+    if (existingReal.length > 0) {
+      throw new DuplicateRealPortfolioError();
+    }
+  }
+
   const id = crypto.randomUUID();
   const now = new Date();
 
-  const [createdPortfolio] = await tx
-    .insert(portfolios)
-    .values({
-      id,
-      userId: user.id,
-      name: input.name,
-      description: input.description ?? null,
-      baseCurrency: input.baseCurrency,
-      status: 'active',
-      createdAt: now,
-      updatedAt: now,
-    })
-    .returning();
+  let createdPortfolio: Portfolio | undefined;
+
+  try {
+    const [res] = await tx
+      .insert(portfolios)
+      .values({
+        id,
+        userId: user.id,
+        name: input.name,
+        description: input.description ?? null,
+        baseCurrency: input.baseCurrency,
+        status: 'active',
+        purpose: input.purpose,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    createdPortfolio = res;
+  } catch (err: any) {
+    const isTargetConstraint =
+      err?.code === '23505' &&
+      (err?.constraint === 'idx_unique_user_real_portfolio' ||
+        String(err?.detail).includes('idx_unique_user_real_portfolio') ||
+        String(err?.message).includes('idx_unique_user_real_portfolio'));
+
+    if (isTargetConstraint) {
+      throw new DuplicateRealPortfolioError();
+    }
+    throw err;
+  }
 
   if (!createdPortfolio) {
     throw new Error('Falha ao criar carteira.');
@@ -75,9 +112,10 @@ export async function createPortfolioInTransaction(
         description: input.description ?? null,
         baseCurrency: input.baseCurrency,
         status: 'active',
+        purpose: input.purpose,
       },
     },
-    { allowlist: ['name', 'description', 'baseCurrency', 'status'] },
+    { allowlist: ['name', 'description', 'baseCurrency', 'status', 'purpose'] },
     tx
   );
 
@@ -200,6 +238,7 @@ export async function updatePortfolioInTransaction(
     name?: string;
     description?: string | null;
     status?: 'active' | 'archived';
+    purpose?: 'REAL' | 'ESTUDO' | 'ANALISE';
     updatedAt: Date;
   } = {
     updatedAt: new Date(),
@@ -215,17 +254,60 @@ export async function updatePortfolioInTransaction(
     updateData.status = input.status;
   }
 
-  const [updatedPortfolio] = await tx
-    .update(portfolios)
-    .set(updateData)
-    .where(
-      and(
-        eq(portfolios.id, id),
-        eq(portfolios.userId, user.id),
-        isNull(portfolios.deletedAt)
+  if (input.purpose !== undefined && input.purpose !== existing.purpose) {
+    if (input.purpose === 'REAL') {
+      const otherReal = await tx
+        .select({ id: portfolios.id })
+        .from(portfolios)
+        .where(
+          and(
+            eq(portfolios.userId, user.id),
+            eq(portfolios.purpose, 'REAL'),
+            isNull(portfolios.deletedAt)
+          )
+        )
+        .limit(1);
+
+      if (otherReal.length > 0 && otherReal[0].id !== id) {
+        throw new DuplicateRealPortfolioError();
+      }
+    } else if (existing.purpose === 'REAL') {
+      if (!input.confirmPurposeChange) {
+        throw new Error(
+          'A alteração da finalidade da carteira de Patrimônio Real para Estudo ou Análise remove sua carteira real ativa e requer confirmação explícita.'
+        );
+      }
+    }
+    updateData.purpose = input.purpose;
+  }
+
+  let updatedPortfolio: Portfolio | undefined;
+
+  try {
+    const [res] = await tx
+      .update(portfolios)
+      .set(updateData)
+      .where(
+        and(
+          eq(portfolios.id, id),
+          eq(portfolios.userId, user.id),
+          isNull(portfolios.deletedAt)
+        )
       )
-    )
-    .returning();
+      .returning();
+    updatedPortfolio = res;
+  } catch (err: any) {
+    const isTargetConstraint =
+      err?.code === '23505' &&
+      (err?.constraint === 'idx_unique_user_real_portfolio' ||
+        String(err?.detail).includes('idx_unique_user_real_portfolio') ||
+        String(err?.message).includes('idx_unique_user_real_portfolio'));
+
+    if (isTargetConstraint) {
+      throw new DuplicateRealPortfolioError();
+    }
+    throw err;
+  }
 
   if (!updatedPortfolio) {
     throw new PortfolioNotFoundError();
@@ -245,14 +327,16 @@ export async function updatePortfolioInTransaction(
         name: existing.name,
         description: existing.description,
         status: existing.status,
+        purpose: existing.purpose,
       },
       newValue: {
         name: updatedPortfolio.name,
         description: updatedPortfolio.description,
         status: updatedPortfolio.status,
+        purpose: updatedPortfolio.purpose,
       },
     },
-    { allowlist: ['name', 'description', 'status'] },
+    { allowlist: ['name', 'description', 'status', 'purpose'] },
     tx
   );
 

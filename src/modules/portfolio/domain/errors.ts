@@ -105,9 +105,28 @@ export class InvalidEvolutionPeriodError extends Error {
   }
 }
 
+export class DuplicateRealPortfolioError extends Error {
+  constructor(
+    message = 'Você já possui uma carteira de Patrimônio Real ativa. Carteiras adicionais devem ter finalidade de Estudo ou Análise.'
+  ) {
+    super(message);
+    this.name = 'DuplicateRealPortfolioError';
+  }
+}
+
+export class InvalidPortfolioPurposeError extends Error {
+  constructor(
+    message = 'Finalidade de carteira inválida. Valores aceitos: REAL, ESTUDO, ANALISE.'
+  ) {
+    super(message);
+    this.name = 'InvalidPortfolioPurposeError';
+  }
+}
+
 export {
   PortfolioFrozenError,
   PlanLimitExceededError,
   PlanNotFoundError,
   InvalidPortfolioStatusTransitionError,
 } from '../../plans/domain/errors';
+

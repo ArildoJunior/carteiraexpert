@@ -110,6 +110,7 @@ describe('Integração: Planos Comerciais, Quotas e Carteiras Congeladas', () =>
       await db.delete(portfolioEvents).where(inArray(portfolioEvents.portfolioId, createdPortfolioIds));
       await db.delete(portfolios).where(inArray(portfolios.id, createdPortfolioIds));
     }
+    await db.delete(portfolios).where(inArray(portfolios.userId, [userAId, userBId]));
     await db.delete(assets).where(eq(assets.id, testAssetId));
     await db.delete(userPlans).where(inArray(userPlans.userId, [userAId, userBId]));
     await db.delete(auditLogs).where(inArray(auditLogs.actorId, [userAId, userBId]));
@@ -155,7 +156,7 @@ describe('Integração: Planos Comerciais, Quotas e Carteiras Congeladas', () =>
 
     it('deve permitir criar a 1ª e a 2ª carteira no plano FREE', async () => {
       const port1 = await createPortfolio({ name: 'Carteira 1 User A' }, userA);
-      const port2 = await createPortfolio({ name: 'Carteira 2 User A' }, userA);
+      const port2 = await createPortfolio({ name: 'Carteira 2 User A', purpose: 'ESTUDO' }, userA);
 
       port1Id = port1.id;
       port2Id = port2.id;
@@ -169,7 +170,7 @@ describe('Integração: Planos Comerciais, Quotas e Carteiras Congeladas', () =>
 
     it('deve rejeitar a criação da 3ª carteira ativa com PlanLimitExceededError', async () => {
       await expect(
-        createPortfolio({ name: 'Carteira 3 Inválida' }, userA)
+        createPortfolio({ name: 'Carteira 3 Inválida', purpose: 'ESTUDO' }, userA)
       ).rejects.toThrow(PlanLimitExceededError);
     });
 
@@ -182,7 +183,7 @@ describe('Integração: Planos Comerciais, Quotas e Carteiras Congeladas', () =>
       expect(summaryAfterDelete.canCreateMore).toBe(true);
 
       // Agora a criação da nova carteira deve ser aceita
-      const port3 = await createPortfolio({ name: 'Carteira 3 Válida' }, userA);
+      const port3 = await createPortfolio({ name: 'Carteira 3 Válida', purpose: 'ESTUDO' }, userA);
       createdPortfolioIds.push(port3.id);
 
       const finalSummary = await getPlanQuotaSummary(userA.id);
@@ -204,9 +205,9 @@ describe('Integração: Planos Comerciais, Quotas e Carteiras Congeladas', () =>
 
       // Cria 4 carteiras ativas
       const p1 = await createPortfolio({ name: 'User B - Port 1' }, userB);
-      const p2 = await createPortfolio({ name: 'User B - Port 2' }, userB);
-      const p3 = await createPortfolio({ name: 'User B - Port 3' }, userB);
-      const p4 = await createPortfolio({ name: 'User B - Port 4' }, userB);
+      const p2 = await createPortfolio({ name: 'User B - Port 2', purpose: 'ESTUDO' }, userB);
+      const p3 = await createPortfolio({ name: 'User B - Port 3', purpose: 'ANALISE' }, userB);
+      const p4 = await createPortfolio({ name: 'User B - Port 4', purpose: 'ESTUDO' }, userB);
 
       createdPortfolioIds.push(p1.id, p2.id, p3.id, p4.id);
 
@@ -419,6 +420,7 @@ describe('Integração: Planos Comerciais, Quotas e Carteiras Congeladas', () =>
           name: 'User B - Port Arquivada',
           baseCurrency: 'BRL',
           status: 'archived',
+          purpose: 'ESTUDO',
           createdAt: new Date(),
           updatedAt: new Date(),
         })

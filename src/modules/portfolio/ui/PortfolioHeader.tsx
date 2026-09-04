@@ -54,6 +54,18 @@ export function PortfolioHeader({
             >
               {portfolio.baseCurrency}
             </span>
+            <span
+              id="portfolio-purpose-badge"
+              className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${
+                portfolio.purpose === 'REAL'
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                  : portfolio.purpose === 'ESTUDO'
+                    ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30'
+                    : 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30'
+              }`}
+            >
+              {portfolio.purpose === 'REAL' ? 'Patrimônio Real' : portfolio.purpose === 'ESTUDO' ? 'Estudo' : 'Análise'}
+            </span>
             {portfolio.status === 'archived' && (
               <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-300 border border-amber-500/30">
                 Arquivada

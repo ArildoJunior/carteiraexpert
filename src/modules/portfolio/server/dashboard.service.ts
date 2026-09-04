@@ -1,6 +1,8 @@
 import { db, type DbExecutor } from '../../../lib/db';
+import { eq, and, isNull, asc } from 'drizzle-orm';
+import { portfolios } from '../../../lib/db/schema/portfolio';
+import { assertOwnership } from '../../identity/server/authorization-service';
 import type { SafeUser } from '../../identity/domain/user.types';
-import { listPortfolios } from './portfolio.service';
 import { getPortfolioPositions } from './position.service';
 import {
   listUserRecentEvents,
@@ -16,50 +18,130 @@ import type {
   SerializedUserDashboardData,
   UserHistoryPaginatedResult,
   SerializedUserHistoryPaginatedResult,
+  DashboardPortfolioMetadata,
 } from '../domain/dashboard.types';
 import type {
   ListUserRecentEventsInput,
   ListUserHistoryInput,
 } from '../domain/dashboard.schema';
+import { PortfolioNotFoundError } from '../domain/errors';
+import type { PortfolioPurpose } from '../domain/portfolio.types';
+
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export interface GetUserDashboardDataOptions extends ListUserRecentEventsInput {
+  portfolioId?: string;
+}
 
 /**
- * Recupera todos os dados consolidados do dashboard geral para o usuário autenticado.
- * Processa métricas por moeda base, totais em custódia, PnL e feed de atividades recentes.
+ * Recupera os dados do dashboard contextual para a carteira selecionada do usuário.
+ * Nunca agrega carteiras distintas; opera estritamente sobre uma carteira por vez.
+ * Se nenhuma carteira for informada, resolve deterministicamente:
+ * 1. Carteira REAL não excluída (ativa, congelada ou arquivada).
+ * 2. Se não houver REAL: seleciona deterministicamente a carteira mais antiga (ORDER BY created_at ASC, id ASC).
  */
 export async function getUserDashboardData(
   user: SafeUser,
-  recentEventsOptions: ListUserRecentEventsInput = { limit: 10 },
+  options: GetUserDashboardDataOptions = {},
   executor: DbExecutor = db
 ): Promise<UserDashboardSummary> {
-  // 1. Busca todas as carteiras ativas do usuário
-  const userPortfolios = await listPortfolios(user, executor);
+  const { portfolioId: requestedPortfolioId, limit = 10, ...filterOptions } = options;
 
-  if (userPortfolios.length === 0) {
-    return calculateUserDashboardSummary([], []);
+  // 1. Busca todas as carteiras não excluídas pertencentes ao usuário ordenadas deterministicamente
+  const allUserPortfolios = await executor
+    .select()
+    .from(portfolios)
+    .where(and(eq(portfolios.userId, user.id), isNull(portfolios.deletedAt)))
+    .orderBy(asc(portfolios.createdAt), asc(portfolios.id));
+
+  const availablePortfolios: DashboardPortfolioMetadata[] = allUserPortfolios.map((p) => ({
+    id: p.id,
+    name: p.name,
+    purpose: p.purpose as PortfolioPurpose,
+    baseCurrency: p.baseCurrency,
+    status: p.status,
+  }));
+
+  // Se o usuário não possui nenhuma carteira cadastrada
+  if (allUserPortfolios.length === 0) {
+    return calculateUserDashboardSummary([], [], null, []);
   }
 
-  // 2. Busca o resumo de posições e PnL de cada carteira
-  const portfolioSummaries = await Promise.all(
-    userPortfolios.map(async (p) => {
-      const summary = await getPortfolioPositions(p.id, user, executor);
-      return {
-        portfolioId: p.id,
-        portfolioName: p.name,
-        baseCurrency: p.baseCurrency,
-        summary,
-      };
-    })
-  );
+  let selectedPortfolio: (typeof allUserPortfolios)[0] | undefined;
 
-  // 3. Busca o feed de eventos recentes unificado
+  // 2. Resolução determinística da carteira selecionada
+  if (requestedPortfolioId) {
+    if (!UUID_REGEX.test(requestedPortfolioId)) {
+      throw new PortfolioNotFoundError('Identificador de carteira inválido.');
+    }
+
+    const [found] = await executor
+      .select()
+      .from(portfolios)
+      .where(and(eq(portfolios.id, requestedPortfolioId), isNull(portfolios.deletedAt)))
+      .limit(1);
+
+    if (!found) {
+      throw new PortfolioNotFoundError('Carteira não encontrada.');
+    }
+
+    await assertOwnership(found.userId, user, 'portfolio', executor);
+    selectedPortfolio = found;
+  } else {
+    // Acesso padrão (sem query param):
+    // Prioridade 1: Carteira REAL não excluída (ativa, congelada ou arquivada)
+    const realPortfolio = allUserPortfolios.find((p) => p.purpose === 'REAL');
+    if (realPortfolio) {
+      selectedPortfolio = realPortfolio;
+    } else {
+      // Prioridade 2 (Fallback determinístico na ausência de REAL):
+      // Prioriza ativa por ORDER BY created_at ASC, id ASC; se não houver ativa, primeira existente
+      const firstActive = allUserPortfolios.find((p) => p.status === 'active');
+      selectedPortfolio = firstActive ?? allUserPortfolios[0];
+    }
+  }
+
+  if (!selectedPortfolio) {
+    return calculateUserDashboardSummary([], [], null, availablePortfolios);
+  }
+
+  const selectedMetadata: DashboardPortfolioMetadata = {
+    id: selectedPortfolio.id,
+    name: selectedPortfolio.name,
+    purpose: selectedPortfolio.purpose as PortfolioPurpose,
+    baseCurrency: selectedPortfolio.baseCurrency,
+    status: selectedPortfolio.status,
+  };
+
+  // 3. Calcula as posições exclusivamente da carteira selecionada
+  const summary = await getPortfolioPositions(selectedPortfolio.id, user, executor);
+  const portfolioSummaries = [
+    {
+      portfolioId: selectedPortfolio.id,
+      portfolioName: selectedPortfolio.name,
+      baseCurrency: selectedPortfolio.baseCurrency,
+      summary,
+    },
+  ];
+
+  // 4. Busca o feed de eventos recentes restrito à carteira selecionada
   const recentEvents = await listUserRecentEvents(
     user,
-    recentEventsOptions,
+    {
+      portfolioId: selectedPortfolio.id,
+      limit,
+      ...filterOptions,
+    },
     executor
   );
 
-  // 4. Executa agregação no motor puro de domínio
-  return calculateUserDashboardSummary(portfolioSummaries, recentEvents);
+  return calculateUserDashboardSummary(
+    portfolioSummaries,
+    recentEvents,
+    selectedMetadata,
+    availablePortfolios
+  );
 }
 
 /**
@@ -67,10 +149,10 @@ export async function getUserDashboardData(
  */
 export async function getSerializedUserDashboardData(
   user: SafeUser,
-  recentEventsOptions: ListUserRecentEventsInput = { limit: 10 },
+  options: GetUserDashboardDataOptions = {},
   executor: DbExecutor = db
 ): Promise<SerializedUserDashboardData> {
-  const data = await getUserDashboardData(user, recentEventsOptions, executor);
+  const data = await getUserDashboardData(user, options, executor);
   return serializeUserDashboardData(data);
 }
 

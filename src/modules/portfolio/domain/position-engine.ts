@@ -16,6 +16,7 @@ import type {
   SerializedUserRecentEventItem,
   SerializedUserDashboardData,
   SerializedUserHistoryPaginatedResult,
+  DashboardPortfolioMetadata,
 } from './dashboard.types';
 import type { Asset } from './asset.types';
 import {
@@ -774,7 +775,9 @@ export function calculateUserDashboardSummary(
     baseCurrency: string;
     summary: PortfolioPositionsSummary;
   }[],
-  recentEvents: UserRecentEventItem[] = []
+  recentEvents: UserRecentEventItem[] = [],
+  selectedPortfolio: DashboardPortfolioMetadata | null = null,
+  availablePortfolios: DashboardPortfolioMetadata[] = []
 ): UserDashboardSummary {
   const currencyMap = new Map<
     string,
@@ -856,6 +859,8 @@ export function calculateUserDashboardSummary(
   }
 
   return {
+    selectedPortfolio,
+    availablePortfolios,
     currencyGroups,
     totalActivePortfolios,
     totalActivePositions,
@@ -920,6 +925,8 @@ export function serializeUserDashboardData(
   summary: UserDashboardSummary
 ): SerializedUserDashboardData {
   return {
+    selectedPortfolio: summary.selectedPortfolio,
+    availablePortfolios: summary.availablePortfolios,
     currencyGroups: summary.currencyGroups.map(serializeCurrencyGroupSummary),
     totalActivePortfolios: summary.totalActivePortfolios,
     totalActivePositions: summary.totalActivePositions,

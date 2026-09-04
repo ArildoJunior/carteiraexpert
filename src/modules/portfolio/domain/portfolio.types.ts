@@ -5,4 +5,6 @@ export type Portfolio = InferSelectModel<typeof portfolios>;
 
 export type PortfolioStatus = 'active' | 'archived' | 'frozen';
 
+export type PortfolioPurpose = 'REAL' | 'ESTUDO' | 'ANALISE';
+
 export type BaseCurrency = 'BRL' | 'USD' | 'EUR';

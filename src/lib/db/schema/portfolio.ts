@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, text, timestamp, uuid, boolean, numeric, check } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, uuid, boolean, numeric, check, uniqueIndex } from 'drizzle-orm/pg-core';
 import { users } from './identity';
 
 // ─── portfolios ───────────────────────────────────────────────────────────────
@@ -17,6 +17,8 @@ export const portfolios = pgTable(
     baseCurrency: text('base_currency').notNull().default('BRL'),
     // 'active' | 'archived' | 'frozen'
     status: text('status').notNull().default('active'),
+    // 'REAL' | 'ESTUDO' | 'ANALISE'
+    purpose: text('purpose').notNull().default('REAL'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
@@ -26,6 +28,13 @@ export const portfolios = pgTable(
       'chk_portfolios_status',
       sql`${table.status} IN ('active', 'archived', 'frozen')`
     ),
+    check(
+      'chk_portfolios_purpose',
+      sql`${table.purpose} IN ('REAL', 'ESTUDO', 'ANALISE')`
+    ),
+    uniqueIndex('idx_unique_user_real_portfolio')
+      .on(table.userId)
+      .where(sql`${table.purpose} = 'REAL' AND ${table.deletedAt} IS NULL`),
   ]
 );
 

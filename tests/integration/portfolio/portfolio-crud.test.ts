@@ -91,6 +91,7 @@ describe('Integração: PortfolioService CRUD, Isolamento e Auditoria', () => {
       await db.delete(auditLogs).where(inArray(auditLogs.recordId, createdPortfolioIds));
       await db.delete(portfolios).where(inArray(portfolios.id, createdPortfolioIds));
     }
+    await db.delete(portfolios).where(inArray(portfolios.userId, [user1Id, user2Id]));
     await db.delete(userPlans).where(inArray(userPlans.userId, [user1Id, user2Id]));
     await db.delete(auditLogs).where(inArray(auditLogs.actorId, [user1Id, user2Id]));
     await db.delete(users).where(inArray(users.id, [user1Id, user2Id]));
@@ -117,6 +118,7 @@ describe('Integração: PortfolioService CRUD, Isolamento e Auditoria', () => {
           name: 'Carteira FIIs User 1',
           description: 'Fundos imobiliários',
           baseCurrency: 'BRL',
+          purpose: 'ESTUDO',
         },
         user1
       );
@@ -193,6 +195,7 @@ describe('Integração: PortfolioService CRUD, Isolamento e Auditoria', () => {
           {
             name: failedPortfolioName,
             baseCurrency: 'BRL',
+            purpose: 'ESTUDO',
           },
           user1,
           db,
@@ -223,6 +226,7 @@ describe('Integração: PortfolioService CRUD, Isolamento e Auditoria', () => {
       const validatedData = createPortfolioSchema.parse({
         name: failedDirectPortName,
         baseCurrency: 'BRL',
+        purpose: 'ESTUDO',
       });
 
       let capturedTx: DatabaseTransaction | null = null;
@@ -266,6 +270,7 @@ describe('Integração: PortfolioService CRUD, Isolamento e Auditoria', () => {
         {
           name: 'Carteira Privada User 1',
           baseCurrency: 'BRL',
+          purpose: 'ESTUDO',
         },
         user1
       );
@@ -334,6 +339,7 @@ describe('Integração: PortfolioService CRUD, Isolamento e Auditoria', () => {
           name: 'Carteira Para Modificar',
           description: 'Desc Inicial',
           baseCurrency: 'BRL',
+          purpose: 'ESTUDO',
         },
         user1
       );

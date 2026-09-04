@@ -71,9 +71,9 @@ describe('Integração: Fallback de Plano e Congelamento em Inadimplência / Can
     });
 
     const p1 = await createPortfolio({ name: 'Carteira PRO 1' }, testUser);
-    const p2 = await createPortfolio({ name: 'Carteira PRO 2' }, testUser);
-    const p3 = await createPortfolio({ name: 'Carteira PRO 3' }, testUser);
-    const p4 = await createPortfolio({ name: 'Carteira PRO 4' }, testUser);
+    const p2 = await createPortfolio({ name: 'Carteira PRO 2', purpose: 'ESTUDO' }, testUser);
+    const p3 = await createPortfolio({ name: 'Carteira PRO 3', purpose: 'ANALISE' }, testUser);
+    const p4 = await createPortfolio({ name: 'Carteira PRO 4', purpose: 'ESTUDO' }, testUser);
 
     createdPortfolioIds.push(p1.id, p2.id, p3.id, p4.id);
 

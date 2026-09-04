@@ -14,6 +14,7 @@ export const createPortfolioSchema = z.object({
     .nullable()
     .optional(),
   baseCurrency: z.enum(['BRL', 'USD', 'EUR']).default('BRL'),
+  purpose: z.enum(['REAL', 'ESTUDO', 'ANALISE']).default('REAL'),
 });
 
 export type CreatePortfolioInput = z.input<typeof createPortfolioSchema>;
@@ -34,7 +35,10 @@ export const updatePortfolioSchema = z.object({
     .nullable()
     .optional(),
   status: z.enum(['active', 'archived']).optional(),
+  purpose: z.enum(['REAL', 'ESTUDO', 'ANALISE']).optional(),
+  confirmPurposeChange: z.boolean().optional(),
 });
 
 export type UpdatePortfolioInput = z.input<typeof updatePortfolioSchema>;
 export type UpdatePortfolioOutput = z.output<typeof updatePortfolioSchema>;
+

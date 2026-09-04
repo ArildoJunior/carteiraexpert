@@ -134,8 +134,8 @@ describe('Integração: Extrato Geral de Operações e Filtros (PostgreSQL Real)
   });
 
   it('aplica filtros combinados: carteira, tipo de operação, ticker e intervalo de datas', async () => {
-    const p1 = await createPortfolio({ name: 'Carteira 1', baseCurrency: 'BRL' }, userA);
-    const p2 = await createPortfolio({ name: 'Carteira 2', baseCurrency: 'BRL' }, userA);
+    const p1 = await createPortfolio({ name: 'Carteira 1', baseCurrency: 'BRL', purpose: 'ESTUDO' }, userA);
+    const p2 = await createPortfolio({ name: 'Carteira 2', baseCurrency: 'BRL', purpose: 'ANALISE' }, userA);
 
     const assetPetr = await createCustomAsset(
       { ticker: 'PETR4', name: 'Petrobras PN', currency: 'BRL' },
@@ -232,8 +232,8 @@ describe('Integração: Extrato Geral de Operações e Filtros (PostgreSQL Real)
   });
 
   it('exclui eventos cancelados (soft delete) e carteiras excluídas', async () => {
-    const p1 = await createPortfolio({ name: 'Carteira Ativa', baseCurrency: 'BRL' }, userA);
-    const p2 = await createPortfolio({ name: 'Carteira a Excluir', baseCurrency: 'BRL' }, userA);
+    const p1 = await createPortfolio({ name: 'Carteira Ativa', baseCurrency: 'BRL', purpose: 'ESTUDO' }, userA);
+    const p2 = await createPortfolio({ name: 'Carteira a Excluir', baseCurrency: 'BRL', purpose: 'ANALISE' }, userA);
 
     const asset = await createCustomAsset(
       { ticker: 'MGLU3', name: 'Magazine Luiza', currency: 'BRL' },
@@ -343,7 +343,7 @@ describe('Integração: Extrato Geral de Operações e Filtros (PostgreSQL Real)
   });
 
   it('detalha corretamente a posição e trades realizados de um ativo específico na carteira', async () => {
-    const p1 = await createPortfolio({ name: 'Trades Detail Test', baseCurrency: 'BRL' }, userA);
+    const p1 = await createPortfolio({ name: 'Trades Detail Test', baseCurrency: 'BRL', purpose: 'ESTUDO' }, userA);
     const asset = await createCustomAsset(
       { ticker: 'WEGE3', name: 'WEG ON', currency: 'BRL' },
       userA

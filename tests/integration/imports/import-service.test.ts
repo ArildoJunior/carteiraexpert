@@ -113,6 +113,7 @@ describe('Integração: ImportService (PostgreSQL Real)', () => {
         name: 'Carteira Congelada User 1',
         baseCurrency: 'BRL',
         status: 'frozen',
+        purpose: 'ESTUDO',
         createdAt: now,
         updatedAt: now,
       })

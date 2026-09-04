@@ -76,6 +76,7 @@ import {
   PortfolioFrozenError,
   PlanLimitExceededError,
   InvalidPortfolioStatusTransitionError,
+  DuplicateRealPortfolioError,
 } from '../domain/errors';
 import { AuthorizationError } from '../../identity/domain/errors';
 import { ZodError } from 'zod';
@@ -198,6 +199,16 @@ function handleActionError<T = never>(err: unknown): ActionResult<T> {
     };
   }
 
+  if (err instanceof DuplicateRealPortfolioError) {
+    return {
+      success: false,
+      error: err.message,
+      fieldErrors: {
+        purpose: [err.message],
+      },
+    };
+  }
+
   if (err instanceof InvalidPortfolioStatusTransitionError) {
     return {
       success: false,
@@ -247,6 +258,7 @@ export async function createPortfolioAction(
       name: formData.get('name'),
       description: formData.get('description') || null,
       baseCurrency: formData.get('baseCurrency') || 'BRL',
+      purpose: formData.get('purpose') || 'REAL',
     };
 
     const parsed = createPortfolioSchema.parse(raw);
@@ -279,6 +291,8 @@ export async function updatePortfolioAction(
       name: formData.get('name') || undefined,
       description: formData.get('description') || null,
       status: formData.get('status') || undefined,
+      purpose: formData.get('purpose') || undefined,
+      confirmPurposeChange: formData.get('confirmPurposeChange') === 'true',
     };
 
     const parsed = updatePortfolioSchema.parse(raw);

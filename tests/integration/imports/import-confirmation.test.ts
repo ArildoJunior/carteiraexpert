@@ -125,6 +125,7 @@ describe('Integração: Confirmação e Rejeição Transacional de Lotes (Postgr
         name: 'Carteira Congelada Confirmação',
         baseCurrency: 'BRL',
         status: 'frozen',
+        purpose: 'ESTUDO',
         createdAt: now,
         updatedAt: now,
       })
@@ -207,12 +208,11 @@ describe('Integração: Confirmação e Rejeição Transacional de Lotes (Postgr
       await db.delete(importBatches).where(inArray(importBatches.id, createdBatchIds));
     }
 
-    await db.delete(portfolioEvents).where(
-      inArray(portfolioEvents.portfolioId, [portfolio1Id, portfolio2Id, frozenPortfolioId])
-    );
-    await db.delete(portfolios).where(
-      inArray(portfolios.id, [portfolio1Id, portfolio2Id, frozenPortfolioId])
-    );
+    const pIds = [portfolio1Id, portfolio2Id, frozenPortfolioId].filter(Boolean);
+    if (pIds.length > 0) {
+      await db.delete(portfolioEvents).where(inArray(portfolioEvents.portfolioId, pIds));
+      await db.delete(portfolios).where(inArray(portfolios.id, pIds));
+    }
     await db.delete(assets).where(
       or(
         inArray(assets.userId, [user1Id, user2Id]),

@@ -486,9 +486,9 @@ describe('Integração: Grupos Compartilhados, Assinatura Shared e Isolamento Mu
     const now = new Date();
 
     await db.insert(portfolios).values([
-      { id: port1Id, userId: member1Id, name: 'Carteira 1 do Membro', status: 'active', createdAt: new Date(now.getTime() - 3000), updatedAt: now },
-      { id: port2Id, userId: member1Id, name: 'Carteira 2 do Membro', status: 'active', createdAt: new Date(now.getTime() - 2000), updatedAt: now },
-      { id: port3Id, userId: member1Id, name: 'Carteira 3 do Membro', status: 'active', createdAt: new Date(now.getTime() - 1000), updatedAt: now },
+      { id: port1Id, userId: member1Id, name: 'Carteira 1 do Membro', status: 'active', purpose: 'REAL', createdAt: new Date(now.getTime() - 3000), updatedAt: now },
+      { id: port2Id, userId: member1Id, name: 'Carteira 2 do Membro', status: 'active', purpose: 'ESTUDO', createdAt: new Date(now.getTime() - 2000), updatedAt: now },
+      { id: port3Id, userId: member1Id, name: 'Carteira 3 do Membro', status: 'active', purpose: 'ANALISE', createdAt: new Date(now.getTime() - 1000), updatedAt: now },
     ]);
     createdPortfolioIds.push(port1Id, port2Id, port3Id);
 

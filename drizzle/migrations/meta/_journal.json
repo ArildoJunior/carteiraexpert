@@ -127,6 +127,13 @@
       "when": 1788100000000,
       "tag": "0017_canonical_asset_catalog",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1788200000000,
+      "tag": "0018_add_portfolio_purpose",
+      "breakpoints": true
     }
   ]
 }

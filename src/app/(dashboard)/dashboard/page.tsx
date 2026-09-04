@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { getCurrentUser } from '@/modules/identity/server/current-user';
 import { getSerializedUserDashboardData } from '@/modules/portfolio/server/dashboard.service';
@@ -7,11 +7,15 @@ import { getUserChartPreferences } from '@/modules/portfolio/server/chart-prefer
 import { DashboardMetricsCards } from '@/modules/portfolio/ui/DashboardMetricsCards';
 import { DashboardAllocationCharts } from '@/modules/portfolio/ui/DashboardAllocationCharts';
 import { RecentActivityFeed } from '@/modules/portfolio/ui/RecentActivityFeed';
+import { DashboardContextSelector } from '@/modules/portfolio/ui/DashboardContextSelector';
+import { DashboardContextBanner } from '@/modules/portfolio/ui/DashboardContextBanner';
+import { PortfolioNotFoundError } from '@/modules/portfolio/domain/errors';
+import { AuthorizationError } from '@/modules/identity/domain/errors';
 import { Decimal } from '@/lib/decimal';
 
 export const metadata: Metadata = {
-  title: 'Dashboard Consolidado — CarteiraExpert',
-  description: 'Visão geral patrimonial consolidada das suas carteiras de investimentos.',
+  title: 'Dashboard — CarteiraExpert',
+  description: 'Visão geral patrimonial da carteira selecionada.',
 };
 
 function formatMoney(value: string | Decimal, currency = 'BRL'): string {
@@ -26,17 +30,31 @@ function formatMoney(value: string | Decimal, currency = 'BRL'): string {
   }
 }
 
-export default async function DashboardPage() {
+interface DashboardPageProps {
+  searchParams?: Promise<{ portfolioId?: string }>;
+}
+
+export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  const [data, chartPreferences] = await Promise.all([
-    getSerializedUserDashboardData(user),
-    getUserChartPreferences(user),
-  ]);
+  const { portfolioId } = (await searchParams) || {};
+
+  let data;
+  try {
+    data = await getSerializedUserDashboardData(user, { portfolioId });
+  } catch (err) {
+    if (err instanceof PortfolioNotFoundError || err instanceof AuthorizationError) {
+      notFound();
+    }
+    throw err;
+  }
+
+  const chartPreferences = await getUserChartPreferences(user);
+  const hasRealPortfolio = data.availablePortfolios.some((p) => p.purpose === 'REAL');
 
   return (
-    <div className="space-y-8 text-text-primary" id="dashboard-page-container">
+    <div className="space-y-6 text-text-primary" id="dashboard-page-container">
       {/* ─── Header da Página ────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border-theme/40">
         <div className="space-y-1">
@@ -44,7 +62,7 @@ export default async function DashboardPage() {
             Olá, {user.name.split(' ')[0]} 👋
           </h1>
           <p className="text-text-secondary text-sm">
-            Visão consolidada das suas posições patrimoniais e histórico de operações.
+            Visão patrimonial da sua carteira selecionada e histórico de operações.
           </p>
         </div>
 
@@ -71,13 +89,27 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
-      {/* ─── Cards de Resumo Financeiro Consolidado ────────────────────────── */}
+      {/* ─── Seletor de Contexto da Carteira ──────────────────────────────── */}
+      {data.selectedPortfolio && (
+        <div className="space-y-3">
+          <DashboardContextSelector
+            selectedPortfolio={data.selectedPortfolio}
+            availablePortfolios={data.availablePortfolios}
+          />
+          <DashboardContextBanner
+            selectedPortfolio={data.selectedPortfolio}
+            hasRealPortfolio={hasRealPortfolio}
+          />
+        </div>
+      )}
+
+      {/* ─── Cards de Resumo Financeiro da Carteira ────────────────────────── */}
       <DashboardMetricsCards
         currencyGroups={data.currencyGroups}
         totalActivePortfolios={data.totalActivePortfolios}
       />
 
-      {/* ─── Gráficos de Alocação Consolidada ──────────────────────────────── */}
+      {/* ─── Gráficos de Alocação da Carteira ──────────────────────────────── */}
       {data.totalActivePositions > 0 && (
         <DashboardAllocationCharts
           portfolioSummaries={data.portfolioSummaries}

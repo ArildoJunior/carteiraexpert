@@ -4,8 +4,17 @@ import type {
   SerializedPortfolioPositionsSummary,
 } from './position.types';
 import type { PortfolioEvent } from './portfolio-event.types';
+import type { PortfolioPurpose } from './portfolio.types';
 
 // ─── Tipos Internos de Domínio (Baseados em Decimal) ─────────────────────────
+
+export interface DashboardPortfolioMetadata {
+  id: string;
+  name: string;
+  purpose: PortfolioPurpose;
+  baseCurrency: string;
+  status: string;
+}
 
 export interface CurrencyGroupSummary {
   currency: string;
@@ -27,6 +36,8 @@ export interface UserRecentEventItem extends PortfolioEvent {
 }
 
 export interface UserDashboardSummary {
+  selectedPortfolio: DashboardPortfolioMetadata | null;
+  availablePortfolios: DashboardPortfolioMetadata[];
   currencyGroups: CurrencyGroupSummary[];
   totalActivePortfolios: number;
   totalActivePositions: number;
@@ -84,6 +95,8 @@ export interface SerializedUserRecentEventItem {
 }
 
 export interface SerializedUserDashboardData {
+  selectedPortfolio: DashboardPortfolioMetadata | null;
+  availablePortfolios: DashboardPortfolioMetadata[];
   currencyGroups: SerializedCurrencyGroupSummary[];
   totalActivePortfolios: number;
   totalActivePositions: number;

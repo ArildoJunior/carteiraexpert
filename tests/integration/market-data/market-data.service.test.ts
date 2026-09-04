@@ -363,6 +363,7 @@ describe('Integração: Serviço de Market Data, Câmbio e Valuation (PostgreSQL
       {
         name: 'Carteira Fallback Mkt Test',
         baseCurrency: 'BRL',
+        purpose: 'ESTUDO',
       },
       userA
     );

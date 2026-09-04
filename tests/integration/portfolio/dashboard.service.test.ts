@@ -78,14 +78,14 @@ describe('Integração: Dashboard Consolidado e Histórico de Atividades (Postgr
     await db.delete(users).where(sql`id IN (${userAId}, ${userBId})`);
   });
 
-  it('1. deve consolidar métricas de múltiplas carteiras e retornar feed recente no dashboard do usuário', async () => {
-    // Cria 2 carteiras para Usuário A
+  it('1. deve consolidar métricas da carteira selecionada e retornar feed recente no dashboard do usuário', async () => {
+    // Cria 1 carteira REAL e 1 carteira ESTUDO para Usuário A
     const port1 = await createPortfolio(
-      { name: 'Carteira Dividendos', baseCurrency: 'BRL' },
+      { name: 'Carteira Dividendos', baseCurrency: 'BRL', purpose: 'REAL' },
       userA
     );
     const port2 = await createPortfolio(
-      { name: 'Carteira Growth', baseCurrency: 'BRL' },
+      { name: 'Carteira Growth', baseCurrency: 'BRL', purpose: 'ESTUDO' },
       userA
     );
 
@@ -99,7 +99,7 @@ describe('Integração: Dashboard Consolidado e Histórico de Atividades (Postgr
       userA
     );
 
-    // Na Carteira 1: Compra 100 @ 20.00 (custo 2000, taxas 10)
+    // Na Carteira 1 (REAL): Compra 100 @ 20.00 (custo 2000, taxas 10)
     await createPortfolioEvent(
       {
         portfolioId: port1.id,
@@ -114,7 +114,7 @@ describe('Integração: Dashboard Consolidado e Histórico de Atividades (Postgr
       userA
     );
 
-    // Na Carteira 2: Compra 50 @ 40.00 (custo 2000, taxas 5)
+    // Na Carteira 2 (ESTUDO): Compra 50 @ 40.00 (custo 2000, taxas 5)
     await createPortfolioEvent(
       {
         portfolioId: port2.id,
@@ -146,28 +146,37 @@ describe('Integração: Dashboard Consolidado e Histórico de Atividades (Postgr
       userA
     );
 
-    // Consulta Dashboard do Usuário A
+    // Consulta Dashboard padrão do Usuário A (deve selecionar deterministicamente a carteira REAL)
     const dashboard = await getUserDashboardData(userA);
 
-    expect(dashboard.totalActivePortfolios).toBe(2);
-    expect(dashboard.totalActivePositions).toBe(2); // DASH1 (100) na port1 + DASH2 (30) na port2
+    expect(dashboard.selectedPortfolio?.id).toBe(port1.id);
+    expect(dashboard.selectedPortfolio?.purpose).toBe('REAL');
+    expect(dashboard.totalActivePortfolios).toBe(1);
+    expect(dashboard.totalActivePositions).toBe(1); // Apenas DASH1 (100) na port1
     expect(dashboard.currencyGroups).toHaveLength(1);
 
     const brl = dashboard.currencyGroups[0];
     expect(brl.currency).toBe('BRL');
-    expect(brl.portfoliosCount).toBe(2);
-    expect(brl.activePositionsCount).toBe(2);
-    // Custo investido: Carteira 1 = 2010.00; Carteira 2 = 30 * 40.10 = 1203.00 -> Total = 3213.00
-    expect(brl.totalInvestedCost.toFixed(2)).toBe('3213.00');
-    expect(brl.totalRealizedPnL.toFixed(2)).toBe('196.00');
-    expect(brl.totalFees.toFixed(2)).toBe('17.00'); // 10 + 5 + 2
+    expect(brl.portfoliosCount).toBe(1);
+    expect(brl.activePositionsCount).toBe(1);
+    // Custo investido da Carteira 1 = 2010.00
+    expect(brl.totalInvestedCost.toFixed(2)).toBe('2010.00');
+    expect(brl.totalRealizedPnL.toFixed(2)).toBe('0.00');
+    expect(brl.totalFees.toFixed(2)).toBe('10.00');
 
-    // Feed de Atividades Recentes
-    expect(dashboard.recentEvents).toHaveLength(3);
-    // Mais recente primeiro (Venda do DASH2 em 12/08)
-    expect(dashboard.recentEvents[0].type).toBe('SELL');
-    expect(dashboard.recentEvents[0].assetTicker).toBe('DASH2');
-    expect(dashboard.recentEvents[0].portfolioName).toBe('Carteira Growth');
+    // Feed de Atividades Recentes da Carteira 1 (REAL)
+    expect(dashboard.recentEvents).toHaveLength(1);
+    expect(dashboard.recentEvents[0].type).toBe('BUY');
+    expect(dashboard.recentEvents[0].assetTicker).toBe('DASH1');
+    expect(dashboard.recentEvents[0].portfolioName).toBe('Carteira Dividendos');
+
+    // Consulta explicitamente a Carteira 2 (ESTUDO)
+    const dashboardEstudo = await getUserDashboardData(userA, { portfolioId: port2.id });
+    expect(dashboardEstudo.selectedPortfolio?.id).toBe(port2.id);
+    expect(dashboardEstudo.selectedPortfolio?.purpose).toBe('ESTUDO');
+    expect(dashboardEstudo.currencyGroups[0].totalInvestedCost.toFixed(2)).toBe('1203.00');
+    expect(dashboardEstudo.currencyGroups[0].totalRealizedPnL.toFixed(2)).toBe('196.00');
+    expect(dashboardEstudo.currencyGroups[0].totalFees.toFixed(2)).toBe('7.00'); // 5 + 2
   });
 
   it('2. deve garantir isolamento anti-IDOR: Usuário B não acessa métricas ou histórico de Usuário A', async () => {

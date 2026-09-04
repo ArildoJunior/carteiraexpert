@@ -19,6 +19,7 @@ export function PortfolioList({ portfolios, quotaSummary, billingSummary }: Port
   const router = useRouter();
 
   const canCreate = quotaSummary ? quotaSummary.canCreateMore : true;
+  const hasExistingRealPortfolio = portfolios.some((p) => p.purpose === 'REAL');
 
   return (
     <div className="space-y-6">
@@ -108,14 +109,15 @@ export function PortfolioList({ portfolios, quotaSummary, billingSummary }: Port
             </h3>
             <p className="text-sm text-text-secondary max-w-md mx-auto">
               Você ainda não possui nenhuma carteira. Crie sua primeira carteira
-              para começar a registrar suas compras e vendas.
+              para começar a acompanhar seus ativos e transações.
             </p>
           </div>
           <button
             id="create-first-portfolio-btn"
             type="button"
+            disabled={!canCreate}
             onClick={() => setIsCreateModalOpen(true)}
-            className="px-5 py-2.5 text-sm font-semibold text-action-primary-text bg-action-primary hover:opacity-90 rounded-xl shadow-sm transition-all inline-flex items-center gap-2"
+            className="px-5 py-2.5 text-sm font-semibold rounded-xl text-action-primary-text bg-action-primary hover:opacity-90 shadow-sm transition-all inline-flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary"
           >
             <span>+</span> Criar Minha Primeira Carteira
           </button>
@@ -137,9 +139,23 @@ export function PortfolioList({ portfolios, quotaSummary, billingSummary }: Port
                   >
                     {portfolio.name}
                   </h3>
-                  <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded-md bg-background text-text-secondary border border-border-theme">
-                    {portfolio.baseCurrency}
-                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span
+                      id={`portfolio-purpose-${portfolio.id}`}
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                        portfolio.purpose === 'REAL'
+                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                          : portfolio.purpose === 'ESTUDO'
+                            ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30'
+                            : 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30'
+                      }`}
+                    >
+                      {portfolio.purpose === 'REAL' ? 'Real' : portfolio.purpose === 'ESTUDO' ? 'Estudo' : 'Análise'}
+                    </span>
+                    <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded-md bg-background text-text-secondary border border-border-theme">
+                      {portfolio.baseCurrency}
+                    </span>
+                  </div>
                 </div>
 
                 {portfolio.description ? (
@@ -177,6 +193,7 @@ export function PortfolioList({ portfolios, quotaSummary, billingSummary }: Port
       <PortfolioModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
+        hasExistingRealPortfolio={hasExistingRealPortfolio}
         onSuccess={() => router.refresh()}
       />
     </div>
