@@ -23,6 +23,7 @@ export function PublicNavbar({ currentUser, activePath }: PublicNavbarProps) {
     { label: 'FIIs', href: '/fiis', id: 'nav-quick-link-fiis' },
     { label: 'ETFs', href: '/etfs', id: 'nav-quick-link-etfs' },
     { label: 'BDRs', href: '/bdrs', id: 'nav-quick-link-bdrs' },
+    { label: 'Simulador', href: '/simulador', id: 'nav-quick-link-simulador' },
   ];
 
   const mobileCatalogLinks = [
@@ -31,6 +32,7 @@ export function PublicNavbar({ currentUser, activePath }: PublicNavbarProps) {
     { label: 'Fundos Imobiliários', href: '/fiis', id: 'mobile-nav-link-fiis', badge: 'FII' },
     { label: 'Fundos de Índice', href: '/etfs', id: 'mobile-nav-link-etfs', badge: 'ETF' },
     { label: 'BDRs', href: '/bdrs', id: 'mobile-nav-link-bdrs', badge: 'BDR' },
+    { label: 'Simulador de Juros', href: '/simulador', id: 'mobile-nav-link-simulador', badge: 'PROJEÇÃO' },
   ];
 
   return (

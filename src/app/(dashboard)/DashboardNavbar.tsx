@@ -21,6 +21,7 @@ export function DashboardNavbar({ user }: DashboardNavbarProps) {
     { label: 'Carteiras', href: '/portfolios', id: 'nav-link-portfolios' },
     { label: 'Histórico', href: '/history', id: 'nav-link-history' },
     { label: 'Importações', href: '/import', id: 'nav-link-import' },
+    { label: 'Simulador', href: '/simulador', id: 'nav-link-simulador' },
     { label: 'Planos', href: '/plans', id: 'nav-link-plans' },
   ];
 
@@ -30,6 +31,7 @@ export function DashboardNavbar({ user }: DashboardNavbarProps) {
     { label: 'Fundos Imobiliários', href: '/fiis', id: 'dashboard-mobile-link-fiis', badge: 'FII' },
     { label: 'Fundos de Índice', href: '/etfs', id: 'dashboard-mobile-link-etfs', badge: 'ETF' },
     { label: 'BDRs', href: '/bdrs', id: 'dashboard-mobile-link-bdrs', badge: 'BDR' },
+    { label: 'Simulador de Juros', href: '/simulador', id: 'dashboard-mobile-link-simulador', badge: 'PROJEÇÃO' },
   ];
 
   return (

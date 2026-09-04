@@ -20,6 +20,7 @@ const PUBLIC_STATIC_PATHS = new Set([
   '/fiis',
   '/etfs',
   '/bdrs',
+  '/simulador',
   '/sitemap.xml',
   '/robots.txt',
   '/api/health',
