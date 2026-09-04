@@ -777,7 +777,8 @@ export function calculateUserDashboardSummary(
   }[],
   recentEvents: UserRecentEventItem[] = [],
   selectedPortfolio: DashboardPortfolioMetadata | null = null,
-  availablePortfolios: DashboardPortfolioMetadata[] = []
+  availablePortfolios: DashboardPortfolioMetadata[] = [],
+  cashBalance: Decimal = new Decimal(0)
 ): UserDashboardSummary {
   const currencyMap = new Map<
     string,
@@ -788,6 +789,7 @@ export function calculateUserDashboardSummary(
       totalIncomeReceived: Decimal;
       totalMarketValue: Decimal;
       totalUnrealizedPnL: Decimal;
+      totalCashBalance: Decimal;
       activePositionsCount: number;
       portfoliosCount: number;
     }
@@ -806,6 +808,7 @@ export function calculateUserDashboardSummary(
         totalIncomeReceived: new Decimal(0),
         totalMarketValue: new Decimal(0),
         totalUnrealizedPnL: new Decimal(0),
+        totalCashBalance: new Decimal(0),
         activePositionsCount: 0,
         portfoliosCount: 0,
       });
@@ -821,6 +824,11 @@ export function calculateUserDashboardSummary(
     group.activePositionsCount += item.summary.positions.length;
     group.portfoliosCount += 1;
 
+    // Vincula o saldo de caixa da carteira selecionada à sua moeda base correspondente
+    if (selectedPortfolio && item.portfolioId === selectedPortfolio.id && cur === selectedPortfolio.baseCurrency) {
+      group.totalCashBalance = group.totalCashBalance.plus(cashBalance);
+    }
+
     totalActivePositions += item.summary.positions.length;
   }
 
@@ -834,6 +842,9 @@ export function calculateUserDashboardSummary(
       totalIncomeReceived: data.totalIncomeReceived,
       totalMarketValue: data.totalMarketValue,
       totalUnrealizedPnL: data.totalUnrealizedPnL,
+      totalCashBalance: data.totalCashBalance,
+      // Patrimônio total = valor de mercado dos ativos + saldo de caixa disponível
+      totalEquity: data.totalMarketValue.plus(data.totalCashBalance),
       activePositionsCount: data.activePositionsCount,
       portfoliosCount: data.portfoliosCount,
     }))
@@ -853,6 +864,8 @@ export function calculateUserDashboardSummary(
       totalIncomeReceived: new Decimal(0),
       totalMarketValue: new Decimal(0),
       totalUnrealizedPnL: new Decimal(0),
+      totalCashBalance: new Decimal(0),
+      totalEquity: new Decimal(0),
       activePositionsCount: 0,
       portfoliosCount: 0,
     });
@@ -916,6 +929,8 @@ export function serializeCurrencyGroupSummary(
     totalIncomeReceived: group.totalIncomeReceived.toFixed(8),
     totalMarketValue: group.totalMarketValue.toFixed(8),
     totalUnrealizedPnL: group.totalUnrealizedPnL.toFixed(8),
+    totalCashBalance: group.totalCashBalance.toFixed(8),
+    totalEquity: group.totalEquity.toFixed(8),
     activePositionsCount: group.activePositionsCount,
     portfoliosCount: group.portfoliosCount,
   };

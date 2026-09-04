@@ -24,6 +24,8 @@ export interface CurrencyGroupSummary {
   totalIncomeReceived: Decimal;
   totalMarketValue: Decimal;
   totalUnrealizedPnL: Decimal;
+  totalCashBalance: Decimal;
+  totalEquity: Decimal;
   activePositionsCount: number;
   portfoliosCount: number;
 }
@@ -69,6 +71,8 @@ export interface SerializedCurrencyGroupSummary {
   totalIncomeReceived: string;
   totalMarketValue: string;
   totalUnrealizedPnL: string;
+  totalCashBalance: string;
+  totalEquity: string;
   activePositionsCount: number;
   portfoliosCount: number;
 }

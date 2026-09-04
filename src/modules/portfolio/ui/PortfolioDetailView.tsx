@@ -7,6 +7,7 @@ import type { Asset } from '../domain/asset.types';
 import type { SerializedPortfolioPositionsSummary } from '../domain/position.types';
 import type { SerializedPortfolioEvolutionSummary } from '../domain/portfolio-evolution.types';
 import type { UserChartPreferencesMap } from '../domain/chart-preferences.types';
+import type { SerializedCashSummary, SerializedCashTransaction } from '../domain/cash.types';
 import type {
   SubscriptionRightWithOfferAndAssets,
   SubscriptionOfferWithAssets,
@@ -19,6 +20,9 @@ import { PortfolioEventTable } from './PortfolioEventTable';
 import { SubscriptionPanel } from '@/modules/corporate-actions/ui/SubscriptionPanel';
 import { TransactionModal } from './TransactionModal';
 import { CancelEventModal } from './CancelEventModal';
+import { CashSummaryCard } from './CashSummaryCard';
+import { CashTransactionList } from './CashTransactionList';
+import { CashTransactionModal } from './CashTransactionModal';
 import { useRouter } from 'next/navigation';
 
 interface PortfolioDetailViewProps {
@@ -30,6 +34,8 @@ interface PortfolioDetailViewProps {
   subscriptions?: SubscriptionRightWithOfferAndAssets[];
   availableOffers?: SubscriptionOfferWithAssets[];
   chartPreferences?: UserChartPreferencesMap;
+  cashSummary?: SerializedCashSummary;
+  cashTransactions?: SerializedCashTransaction[];
 }
 
 export function PortfolioDetailView({
@@ -41,10 +47,35 @@ export function PortfolioDetailView({
   subscriptions = [],
   availableOffers = [],
   chartPreferences,
+  cashSummary,
+  cashTransactions = [],
 }: PortfolioDetailViewProps) {
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
   const [eventToCancel, setEventToCancel] = useState<PortfolioEvent | null>(null);
+
+  // Estados para modal de caixa
+  const [isCashModalOpen, setIsCashModalOpen] = useState(false);
+  const [cashModalMode, setCashModalMode] = useState<'DEPOSIT' | 'WITHDRAWAL' | 'NEW_ACCOUNT'>('DEPOSIT');
+  const [selectedCashAccountId, setSelectedCashAccountId] = useState<string | undefined>(undefined);
+
   const router = useRouter();
+
+  function handleOpenDeposit(accountId?: string) {
+    setSelectedCashAccountId(accountId);
+    setCashModalMode('DEPOSIT');
+    setIsCashModalOpen(true);
+  }
+
+  function handleOpenWithdraw(accountId?: string) {
+    setSelectedCashAccountId(accountId);
+    setCashModalMode('WITHDRAWAL');
+    setIsCashModalOpen(true);
+  }
+
+  function handleOpenNewAccount() {
+    setCashModalMode('NEW_ACCOUNT');
+    setIsCashModalOpen(true);
+  }
 
   return (
     <div className="space-y-8">
@@ -55,13 +86,25 @@ export function PortfolioDetailView({
         onNewTransaction={() => setIsTransactionModalOpen(true)}
       />
 
-      {/* 2. Bloco de Posições Consolidadas em Custódia */}
+      {/* 2. Bloco de Caixa e Saldo Disponível */}
+      {cashSummary && (
+        <CashSummaryCard
+          portfolioId={portfolio.id}
+          cashSummary={cashSummary}
+          portfolioStatus={portfolio.status}
+          onOpenDeposit={handleOpenDeposit}
+          onOpenWithdraw={handleOpenWithdraw}
+          onOpenNewAccount={handleOpenNewAccount}
+        />
+      )}
+
+      {/* 3. Bloco de Posições Consolidadas em Custódia */}
       <PositionTable
         summary={positionsSummary}
         baseCurrency={portfolio.baseCurrency}
       />
 
-      {/* 3. Bloco de Gráficos de Evolução Patrimonial Histórica */}
+      {/* 4. Bloco de Gráficos de Evolução Patrimonial Histórica */}
       {evolutionSummary && (
         <PortfolioEvolutionChart
           initialSummary={evolutionSummary}
@@ -69,7 +112,7 @@ export function PortfolioDetailView({
         />
       )}
 
-      {/* 4. Bloco de Gráficos de Alocação e Composição Patrimonial */}
+      {/* 5. Bloco de Gráficos de Alocação e Composição Patrimonial */}
       {positionsSummary.positions.length > 0 && (
         <PortfolioAllocationCharts
           positions={positionsSummary.positions}
@@ -78,7 +121,7 @@ export function PortfolioDetailView({
         />
       )}
 
-      {/* 5. Bloco de Direitos de Subscrição Segregados */}
+      {/* 6. Bloco de Direitos de Subscrição Segregados */}
       <SubscriptionPanel
         portfolioId={portfolio.id}
         subscriptions={subscriptions}
@@ -86,7 +129,27 @@ export function PortfolioDetailView({
         onRefresh={() => router.refresh()}
       />
 
-      {/* 6. Bloco de Extrato de Operações Registradas */}
+      {/* 7. Bloco de Extrato de Movimentações de Caixa */}
+      {cashSummary && (
+        <div className="space-y-3" id="cash-transactions-section">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-text-primary tracking-tight">
+              Movimentações de Caixa
+            </h2>
+            <span className="text-xs text-text-secondary">
+              {cashTransactions.length} {cashTransactions.length === 1 ? 'registro' : 'registros'}
+            </span>
+          </div>
+
+          <CashTransactionList
+            transactions={cashTransactions}
+            currency={portfolio.baseCurrency}
+            isFrozen={portfolio.status === 'frozen'}
+          />
+        </div>
+      )}
+
+      {/* 8. Bloco de Extrato de Operações Registradas */}
       <div className="space-y-3" id="portfolio-events-section">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-text-primary tracking-tight">
@@ -105,7 +168,7 @@ export function PortfolioDetailView({
         />
       </div>
 
-      {/* Modal de Nova Operação */}
+      {/* Modal de Nova Operação com Ativo */}
       <TransactionModal
         isOpen={isTransactionModalOpen}
         onClose={() => setIsTransactionModalOpen(false)}
@@ -113,13 +176,26 @@ export function PortfolioDetailView({
         onSuccess={() => router.refresh()}
       />
 
-      {/* Modal de Cancelamento de Operação */}
+      {/* Modal de Cancelamento de Operação com Ativo */}
       <CancelEventModal
         isOpen={Boolean(eventToCancel)}
         onClose={() => setEventToCancel(null)}
         eventToCancel={eventToCancel}
         onSuccess={() => router.refresh()}
       />
+
+      {/* Modal de Transação de Caixa */}
+      {cashSummary && (
+        <CashTransactionModal
+          portfolioId={portfolio.id}
+          accounts={cashSummary.accounts}
+          initialAccountId={selectedCashAccountId}
+          initialMode={cashModalMode}
+          isOpen={isCashModalOpen}
+          onClose={() => setIsCashModalOpen(false)}
+          onSuccess={() => router.refresh()}
+        />
+      )}
     </div>
   );
 }

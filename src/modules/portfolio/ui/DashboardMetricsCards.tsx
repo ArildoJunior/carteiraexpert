@@ -77,6 +77,38 @@ export function DashboardMetricsCards({
 
       {/* Cards de Resumo */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+        {/* Patrimônio Total */}
+        <div className="bg-surface border border-action-primary/40 rounded-2xl p-4 sm:p-5 shadow-xs space-y-1.5 hover:border-action-primary transition-colors bg-gradient-to-br from-surface to-action-primary/5">
+          <p className="text-[11px] font-semibold text-action-primary uppercase tracking-wider leading-tight">
+            Patrimônio Total
+          </p>
+          <p
+            id="dashboard-total-equity"
+            className="text-lg sm:text-xl font-bold text-text-primary tracking-tight font-mono tabular-nums leading-tight"
+          >
+            {formatMoney(activeGroup.totalEquity || '0', activeGroup.currency)}
+          </p>
+          <p className="text-[11px] text-text-secondary leading-tight">
+            Ativos a mercado + saldo em caixa
+          </p>
+        </div>
+
+        {/* Saldo em Caixa */}
+        <div className="bg-surface border border-border-theme rounded-2xl p-4 sm:p-5 shadow-xs space-y-1.5 hover:border-action-primary/30 transition-colors">
+          <p className="text-[11px] font-semibold text-text-secondary uppercase tracking-wider leading-tight">
+            Saldo em Caixa
+          </p>
+          <p
+            id="dashboard-total-cash"
+            className="text-lg sm:text-xl font-bold text-text-primary tracking-tight font-mono tabular-nums leading-tight"
+          >
+            {formatMoney(activeGroup.totalCashBalance || '0', activeGroup.currency)}
+          </p>
+          <p className="text-[11px] text-text-secondary leading-tight">
+            Recursos não investidos
+          </p>
+        </div>
+
         {/* Total em Custódia */}
         <div className="bg-surface border border-border-theme rounded-2xl p-4 sm:p-5 shadow-xs space-y-1.5 hover:border-action-primary/30 transition-colors">
           <p className="text-[11px] font-semibold text-text-secondary uppercase tracking-wider leading-tight">

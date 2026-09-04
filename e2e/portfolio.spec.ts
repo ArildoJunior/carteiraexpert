@@ -128,7 +128,7 @@ test.describe('E2E: Carteiras, Posições e Operações Manuais (Pacote 03.02)',
     await expect(
       page.locator('#portfolio-events-table').getByText(customTicker.toUpperCase())
     ).toBeVisible();
-    await expect(page.locator('text=Compra')).toBeVisible();
+    await expect(page.locator('#portfolio-events-table').getByText('Compra')).toBeVisible();
 
     // 8. Tenta Registrar Venda EXCESSIVA (150 > 100) -> Deve Rejeitar
     await page.click('#btn-new-transaction');

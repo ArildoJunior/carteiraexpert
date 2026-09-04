@@ -8,6 +8,10 @@ import {
   getSerializedPortfolioPositions,
   getSerializedPortfolioEvolutionData,
   getUserChartPreferences,
+  getPortfolioCashSummary,
+  serializeCashSummary,
+  listCashTransactionsByAccount,
+  serializeCashTransaction,
 } from '@/modules/portfolio/server';
 import { listActiveSubscriptionsByPortfolio, listAvailableOffers } from '@/modules/corporate-actions/server/subscription.service';
 import { PortfolioDetailView } from '@/modules/portfolio/ui/PortfolioDetailView';
@@ -70,13 +74,29 @@ export default async function PortfolioDetailPage({
     evolutionSummary,
     subscriptions,
     availableOffers,
+    rawCashSummary,
   ] = await Promise.all([
     listPortfolioEventsByPortfolio(id, user),
     getSerializedPortfolioPositions(id, user),
     getSerializedPortfolioEvolutionData(id, user, { period: preferredPeriod }),
     listActiveSubscriptionsByPortfolio(id, user),
     listAvailableOffers(user),
+    getPortfolioCashSummary(id, user),
   ]);
+
+  const cashSummary = serializeCashSummary(rawCashSummary);
+
+  // Carrega as transações de caixa de todas as contas ativas da carteira
+  const cashTransactionsByAccount = await Promise.all(
+    rawCashSummary.accounts.map(async (acc) => {
+      const txs = await listCashTransactionsByAccount(acc.id, user);
+      return txs.map(serializeCashTransaction);
+    })
+  );
+
+  const cashTransactions = cashTransactionsByAccount
+    .flat()
+    .sort((a, b) => new Date(b.transactionDate).getTime() - new Date(a.transactionDate).getTime());
 
   // Mapeia os ativos únicos presentes nos eventos para exibição de ticker e nome
   const uniqueAssetIds = Array.from(new Set(events.map((e) => e.assetId)));
@@ -104,6 +124,8 @@ export default async function PortfolioDetailPage({
         subscriptions={subscriptions}
         availableOffers={availableOffers}
         chartPreferences={chartPreferences}
+        cashSummary={cashSummary}
+        cashTransactions={cashTransactions}
       />
     </div>
   );

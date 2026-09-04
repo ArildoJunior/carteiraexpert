@@ -8,6 +8,7 @@ import {
   listUserRecentEvents,
   listUserHistoryEvents,
 } from './portfolio-event.service';
+import { getPortfolioCashSummary } from './cash.service';
 import {
   calculateUserDashboardSummary,
   serializeUserDashboardData,
@@ -136,11 +137,15 @@ export async function getUserDashboardData(
     executor
   );
 
+  // 5. Consulta o saldo de caixa segregado da carteira selecionada
+  const cashSummary = await getPortfolioCashSummary(selectedPortfolio.id, user, executor);
+
   return calculateUserDashboardSummary(
     portfolioSummaries,
     recentEvents,
     selectedMetadata,
-    availablePortfolios
+    availablePortfolios,
+    cashSummary.totalCashBalance
   );
 }
 

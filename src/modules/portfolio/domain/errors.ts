@@ -123,6 +123,43 @@ export class InvalidPortfolioPurposeError extends Error {
   }
 }
 
+export class CashAccountNotFoundError extends Error {
+  constructor(message = 'Conta de caixa não encontrada.') {
+    super(message);
+    this.name = 'CashAccountNotFoundError';
+  }
+}
+
+export class CashAccountArchivedError extends Error {
+  constructor(message = 'Não é permitido realizar movimentações em contas de caixa arquivadas.') {
+    super(message);
+    this.name = 'CashAccountArchivedError';
+  }
+}
+
+export class InsufficientCashBalanceError extends Error {
+  public readonly requested: string;
+  public readonly available: string;
+  public readonly currency: string;
+
+  constructor(requested: string, available: string, currency = 'BRL') {
+    super(
+      `Saldo insuficiente na conta de caixa. Solicitado: ${requested} ${currency}, Disponível: ${available} ${currency}.`
+    );
+    this.name = 'InsufficientCashBalanceError';
+    this.requested = requested;
+    this.available = available;
+    this.currency = currency;
+  }
+}
+
+export class InvalidCashTransactionError extends Error {
+  constructor(message = 'Movimentação de caixa inválida.') {
+    super(message);
+    this.name = 'InvalidCashTransactionError';
+  }
+}
+
 export {
   PortfolioFrozenError,
   PlanLimitExceededError,

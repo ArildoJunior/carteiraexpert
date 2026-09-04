@@ -23,6 +23,7 @@ import {
   assertCanCreatePortfolio,
   assertPortfolioWritable,
 } from '../../plans/server/plan.service';
+import { createDefaultCashAccountInTransaction } from './cash.service';
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -117,6 +118,15 @@ export async function createPortfolioInTransaction(
     },
     { allowlist: ['name', 'description', 'baseCurrency', 'status', 'purpose'] },
     tx
+  );
+
+  // Criação automática e transacional da Conta Corrente Principal da carteira
+  await createDefaultCashAccountInTransaction(
+    createdPortfolio.id,
+    createdPortfolio.baseCurrency,
+    user.id,
+    tx,
+    auditLogger
   );
 
   return createdPortfolio;
