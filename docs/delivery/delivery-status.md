@@ -88,7 +88,11 @@ O banco de dados relacional oficial do CarteiraExpert é composto exatamente pel
 37. `options_contracts`: Cadastro e gestão de contratos de opções de compra e venda vinculados a carteiras e ativos subjacentes, com strike, vencimento, estilo, tipo e rastreabilidade de auditoria;
 38. `tax_calculation_runs`: Registro de execuções do motor fiscal por usuário e ano-base com controle de concorrência e rastreabilidade;
 39. `tax_monthly_summaries`: Resumos fiscais mensais consolidados por carteira, ano e mês com vendas, custos, PnL, alíquotas e imposto estimado;
-40. `tax_loss_credits`: Controle FIFO de créditos de prejuízos apurados em meses tributáveis com prazo decadencial de 5 anos.
+40. `tax_loss_credits`: Controle FIFO de créditos de prejuízos apurados em meses tributáveis com prazo decadencial de 5 anos;
+41. `editorial_documents`: Documentos e conteúdos editoriais com slug, tipo, status, visibilidade, versão e flags regulatórias;
+42. `editorial_versions`: Histórico imutável de versões textuais com hash SHA-256 e proveniência (`MANUAL`, `AI_DRAFT`, etc.);
+43. `editorial_reviews`: Registros de revisões humanas com parecer, decisão (`APPROVE`, `REJECT`, `REQUEST_CHANGES`) e rastreabilidade;
+44. `editorial_ai_executions`: Trilha auditada de execuções de assistência de IA com prompts e respostas sanitizados.
 
 ---
 
@@ -96,7 +100,6 @@ O banco de dados relacional oficial do CarteiraExpert é composto exatamente pel
 
 Permanecem como regras de negócio aprovadas ou capacidades planejadas para as próximas etapas:
 
-- **Etapa 10 — IA Editorial Interna com Fluxo de Revisão Humana Obrigatória:** Pipeline editorial interno apoiado por IA para documentos públicos de RI, com aprovação humana mandatória pré-publicação;
 - **Automação da Ingestão de Mercado:** Rotinas agendadas (cron jobs / workers em background) para execução periódica da ingestão e streaming via WebSocket;
 - **Expansão de Formatos de Importação:** Suporte a arquivos binários (`.xlsx`) e extração assistida de notas em PDF com bucket privado e workers assíncronos (Fase 07 expandida);
 - **Expansão de Gateways e Pagamentos:** Conexão de gateways reais (Stripe/Asaas), webhooks ativos com verificação de assinatura criptográfica e rotinas em background de expiração.
@@ -107,9 +110,8 @@ Permanecem como regras de negócio aprovadas ou capacidades planejadas para as p
 
 - [x] **Typecheck:** Arquitetura TypeScript em Strict Mode (`pnpm typecheck` aprovado com zero erros).
 - [x] **Lint:** Configuração Biome integrada para linting e formatação (`pnpm lint` e `biome check` aprovados com zero erros).
-- [x] **Testes Unitários:** Comprovados no repositório (**100 arquivos e 1.189 testes aprovados** via `pnpm run test:unit`, cobrindo motor fiscal, isenção de R$ 20k, day-trade, compensação de prejuízos, motores determinísticos de projeção, Black-Scholes, calendário de opções B3, valuation teórico, schemas, gráficos, preferências, catálogo, billing, quotas, planos, contas de caixa e custódia).
-- [x] **Testes de Integração:** Comprovados no repositório (**52 arquivos e 486 testes aprovados** via `pnpm run test:integration` em PostgreSQL real, cobrindo apuração fiscal anual, isolamento multitenant anti-IDOR, concorrência, preferências tributárias, confirmação de importações, ciclo de vida de opções com anti-IDOR e auditoria, parsing, carteiras, contas de caixa, custódia institucional, catálogo público, preferências de gráficos, market data, planos e billing).
-- [x] **Testes End-to-End (E2E):** Suítes Playwright estruturadas (**16 arquivos e 187+ testes aprovados** via `pnpm run test:e2e` cobrindo o módulo fiscal `/fiscal`, módulo operacional de opções `/options`, simulador de juros compostos `/simulador`, contas de custódia, importações completas com resolução explícita de ativos e isolamento IDOR, autenticação, consentimento LGPD, carteiras, catálogo público desktop/mobile, quotas de planos, subscrições e preferências de gráficos).
-- [x] **Verificação Física do Schema:** 40 tabelas físicas catalogadas e 100% validadas pelo Schema Guardian no banco de testes e no banco de desenvolvimento (`pnpm db:verify` e `pnpm db:verify -- --test`).
+- [x] **Testes Unitários:** Comprovados no repositório (**104 arquivos e 1.223+ testes aprovados** via `pnpm run test:unit`, cobrindo máquina de estados editorial, guardrails determinísticos, schemas Zod, provedor de IA mock, motor fiscal, isenção de R$ 20k, day-trade, compensação de prejuízos, motores determinísticos de projeção, Black-Scholes, calendário de opções B3, valuation teórico, schemas, gráficos, preferências, catálogo, billing, quotas, planos, contas de caixa e custódia).
+- [x] **Testes de Integração:** Comprovados no repositório (**53 arquivos e 499+ testes aprovados** via `pnpm run test:integration` em PostgreSQL real, cobrindo workflow editorial completo com revisão humana obrigatória e segregação de funções, apuração fiscal anual, isolamento multitenant anti-IDOR, concorrência, preferências tributárias, confirmação de importações, ciclo de vida de opções com anti-IDOR e auditoria, parsing, carteiras, contas de caixa, custódia institucional, catálogo público, preferências de gráficos, market data, planos e billing).
+- [x] **Testes End-to-End (E2E):** Suítes Playwright estruturadas (**17 arquivos e 188+ testes aprovados** via `pnpm run test:e2e` cobrindo o fluxo editorial e IA `/editorial`, módulo fiscal `/fiscal`, módulo operacional de opções `/options`, simulador de juros compostos `/simulador`, contas de custódia, importações completas com resolução explícita de ativos e isolamento IDOR, autenticação, consentimento LGPD, carteiras, catálogo público desktop/mobile, quotas de planos, subscrições e preferências de gráficos).
+- [x] **Verificação Física do Schema:** 44 tabelas físicas catalogadas e 100% validadas pelo Schema Guardian no banco de testes e no banco de desenvolvimento (`pnpm db:verify` e `pnpm db:verify -- --test`).
 - [x] **Build de Produção:** Next.js 16 compilado com sucesso (Turbopack) com páginas estáticas/dinâmicas geradas.
-

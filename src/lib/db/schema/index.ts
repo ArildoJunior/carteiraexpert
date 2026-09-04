@@ -15,3 +15,4 @@ export * from './cash';
 export * from './custody';
 export * from './options';
 export * from './tax';
+export * from './editorial';

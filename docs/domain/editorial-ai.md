@@ -25,18 +25,33 @@ Quando implementado, o fluxo de apoio editorial deve seguir estritamente as segu
 7. **Decisão Humana:** Aprovação ou rejeição formal do conteúdo pelo revisor;
 8. **Publicação com Vínculo:** Conteúdos aprovados são publicados mantendo vínculo permanente e rastreável com o documento público de origem e exibindo aviso editorial claro.
 
-## 3. Estado de Implementação
+## 3. Estado de Implementação (Etapa 10 — Implementada e Validada)
 
-- **Módulo `src/modules/editorial-ai/`:** Encontra-se sem código ativo ou tabelas de banco criadas (*Planejado, não implementado*).
-- **Provedores de LLM e Filas de Processamento:** Não há chaves de API de IA, modelos conectados ou filas de processamento assíncrono configuradas no backend de produção (*Planejado, não implementado*).
+- **Módulo `src/modules/editorial/`:** Implementado com arquitetura limpa em camadas (domain, server, ui).
+- **Catálogo Físico e Schema Guardian:** 4 novas tabelas versionadas criadas e validadas pela migração `0023_add_editorial_tables.sql`:
+  1. `editorial_documents`: Documento mestre com título, slug, tipo, status, visibilidade, versão corrente, flags regulatórias e metadata.
+  2. `editorial_versions`: Histórico imutável de versões com hash SHA-256 de integridade e registro de origem (`MANUAL`, `AI_DRAFT`, `AI_SUGGESTION`, `REVISION`).
+  3. `editorial_reviews`: Registro de revisões humanas obrigatórias com decisão (`APPROVE`, `REJECT`, `REQUEST_CHANGES`), parecer do revisor e flags regulatórias.
+  4. `editorial_ai_executions`: Trilha auditada de chamadas à IA com prompt sanitizado, resposta sanitizada e status.
+- **Máquina de Estados e Segregação de Funções:**
+  - Fluxo: `DRAFT -> IN_REVIEW -> CHANGES_REQUESTED -> APPROVED -> PUBLISHED -> ARCHIVED`.
+  - Proibição absoluta de publicação direta sem aprovação prévia.
+  - Proibição de ações de IA transicionarem status para `APPROVED` ou `PUBLISHED`.
+  - Proibição de autoaprovação (o autor não pode aprovar seu próprio conteúdo).
+  - Justificativa textual obrigatória para solicitações de ajuste ou reprovação.
+- **Guardrails Determinísticos de Governança:**
+  - `BLOCKER`: Injeção de scripts HTML, promessa de rentabilidade ("lucro garantido", "sem risco"), recomendações diretas de investimento ("compre agora", "venda imediatamente"), certeza sobre movimentos de mercado ("com certeza vai subir") e alegações de emissão de DARF oficial.
+  - `WARNING`: Ausência de disclaimers regulatórios CVM/ANBIMA para análises de mercado, guias tributários e derivativos.
+- **Interface e Rota:** Página `/editorial` com banner regulatório permanente (`#editorial-regulatory-disclaimer`), lista com filtros, editor com assistência de IA e painel de revisão humana.
 
 ## 4. Matriz de Estado das Capacidades de IA
 
 | Capacidade | Estado Real no Código | Classificação |
 |---|---|---|
-| Diretrizes de governança e fluxo editorial documentados | Documentado | **Regra aprovada, implementação pendente** |
-| Infraestrutura de backend para processamento editorial de IA | Não implementado | **Planejado, não implementado** |
-| Integração com provedores de IA / LLMs | Não implementado | **Planejado, não implementado** |
+| Diretrizes de governança e fluxo editorial documentados | Documentado | **Implementado e validado** |
+| Infraestrutura de backend e schema para governança editorial de IA | Implementado (`src/modules/editorial/server`) | **Implementado e validado** |
+| Provedor de IA desacoplado com sanitização preventiva | Implementado (`MockEditorialAiProvider`) | **Implementado e validado** |
+| Painel de revisão humana obrigatória e máquina de estados | Implementado (`src/modules/editorial/ui/EditorialReviewPanel.tsx`) | **Implementado e validado** |
 | Chat ou assistente conversacional de IA para o usuário final | Não suportado | **Fora do escopo permanente** |
 | Publicação automática de conteúdos por IA sem revisão humana | Não suportado | **Fora do escopo permanente** |
 | Utilização de IA para cálculos patrimoniais ou tributários | Não suportado | **Fora do escopo permanente** |

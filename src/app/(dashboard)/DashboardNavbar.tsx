@@ -24,6 +24,7 @@ export function DashboardNavbar({ user }: DashboardNavbarProps) {
     { label: 'Simulador', href: '/simulador', id: 'nav-link-simulador' },
     { label: 'Opções', href: '/options', id: 'nav-link-options' },
     { label: 'Fiscal', href: '/fiscal', id: 'nav-link-fiscal' },
+    { label: 'Editorial', href: '/editorial', id: 'nav-link-editorial' },
     { label: 'Planos', href: '/plans', id: 'nav-link-plans' },
   ];
 
@@ -36,6 +37,7 @@ export function DashboardNavbar({ user }: DashboardNavbarProps) {
     { label: 'Simulador de Juros', href: '/simulador', id: 'dashboard-mobile-link-simulador', badge: 'PROJEÇÃO' },
     { label: 'Opções e Derivativos', href: '/options', id: 'dashboard-mobile-link-options', badge: 'DERIVATIVOS' },
     { label: 'Apoio Fiscal IRPF', href: '/fiscal', id: 'dashboard-mobile-link-fiscal', badge: 'IRPF' },
+    { label: 'Editorial e IA', href: '/editorial', id: 'dashboard-mobile-link-editorial', badge: 'INTERNO' },
   ];
 
   return (

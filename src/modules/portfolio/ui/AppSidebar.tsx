@@ -48,6 +48,12 @@ export const APP_NAVIGATION_GROUPS: NavGroup[] = [
       { label: 'Planos', href: '/plans', id: 'nav-link-plans' },
     ],
   },
+  {
+    title: 'Governança & Editorial',
+    items: [
+      { label: 'Editorial (IA)', href: '/editorial', id: 'nav-link-editorial', badge: 'INTERNO' },
+    ],
+  },
 ];
 
 interface AppSidebarProps {
