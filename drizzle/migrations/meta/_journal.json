@@ -141,6 +141,13 @@
       "when": 1788523000000,
       "tag": "0019_add_cash_accounts_and_transactions",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1788526000000,
+      "tag": "0020_add_custody_entities",
+      "breakpoints": true
     }
   ]
 }

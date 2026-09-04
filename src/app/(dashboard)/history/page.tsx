@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { getCurrentUser } from '@/modules/identity/server/current-user';
 import { listPortfolios } from '@/modules/portfolio/server/portfolio.service';
+import { getCustodyAccountsByUser } from '@/modules/portfolio/server/custody.service';
 import { getSerializedUserHistoryData } from '@/modules/portfolio/server/dashboard.service';
 import { HistoryFilterBar } from '@/modules/portfolio/ui/HistoryFilterBar';
 import { Decimal } from '@/lib/decimal';
@@ -23,6 +24,7 @@ interface HistoryPageProps {
   searchParams: Promise<{
     tab?: string;
     portfolioId?: string;
+    custodyAccountId?: string;
     type?: string;
     ticker?: string;
     startDate?: string;
@@ -142,14 +144,21 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
   }
 
   // Aba Padrão: Extrato de Operações do Usuário
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   const rawType = params.type;
   const validatedType: PortfolioEventType | undefined =
     rawType && (PORTFOLIO_EVENT_TYPES as readonly string[]).includes(rawType)
       ? (rawType as PortfolioEventType)
       : undefined;
 
+  const validatedCustodyAccountId =
+    params.custodyAccountId && UUID_REGEX.test(params.custodyAccountId)
+      ? params.custodyAccountId
+      : undefined;
+
   const filterOptions = {
-    portfolioId: params.portfolioId || undefined,
+    portfolioId: params.portfolioId && UUID_REGEX.test(params.portfolioId) ? params.portfolioId : undefined,
+    custodyAccountId: validatedCustodyAccountId,
     type: validatedType,
     ticker: params.ticker ? params.ticker.trim().toUpperCase() : undefined,
     startDate: params.startDate ? new Date(`${params.startDate}T00:00:00.000Z`) : undefined,
@@ -158,15 +167,24 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
     limit,
   };
 
-  const [historyData, portfolios] = await Promise.all([
+  const [historyData, portfolios, userCustodyAccounts] = await Promise.all([
     getSerializedUserHistoryData(user, filterOptions),
     listPortfolios(user),
+    getCustodyAccountsByUser(user),
   ]);
+
+  const custodyAccountOptions = userCustodyAccounts.map((acc) => ({
+    id: acc.id,
+    name: acc.name,
+    institutionName: acc.institution.name,
+    portfolioId: acc.portfolioId,
+  }));
 
   // Função auxiliar para construir links de paginação preservando filtros
   function buildPageUrl(targetPage: number): string {
     const q = new URLSearchParams();
     if (params.portfolioId) q.set('portfolioId', params.portfolioId);
+    if (params.custodyAccountId) q.set('custodyAccountId', params.custodyAccountId);
     if (params.type) q.set('type', params.type);
     if (params.ticker) q.set('ticker', params.ticker);
     if (params.startDate) q.set('startDate', params.startDate);
@@ -232,7 +250,9 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
       {/* Barra de Filtros Combinados */}
       <HistoryFilterBar
         portfolios={portfolios}
+        custodyAccounts={custodyAccountOptions}
         selectedPortfolioId={params.portfolioId}
+        selectedCustodyAccountId={params.custodyAccountId}
         selectedType={params.type}
         selectedTicker={params.ticker}
         selectedStartDate={params.startDate}
@@ -279,7 +299,7 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
             <p className="text-xs text-text-secondary max-w-sm mx-auto">
               Tente ajustar os critérios de filtro ou cadastre novas transações manuais em suas carteiras.
             </p>
-            {(params.portfolioId || params.type || params.ticker || params.startDate || params.endDate) && (
+            {(params.portfolioId || params.custodyAccountId || params.type || params.ticker || params.startDate || params.endDate) && (
               <div className="pt-2">
                 <Link
                   id="btn-empty-clear-filters"

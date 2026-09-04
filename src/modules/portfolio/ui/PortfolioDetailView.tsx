@@ -9,6 +9,10 @@ import type { SerializedPortfolioEvolutionSummary } from '../domain/portfolio-ev
 import type { UserChartPreferencesMap } from '../domain/chart-preferences.types';
 import type { SerializedCashSummary, SerializedCashTransaction } from '../domain/cash.types';
 import type {
+  SerializedCustodyAccount,
+  SerializedCustodyInstitution,
+} from '../domain/custody.types';
+import type {
   SubscriptionRightWithOfferAndAssets,
   SubscriptionOfferWithAssets,
 } from '@/modules/corporate-actions/server/subscription.service';
@@ -23,6 +27,8 @@ import { CancelEventModal } from './CancelEventModal';
 import { CashSummaryCard } from './CashSummaryCard';
 import { CashTransactionList } from './CashTransactionList';
 import { CashTransactionModal } from './CashTransactionModal';
+import { CustodyAccountsCard } from './CustodyAccountsCard';
+import { CustodyAccountModal } from './CustodyAccountModal';
 import { useRouter } from 'next/navigation';
 
 interface PortfolioDetailViewProps {
@@ -36,6 +42,8 @@ interface PortfolioDetailViewProps {
   chartPreferences?: UserChartPreferencesMap;
   cashSummary?: SerializedCashSummary;
   cashTransactions?: SerializedCashTransaction[];
+  custodyAccounts?: SerializedCustodyAccount[];
+  custodyInstitutions?: SerializedCustodyInstitution[];
 }
 
 export function PortfolioDetailView({
@@ -49,6 +57,8 @@ export function PortfolioDetailView({
   chartPreferences,
   cashSummary,
   cashTransactions = [],
+  custodyAccounts = [],
+  custodyInstitutions = [],
 }: PortfolioDetailViewProps) {
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
   const [eventToCancel, setEventToCancel] = useState<PortfolioEvent | null>(null);
@@ -57,6 +67,9 @@ export function PortfolioDetailView({
   const [isCashModalOpen, setIsCashModalOpen] = useState(false);
   const [cashModalMode, setCashModalMode] = useState<'DEPOSIT' | 'WITHDRAWAL' | 'NEW_ACCOUNT'>('DEPOSIT');
   const [selectedCashAccountId, setSelectedCashAccountId] = useState<string | undefined>(undefined);
+
+  // Estado para modal de conta de custódia
+  const [isCustodyModalOpen, setIsCustodyModalOpen] = useState(false);
 
   const router = useRouter();
 
@@ -97,6 +110,14 @@ export function PortfolioDetailView({
           onOpenNewAccount={handleOpenNewAccount}
         />
       )}
+
+      {/* 2.1. Bloco de Instituições de Custódia e Corretoras */}
+      <CustodyAccountsCard
+        accounts={custodyAccounts}
+        portfolioId={portfolio.id}
+        onOpenNewAccount={() => setIsCustodyModalOpen(true)}
+        onRefresh={() => router.refresh()}
+      />
 
       {/* 3. Bloco de Posições Consolidadas em Custódia */}
       <PositionTable
@@ -173,6 +194,7 @@ export function PortfolioDetailView({
         isOpen={isTransactionModalOpen}
         onClose={() => setIsTransactionModalOpen(false)}
         portfolioId={portfolio.id}
+        custodyAccounts={custodyAccounts}
         onSuccess={() => router.refresh()}
       />
 
@@ -196,6 +218,15 @@ export function PortfolioDetailView({
           onSuccess={() => router.refresh()}
         />
       )}
+
+      {/* Modal de Nova Conta de Custódia */}
+      <CustodyAccountModal
+        isOpen={isCustodyModalOpen}
+        onClose={() => setIsCustodyModalOpen(false)}
+        portfolioId={portfolio.id}
+        institutions={custodyInstitutions}
+        onSuccess={() => router.refresh()}
+      />
     </div>
   );
 }

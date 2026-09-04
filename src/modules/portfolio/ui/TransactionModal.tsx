@@ -9,6 +9,8 @@ import {
 } from '../server/portfolio.actions';
 import type { PortfolioEvent } from '../domain/portfolio-event.types';
 import type { Asset } from '../domain/asset.types';
+import type { SerializedCustodyAccount } from '../domain/custody.types';
+import { getCustodyAccountsAction } from '../server/custody.actions';
 import { AssetSearchSelect } from './AssetSearchSelect';
 import { CustomAssetModal } from './CustomAssetModal';
 
@@ -18,6 +20,7 @@ interface TransactionModalProps {
   portfolioId: string;
   onSuccess?: () => void;
   initialAsset?: Asset | null;
+  custodyAccounts?: SerializedCustodyAccount[];
 }
 
 export function TransactionModal({
@@ -26,6 +29,7 @@ export function TransactionModal({
   portfolioId,
   onSuccess,
   initialAsset,
+  custodyAccounts,
 }: TransactionModalProps) {
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(initialAsset ?? null);
   const [transactionType, setTransactionType] = useState<'BUY' | 'SELL' | 'MANUAL_ADJUSTMENT'>('BUY');
@@ -33,6 +37,9 @@ export function TransactionModal({
   const [availableQty, setAvailableQty] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [state, setState] = useState<ActionResult<PortfolioEvent>>({ success: false });
+  const [custodyAccountsList, setCustodyAccountsList] = useState<SerializedCustodyAccount[]>(
+    custodyAccounts ?? []
+  );
 
   // Estado para abertura do modal de cadastro de ativo customizado
   const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
@@ -47,6 +54,21 @@ export function TransactionModal({
       setSelectedAsset(initialAsset ?? null);
     }
   }, [isOpen, initialAsset]);
+
+  // Carrega ou sincroniza as contas de custódia ativas da carteira
+  useEffect(() => {
+    if (isOpen) {
+      if (custodyAccounts && custodyAccounts.length > 0) {
+        setCustodyAccountsList(custodyAccounts);
+      } else {
+        getCustodyAccountsAction(portfolioId).then((res) => {
+          if (res.success) {
+            setCustodyAccountsList(res.data);
+          }
+        });
+      }
+    }
+  }, [isOpen, portfolioId, custodyAccounts]);
 
   // Busca posição disponível quando seleciona ativo em modo VENDA ou AJUSTE DE SAÍDA com proteção contra estado obsoleto
   useEffect(() => {
@@ -451,6 +473,31 @@ export function TransactionModal({
                   {state.fieldErrors.fees[0]}
                 </p>
               )}
+            </div>
+
+            {/* Conta de Custódia / Corretora */}
+            <div>
+              <label
+                htmlFor="transaction-custody-account"
+                className="block text-sm font-medium text-text-secondary mb-1.5"
+              >
+                Conta de Custódia / Corretora <span className="text-text-tertiary text-xs font-normal">(opcional)</span>
+              </label>
+              <select
+                id="transaction-custody-account"
+                name="custodyAccountId"
+                defaultValue=""
+                className="w-full bg-background border border-border-theme rounded-lg px-3.5 py-2 text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-action-primary focus:border-transparent transition-all"
+              >
+                <option value="">Nenhuma / Não associada</option>
+                {custodyAccountsList
+                  .filter((acc) => acc.status === 'active')
+                  .map((acc) => (
+                    <option key={acc.id} value={acc.id}>
+                      {acc.name} ({acc.institution?.name ?? 'Instituição'})
+                    </option>
+                  ))}
+              </select>
             </div>
 
             {/* Notas / Observações */}

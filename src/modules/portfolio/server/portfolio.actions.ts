@@ -428,6 +428,7 @@ export async function createPortfolioEventAction(
       currency: formData.get('currency') || 'BRL',
       notes: formData.get('notes') || null,
       source: 'manual',
+      custodyAccountId: formData.get('custodyAccountId')?.toString() || null,
     };
 
     const parsed = createPortfolioEventSchema.parse(raw);

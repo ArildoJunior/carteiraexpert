@@ -8,8 +8,11 @@ import {
   assets,
   portfolioEvents,
   auditLogs,
+  custodyInstitutions,
+  custodyAccounts,
 } from '../../../src/lib/db/schema';
 import { createPortfolio, deletePortfolio } from '../../../src/modules/portfolio/server/portfolio.service';
+import { createCustodyAccount, getCustodyAccountsByUser } from '../../../src/modules/portfolio/server/custody.service';
 import { createCustomAsset } from '../../../src/modules/portfolio/server/asset.service';
 import {
   createPortfolioEvent,
@@ -71,6 +74,7 @@ describe('Integração: Extrato Geral de Operações e Filtros (PostgreSQL Real)
     // Limpeza de eventos, carteiras e ativos dos usuários de teste
     await db.delete(portfolioEvents).where(eq(portfolioEvents.createdBy, userAId));
     await db.delete(portfolioEvents).where(eq(portfolioEvents.createdBy, userBId));
+    await db.delete(custodyAccounts);
     await db.delete(portfolios).where(eq(portfolios.userId, userAId));
     await db.delete(portfolios).where(eq(portfolios.userId, userBId));
     await db.delete(assets).where(eq(assets.userId, userAId));
@@ -393,5 +397,116 @@ describe('Integração: Extrato Geral de Operações e Filtros (PostgreSQL Real)
     expect(realizedTrades[0].salePrice.toFixed(2)).toBe('40.00');
     expect(realizedTrades[0].costBasisPrice.toFixed(2)).toBe('30.10');
     expect(realizedTrades[0].realizedPnL.toFixed(2)).toBe('391.00');
+  });
+
+  it('filtra eventos por custodyAccountId preservando isolamento entre usuários (IDOR)', async () => {
+    const p1 = await createPortfolio({ name: 'Carteira Custódia A', baseCurrency: 'BRL' }, userA);
+    const asset = await createCustomAsset(
+      { ticker: 'ITUB4', name: 'Itaú Unibanco PN', currency: 'BRL' },
+      userA
+    );
+
+    // Garante instituição para teste com código único
+    const instId = crypto.randomUUID();
+    const instCode = `HT_${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+    await db.insert(custodyInstitutions).values({
+      id: instId,
+      name: 'Instituição Histórico Teste',
+      code: instCode,
+      country: 'BR',
+      status: 'active',
+    });
+
+    try {
+      const acc1 = await createCustodyAccount(
+        { portfolioId: p1.id, institutionId: instId, name: 'Conta Principal XP' },
+        userA
+      );
+      const acc2 = await createCustodyAccount(
+        { portfolioId: p1.id, institutionId: instId, name: 'Conta Secundária BTG' },
+        userA
+      );
+
+      // Evento 1 com acc1
+      await createPortfolioEvent(
+        {
+          portfolioId: p1.id,
+          assetId: asset.id,
+          custodyAccountId: acc1.id,
+          type: 'BUY',
+          tradeDate: new Date('2026-02-01T10:00:00.000Z'),
+          quantity: '10',
+          unitPrice: '30.00',
+          fees: '0',
+          currency: 'BRL',
+          source: 'manual',
+        },
+        userA
+      );
+
+      // Evento 2 com acc2
+      await createPortfolioEvent(
+        {
+          portfolioId: p1.id,
+          assetId: asset.id,
+          custodyAccountId: acc2.id,
+          type: 'BUY',
+          tradeDate: new Date('2026-02-02T10:00:00.000Z'),
+          quantity: '20',
+          unitPrice: '32.00',
+          fees: '0',
+          currency: 'BRL',
+          source: 'manual',
+        },
+        userA
+      );
+
+      // Evento 3 sem conta de custódia
+      await createPortfolioEvent(
+        {
+          portfolioId: p1.id,
+          assetId: asset.id,
+          type: 'BUY',
+          tradeDate: new Date('2026-02-03T10:00:00.000Z'),
+          quantity: '30',
+          unitPrice: '33.00',
+          fees: '0',
+          currency: 'BRL',
+          source: 'manual',
+        },
+        userA
+      );
+
+      // 1. Filtro sem custodyAccountId retorna todos os 3 eventos
+      const allResult = await listUserHistoryEvents(userA, {});
+      expect(allResult.totalCount).toBe(3);
+
+      // 2. Filtro com acc1 retorna apenas 1 evento correspondente
+      const acc1Result = await listUserHistoryEvents(userA, { custodyAccountId: acc1.id });
+      expect(acc1Result.totalCount).toBe(1);
+      expect(acc1Result.items[0].custodyAccountId).toBe(acc1.id);
+      expect(Number(acc1Result.items[0].quantity)).toBe(10);
+
+      // 3. Filtro com acc2 retorna apenas 1 evento correspondente
+      const acc2Result = await listUserHistoryEvents(userA, { custodyAccountId: acc2.id });
+      expect(acc2Result.totalCount).toBe(1);
+      expect(acc2Result.items[0].custodyAccountId).toBe(acc2.id);
+      expect(Number(acc2Result.items[0].quantity)).toBe(20);
+
+      // 4. getCustodyAccountsByUser retorna as contas de custódia de userA
+      const userAccounts = await getCustodyAccountsByUser(userA);
+      expect(userAccounts.length).toBeGreaterThanOrEqual(2);
+      expect(userAccounts.some((a) => a.id === acc1.id)).toBe(true);
+      expect(userAccounts.some((a) => a.id === acc2.id)).toBe(true);
+
+      // 5. Proteção contra IDOR: userB tentando filtrar pelo custodyAccountId de userA retorna 0 registros
+      const idorResult = await listUserHistoryEvents(userB, { custodyAccountId: acc1.id });
+      expect(idorResult.totalCount).toBe(0);
+      expect(idorResult.items).toHaveLength(0);
+    } finally {
+      // Limpeza da instituição temporária e suas contas
+      await db.delete(custodyAccounts).where(eq(custodyAccounts.portfolioId, p1.id));
+      await db.delete(custodyInstitutions).where(eq(custodyInstitutions.id, instId));
+    }
   });
 });

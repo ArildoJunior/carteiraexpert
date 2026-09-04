@@ -12,6 +12,10 @@ import {
   serializeCashSummary,
   listCashTransactionsByAccount,
   serializeCashTransaction,
+  getCustodyAccountsByPortfolio,
+  getCustodyInstitutions,
+  serializeCustodyAccount,
+  serializeCustodyInstitution,
 } from '@/modules/portfolio/server';
 import { listActiveSubscriptionsByPortfolio, listAvailableOffers } from '@/modules/corporate-actions/server/subscription.service';
 import { PortfolioDetailView } from '@/modules/portfolio/ui/PortfolioDetailView';
@@ -75,6 +79,8 @@ export default async function PortfolioDetailPage({
     subscriptions,
     availableOffers,
     rawCashSummary,
+    rawCustodyAccounts,
+    rawCustodyInstitutions,
   ] = await Promise.all([
     listPortfolioEventsByPortfolio(id, user),
     getSerializedPortfolioPositions(id, user),
@@ -82,9 +88,13 @@ export default async function PortfolioDetailPage({
     listActiveSubscriptionsByPortfolio(id, user),
     listAvailableOffers(user),
     getPortfolioCashSummary(id, user),
+    getCustodyAccountsByPortfolio(id, user),
+    getCustodyInstitutions(),
   ]);
 
   const cashSummary = serializeCashSummary(rawCashSummary);
+  const custodyAccounts = rawCustodyAccounts.map(serializeCustodyAccount);
+  const custodyInstitutions = rawCustodyInstitutions.map(serializeCustodyInstitution);
 
   // Carrega as transações de caixa de todas as contas ativas da carteira
   const cashTransactionsByAccount = await Promise.all(
@@ -126,6 +136,8 @@ export default async function PortfolioDetailPage({
         chartPreferences={chartPreferences}
         cashSummary={cashSummary}
         cashTransactions={cashTransactions}
+        custodyAccounts={custodyAccounts}
+        custodyInstitutions={custodyInstitutions}
       />
     </div>
   );

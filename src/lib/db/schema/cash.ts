@@ -14,6 +14,7 @@ export const cashAccounts = pgTable(
       .references(() => portfolios.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     currency: text('currency').notNull().default('BRL'),
+    custodyAccountId: uuid('custody_account_id'),
     // 'active' | 'archived'
     status: text('status').notNull().default('active'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

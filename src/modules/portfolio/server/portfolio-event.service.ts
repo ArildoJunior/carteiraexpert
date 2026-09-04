@@ -3,6 +3,7 @@ import { eq, and, isNull, desc, gte, lte, count, ilike } from 'drizzle-orm';
 import { Decimal } from '@/lib/decimal';
 import { db, type Database, type DatabaseTransaction, type DbExecutor } from '../../../lib/db';
 import { portfolioEvents, portfolios, assets } from '../../../lib/db/schema/portfolio';
+import { custodyAccounts } from '../../../lib/db/schema/custody';
 import { insertAuditLog } from '../../../lib/db/audit';
 import { assertOwnership } from '../../identity/server/authorization-service';
 import type { SafeUser } from '../../identity/domain/user.types';
@@ -30,6 +31,8 @@ import type {
 import {
   PortfolioEventNotFoundError,
   PortfolioNotFoundError,
+  CustodyAccountNotFoundError,
+  CustodyAccountArchivedError,
 } from '../domain/errors';
 import { validateTimelineConsistency, type TimelineEvent } from '../domain/position-engine';
 import { getPortfolioById } from './portfolio.service';
@@ -94,6 +97,30 @@ export async function createPortfolioEventInTransaction(
   // 5. Valida a consistência temporal (rejeita vendas a descoberto e inconsistências retroativas)
   validateTimelineConsistency(activeEvents, prospectiveEvent);
 
+  // 5.1. Se uma conta de custódia foi informada, valida existência, pertinência à carteira e status ativo
+  if (input.custodyAccountId) {
+    const [custodyAcc] = await tx
+      .select()
+      .from(custodyAccounts)
+      .where(
+        and(
+          eq(custodyAccounts.id, input.custodyAccountId),
+          eq(custodyAccounts.portfolioId, input.portfolioId),
+          isNull(custodyAccounts.deletedAt)
+        )
+      )
+      .limit(1);
+
+    if (!custodyAcc) {
+      throw new CustodyAccountNotFoundError(
+        'Conta de custódia não encontrada ou não pertence a esta carteira.'
+      );
+    }
+    if (custodyAcc.status === 'archived') {
+      throw new CustodyAccountArchivedError();
+    }
+  }
+
   // 6. Insere o evento financeiro
   const [createdEvent] = await tx
     .insert(portfolioEvents)
@@ -111,6 +138,7 @@ export async function createPortfolioEventInTransaction(
       currency: input.currency,
       notes: input.notes ?? null,
       source: input.source,
+      custodyAccountId: input.custodyAccountId ?? null,
       createdBy: user.id,
       createdAt: now,
     })
@@ -143,6 +171,7 @@ export async function createPortfolioEventInTransaction(
         fees: input.fees.toString(),
         currency: input.currency,
         source: input.source,
+        custodyAccountId: input.custodyAccountId ?? null,
       },
     },
     {
@@ -158,6 +187,7 @@ export async function createPortfolioEventInTransaction(
         'fees',
         'currency',
         'source',
+        'custodyAccountId',
       ],
     },
     tx
@@ -479,6 +509,7 @@ export async function listUserRecentEvents(
     currency: event.currency,
     notes: event.notes,
     source: event.source as PortfolioEvent['source'],
+    custodyAccountId: event.custodyAccountId,
     createdBy: event.createdBy,
     createdAt: event.createdAt,
     deletedAt: event.deletedAt,
@@ -507,6 +538,10 @@ export async function listUserHistoryEvents(
 
   if (options.portfolioId) {
     conditions.push(eq(portfolioEvents.portfolioId, options.portfolioId));
+  }
+
+  if (options.custodyAccountId) {
+    conditions.push(eq(portfolioEvents.custodyAccountId, options.custodyAccountId));
   }
 
   if (options.assetId) {
@@ -581,6 +616,7 @@ export async function listUserHistoryEvents(
       currency: event.currency,
       notes: event.notes,
       source: event.source as PortfolioEvent['source'],
+      custodyAccountId: event.custodyAccountId,
       createdBy: event.createdBy,
       createdAt: event.createdAt,
       deletedAt: event.deletedAt,

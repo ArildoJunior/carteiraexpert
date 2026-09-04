@@ -38,6 +38,7 @@ export const importBatches = pgTable(
     rawContentHash: text('raw_content_hash').notNull(),
     errorMessage: text('error_message'),
     confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
+    custodyAccountId: uuid('custody_account_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

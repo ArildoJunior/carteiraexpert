@@ -3,9 +3,18 @@
 import Link from 'next/link';
 import type { Portfolio } from '../domain/portfolio.types';
 
+export interface HistoryCustodyAccountOption {
+  id: string;
+  name: string;
+  institutionName: string;
+  portfolioId: string;
+}
+
 interface HistoryFilterBarProps {
   portfolios: Portfolio[];
+  custodyAccounts?: HistoryCustodyAccountOption[];
   selectedPortfolioId?: string;
+  selectedCustodyAccountId?: string;
   selectedType?: string;
   selectedTicker?: string;
   selectedStartDate?: string;
@@ -14,7 +23,9 @@ interface HistoryFilterBarProps {
 
 export function HistoryFilterBar({
   portfolios,
+  custodyAccounts = [],
   selectedPortfolioId = '',
+  selectedCustodyAccountId = '',
   selectedType = '',
   selectedTicker = '',
   selectedStartDate = '',
@@ -22,11 +33,16 @@ export function HistoryFilterBar({
 }: HistoryFilterBarProps) {
   const hasActiveFilters = Boolean(
     selectedPortfolioId ||
+      selectedCustodyAccountId ||
       selectedType ||
       selectedTicker ||
       selectedStartDate ||
       selectedEndDate
   );
+
+  const filteredCustodyAccounts = selectedPortfolioId
+    ? custodyAccounts.filter((acc) => acc.portfolioId === selectedPortfolioId)
+    : custodyAccounts;
 
   return (
     <form
@@ -50,7 +66,7 @@ export function HistoryFilterBar({
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">
         {/* Carteira */}
         <div className="space-y-1">
           <label
@@ -69,6 +85,29 @@ export function HistoryFilterBar({
             {portfolios.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name} ({p.baseCurrency})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Conta de Custódia / Instituição */}
+        <div className="space-y-1">
+          <label
+            htmlFor="history-filter-custody-account"
+            className="block text-xs font-semibold text-text-secondary"
+          >
+            Instituição / Custódia
+          </label>
+          <select
+            id="history-filter-custody-account"
+            name="custodyAccountId"
+            defaultValue={selectedCustodyAccountId}
+            className="w-full bg-background border border-border-theme rounded-xl px-3 py-2 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-action-primary transition-colors"
+          >
+            <option value="">Todas as Instituições</option>
+            {filteredCustodyAccounts.map((acc) => (
+              <option key={acc.id} value={acc.id}>
+                {acc.institutionName} — {acc.name}
               </option>
             ))}
           </select>

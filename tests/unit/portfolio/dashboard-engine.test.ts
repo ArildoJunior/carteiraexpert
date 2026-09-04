@@ -213,6 +213,7 @@ describe('Unitário: Motor de Consolidação do Dashboard Multi-Carteiras', () =
       fees: '4.75',
       currency: 'BRL',
       source: 'manual',
+      custodyAccountId: null,
       notes: 'Compra de teste',
       cancellationReason: null,
       createdBy: crypto.randomUUID(),

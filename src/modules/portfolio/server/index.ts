@@ -15,3 +15,12 @@ export {
   listCashTransactionsAction,
   type CashActionResult,
 } from './cash.actions';
+export * from './custody.service';
+export {
+  getCustodyInstitutionsAction,
+  getCustodyAccountsAction,
+  createCustodyAccountAction,
+  updateCustodyAccountAction,
+  archiveCustodyAccountAction,
+  type CustodyActionResult,
+} from './custody.actions';

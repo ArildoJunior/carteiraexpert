@@ -910,6 +910,7 @@ export function serializeUserRecentEvent(
     fees: String(event.fees),
     currency: event.currency,
     source: event.source,
+    custodyAccountId: event.custodyAccountId ?? null,
     notes: event.notes,
     createdAt:
       event.createdAt instanceof Date

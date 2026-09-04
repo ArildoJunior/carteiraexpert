@@ -18,6 +18,7 @@ export interface PortfolioEvent {
   currency: string;
   notes: string | null;
   source: string;
+  custodyAccountId: string | null;
   createdBy: string;
   createdAt: Date;
   deletedAt: Date | null;

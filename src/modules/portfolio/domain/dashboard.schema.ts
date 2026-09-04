@@ -15,6 +15,7 @@ export type ListUserRecentEventsOutput = z.output<typeof listUserRecentEventsSch
 
 export const listUserHistorySchema = z.object({
   portfolioId: z.string().uuid().optional(),
+  custodyAccountId: z.string().uuid().optional(),
   assetId: z.string().uuid().optional(),
   ticker: z.string().max(20).transform((v) => v?.trim().toUpperCase()).optional(),
   type: z.enum(PORTFOLIO_EVENT_TYPES).optional(),

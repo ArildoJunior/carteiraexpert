@@ -68,6 +68,20 @@ describe('listUserHistorySchema (Unit)', () => {
     expect(parsed.startDate).toBeInstanceOf(Date);
     expect(parsed.endDate).toBeInstanceOf(Date);
   });
+
+  it('valida custodyAccountId quando fornecido como UUID válido e rejeita UUID inválido', () => {
+    const validUuid = '123e4567-e89b-12d3-a456-426614174000';
+    const parsed = listUserHistorySchema.parse({
+      custodyAccountId: validUuid,
+    });
+    expect(parsed.custodyAccountId).toBe(validUuid);
+
+    expect(() =>
+      listUserHistorySchema.parse({
+        custodyAccountId: 'invalid-custody-uuid',
+      })
+    ).toThrow();
+  });
 });
 
 describe('serializeUserHistoryPaginatedResult (Unit)', () => {
@@ -91,6 +105,7 @@ describe('serializeUserHistoryPaginatedResult (Unit)', () => {
           fees: '5.25000000',
           currency: 'BRL',
           source: 'manual',
+          custodyAccountId: '123e4567-e89b-12d3-a456-426614174099',
           notes: 'Compra inicial',
           createdBy: '123e4567-e89b-12d3-a456-426614174003',
           createdAt: new Date('2026-01-10T10:05:00.000Z'),
@@ -119,6 +134,7 @@ describe('serializeUserHistoryPaginatedResult (Unit)', () => {
     expect(item.quantity).toBe('100.00000000');
     expect(item.unitPrice).toBe('35.50000000');
     expect(item.fees).toBe('5.25000000');
+    expect(item.custodyAccountId).toBe('123e4567-e89b-12d3-a456-426614174099');
     expect(item.notes).toBe('Compra inicial');
     expect(item.tradeDate).toBe('2026-01-10T10:00:00.000Z');
   });

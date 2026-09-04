@@ -94,6 +94,7 @@ export interface SerializedUserRecentEventItem {
   fees: string;
   currency: string;
   source: string;
+  custodyAccountId?: string | null;
   notes: string | null;
   createdAt: string;
 }

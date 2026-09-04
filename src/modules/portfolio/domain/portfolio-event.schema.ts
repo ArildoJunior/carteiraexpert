@@ -173,6 +173,7 @@ export const createPortfolioEventSchema = z
       .nullable()
       .optional(),
     source: z.enum(EVENT_SOURCES).default('manual'),
+    custodyAccountId: z.string().uuid('ID da conta de custódia deve ser um UUID válido.').nullable().optional(),
   })
   .refine(
     (data) => {

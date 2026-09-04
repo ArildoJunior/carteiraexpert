@@ -295,6 +295,7 @@ describe('UI: Subscription Components e Modais (S1.5)', () => {
           unitPrice: '10.50000000',
           currency: 'BRL',
           fees: '0.00000000',
+          custodyAccountId: null,
           notes: null,
           createdAt: new Date(),
           createdBy: 'user-1',

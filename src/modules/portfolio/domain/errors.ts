@@ -160,6 +160,34 @@ export class InvalidCashTransactionError extends Error {
   }
 }
 
+export class CustodyInstitutionNotFoundError extends Error {
+  constructor(message = 'Instituição de custódia não encontrada.') {
+    super(message);
+    this.name = 'CustodyInstitutionNotFoundError';
+  }
+}
+
+export class CustodyAccountNotFoundError extends Error {
+  constructor(message = 'Conta de custódia não encontrada.') {
+    super(message);
+    this.name = 'CustodyAccountNotFoundError';
+  }
+}
+
+export class CustodyAccountArchivedError extends Error {
+  constructor(message = 'Não é permitido vincular operações a contas de custódia arquivadas.') {
+    super(message);
+    this.name = 'CustodyAccountArchivedError';
+  }
+}
+
+export class InvalidCustodyAccountError extends Error {
+  constructor(message = 'Conta de custódia inválida para esta operação.') {
+    super(message);
+    this.name = 'InvalidCustodyAccountError';
+  }
+}
+
 export {
   PortfolioFrozenError,
   PlanLimitExceededError,

@@ -89,6 +89,7 @@ export const portfolioEvents = pgTable(
     currency: text('currency').notNull().default('BRL'),
     notes: text('notes'),
     source: text('source').notNull().default('manual'),
+    custodyAccountId: uuid('custody_account_id'),
     createdBy: uuid('created_by')
       .notNull()
       .references(() => users.id, { onDelete: 'restrict' }),
