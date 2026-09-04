@@ -1145,6 +1145,56 @@ export const EXPECTED_SCHEMA_MATRIX: Record<string, ExpectedTable> = {
       { name: 'deleted_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: true },
     ],
   },
+  options_contracts: {
+    name: 'options_contracts',
+    primaryKey: 'id',
+    foreignKeys: [
+      {
+        column: 'user_id',
+        foreignTable: 'users',
+        foreignColumn: 'id',
+        deleteRule: 'CASCADE',
+      },
+      {
+        column: 'portfolio_id',
+        foreignTable: 'portfolios',
+        foreignColumn: 'id',
+        deleteRule: 'CASCADE',
+      },
+      {
+        column: 'underlying_asset_id',
+        foreignTable: 'assets',
+        foreignColumn: 'id',
+        deleteRule: 'RESTRICT',
+      },
+      {
+        column: 'custody_account_id',
+        foreignTable: 'custody_accounts',
+        foreignColumn: 'id',
+        deleteRule: 'SET NULL',
+      },
+    ],
+    columns: [
+      { name: 'id', type: 'uuid', isNullable: false },
+      { name: 'user_id', type: 'uuid', isNullable: false },
+      { name: 'portfolio_id', type: 'uuid', isNullable: false },
+      { name: 'underlying_asset_id', type: 'uuid', isNullable: false },
+      { name: 'custody_account_id', type: 'uuid', isNullable: true },
+      { name: 'ticker', type: 'text', isNullable: false },
+      { name: 'option_type', type: 'text', isNullable: false },
+      { name: 'option_style', type: 'text', isNullable: false, hasDefault: true },
+      { name: 'direction', type: 'text', isNullable: false },
+      { name: 'strike_price', type: 'numeric', isNullable: false },
+      { name: 'premium_paid_received', type: 'numeric', isNullable: false },
+      { name: 'quantity', type: 'numeric', isNullable: false },
+      { name: 'expiration_date', type: 'date', isNullable: false },
+      { name: 'status', type: 'text', isNullable: false, hasDefault: true },
+      { name: 'notes', type: 'text', isNullable: true },
+      { name: 'created_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: false, hasDefault: true },
+      { name: 'updated_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: false, hasDefault: true },
+      { name: 'deleted_at', type: ['timestamp with time zone', 'timestamptz'], isNullable: true },
+    ],
+  },
 };
 
 

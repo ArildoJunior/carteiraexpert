@@ -148,6 +148,13 @@
       "when": 1788526000000,
       "tag": "0020_add_custody_entities",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1788530000000,
+      "tag": "0021_add_options_contracts",
+      "breakpoints": true
     }
   ]
 }

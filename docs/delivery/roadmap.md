@@ -17,14 +17,14 @@ A visão de produto e engenharia do CarteiraExpert organiza a evolução do mon�
 | **06.5** | **Alinhamento do MVP e Catálogo Público de Ativos** | Fase 06 | **Implementada e homologada** | Rotas públicas por classe (`/acoes`, `/fiis`, `/etfs`, `/bdrs`, `/ativos`), variação diária no fuso São Paulo com `Decimal`, `QuoteFreshnessBadge`, SEO (`sitemap.ts`, `robots.ts`), Landing Page institucional e lançamento em carteira autenticado com ativo pré-selecionado. |
 | **07** | **Importações Revisáveis** | Fases 03–04 | **Implementada e homologada** | Módulo de importação CSV (`carteiraexpert_csv`, `b3_trades_csv`, `b3_movements_csv`), limite de 5 MB, deduplicação SHA-256, tela de revisão, edição com `Decimal`, resolução explícita de ativos e confirmação transacional atômica em `portfolio_events`. |
 | **08** | **Ativos Globais e Criptoativos** | Fases 03, 06 | **Parcialmente implementada** | Multi-moeda, conversão cambial determinística e precisão `NUMERIC(28, 10)` no banco. |
-| **09** | **Projeções, Opções e Apoio Tributário** | Fases 03, 06, 08 | **Parcialmente implementada apenas nas bases comprovadas** | PnL realizado e IRRF sobre JCP entregues; módulos de opções e fiscal dedicados planejados. |
+| **09** | **Projeções, Opções e Apoio Tributário** | Fases 03, 06, 08 | **Parcialmente implementada (Projeções e Opções entregues)** | PnL realizado, IRRF sobre JCP, Simulador de Projeções (Etapa 7) e Módulo Operacional de Opções com gregas Black-Scholes e alertas de vencimento (Etapa 8) entregues; módulo fiscal dedicado (Etapa 9) planejado. |
 | **10** | **IA Editorial e Preparação de Lançamento** | Governança e Operação | **Planejada, não implementada** | Diretrizes de governança editorial aprovadas; pipeline técnico planejado. |
 
 ---
 
 ## 2. Plano Mestre de Conclusão Funcional (Etapas 1 a 10)
 
-O alinhamento executivo para testes reais organiza as entregas em 10 etapas sequenciais. O catálogo físico do banco de dados relacional é composto exatamente por **36 tabelas físicas** (além da tabela de controle `__drizzle_migrations`, totalizando 37 tabelas no PostgreSQL), validadas pelo Schema Guardian.
+O alinhamento executivo para testes reais organiza as entregas em 10 etapas sequenciais. O catálogo físico do banco de dados relacional é composto exatamente por **37 tabelas físicas** (além da tabela de controle `__drizzle_migrations`, totalizando 38 tabelas no PostgreSQL), validadas pelo Schema Guardian.
 
 | Etapa | Escopo Funcional | Estado no Repositório | Commit / Artefatos |
 |:---:|---|:---:|---|
@@ -35,7 +35,7 @@ O alinhamento executivo para testes reais organiza as entregas em 10 etapas sequ
 | **Etapa 5** | **Instituições de Custódia e Contas de Corretora** | **Concluída** | `78f2a5c` (Migração `0020_add_custody_entities.sql`, tabelas `custody_institutions` e `custody_accounts`, `custody_account_id` com `ON DELETE SET NULL`, filtro no histórico `/history`, ADR-012). |
 | **Etapa 6** | **Modelos Teóricos de Valuation (Bazin, Graham, DCF)** | **Concluída** | Motores puros determinísticos (`theoretical-valuation-engine.ts`), schemas Zod, serviço server-side, card interativo `TheoreticalValuationCard` com simulador nas páginas públicas `/acoes` e `/fiis`, avisos regulatórios formais CVM. |
 | **Etapa 7** | **Simulador de Aportes, Juros Compostos e Projeções** | **Implementada e validada** | Módulo `src/modules/projections/`, motor puramente determinístico em `Decimal`, taxas nominais e reais (descontada inflação), Dividend Yield projetado, componente visual `CompoundInterestSimulator`, rota `/simulador`, aviso regulatório CVM, sem persistência nem contaminação da carteira real. |
-| **Etapa 8** | **Módulo Operacional de Opções** | **Planejada** | Cadastro de opções, controle de vencimentos, alertas D-5/D-0 e gregas informativas (sem envio de ordens). |
+| **Etapa 8** | **Módulo Operacional de Opções** | **Implementada e validada** | Módulo `src/modules/options/`, migração `0021_add_options_contracts.sql`, tabela `options_contracts`, motor matemático determinístico em `Decimal` com modelo Black-Scholes (Abramowitz & Stegun), cálculo de gregas informativas (Delta, Gamma, Theta base 252, Vega, Rho), moneyness, decomposição intrínseca/extrínseca, curva de payoff, calendário B3 com feriados móveis/fixos e alertas D-5/D-0, CRUD auditado com anti-IDOR, tela analítica `/options` com disclaimer CVM/ANBIMA, sem envio de ordens nem rolagem automatizada. |
 | **Etapa 9** | **Módulo Fiscal Dedicado e Relatórios Auxiliares de IRPF** | **Planejada** | Módulo `src/modules/tax/`, isenção de R$ 20k, compensação de prejuízos e relatório auxiliar para IRPF (sem emissão de DARF). |
 | **Etapa 10** | **IA Editorial Interna com Fluxo de Revisão Humana Obrigatória** | **Planejada** | Pipeline editorial interno apoiado por IA para documentos de RI, com revisão e aprovação humana mandatórias. |
 

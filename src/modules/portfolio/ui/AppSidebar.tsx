@@ -28,6 +28,7 @@ export const APP_NAVIGATION_GROUPS: NavGroup[] = [
       { label: 'Carteiras', href: '/portfolios', id: 'nav-link-portfolios' },
       { label: 'Histórico', href: '/history', id: 'nav-link-history' },
       { label: 'Importações', href: '/import', id: 'nav-link-import' },
+      { label: 'Opções', href: '/options', id: 'nav-link-options' },
     ],
   },
   {

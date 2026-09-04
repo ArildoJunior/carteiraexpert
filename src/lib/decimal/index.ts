@@ -9,3 +9,14 @@ Decimal.set({
 export { Decimal };
 export default Decimal;
 export * from './validator';
+
+/**
+ * Converte de forma segura string canônica ou instância de Decimal em Decimal.
+ * Rejeita explicitamente o tipo 'number' do JavaScript.
+ */
+export function toDecimal(value: string | Decimal): Decimal {
+  if (value instanceof Decimal) {
+    return value;
+  }
+  return new Decimal(value);
+}
