@@ -7,13 +7,14 @@ import {
   check,
   index,
   unique,
+  jsonb,
 } from 'drizzle-orm/pg-core';
 import { users } from './identity';
 
 // ─── user_chart_preferences ──────────────────────────────────────────────────
-// Armazena as preferências visuais de exibição de gráficos por usuário e área.
-// Garante persistência e restauração das escolhas de período, modo de exibição,
-// agrupamento e base de cálculo com isolamento estrito por usuário autenticado.
+// Armazena as preferências visuais de exibição de gráficos por usuário e área,
+// além das preferências fiscais e tributárias do usuário em formato JSON.
+// Garante persistência e restauração das escolhas com isolamento estrito.
 export const userChartPreferences = pgTable(
   'user_chart_preferences',
   {
@@ -21,7 +22,7 @@ export const userChartPreferences = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    // 'portfolio_evolution' | 'dashboard_allocation' | 'portfolio_allocation'
+    // 'portfolio_evolution' | 'dashboard_allocation' | 'portfolio_allocation' | 'tax_preferences'
     chartArea: text('chart_area').notNull(),
     // '1M' | '3M' | '6M' | '1Y' | 'YTD' | 'ALL'
     period: text('period'),
@@ -31,6 +32,8 @@ export const userChartPreferences = pgTable(
     groupingType: text('grouping_type'),
     // 'market_value' | 'cost_basis'
     basis: text('basis'),
+    // Preferências fiscais do usuário (Etapa 9: user_tax_preferences)
+    userTaxPreferences: jsonb('user_tax_preferences'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -39,7 +42,7 @@ export const userChartPreferences = pgTable(
     unique('uq_user_chart_preferences_user_area').on(table.userId, table.chartArea),
     check(
       'chk_user_chart_preferences_area',
-      sql`${table.chartArea} IN ('portfolio_evolution', 'dashboard_allocation', 'portfolio_allocation')`
+      sql`${table.chartArea} IN ('portfolio_evolution', 'dashboard_allocation', 'portfolio_allocation', 'tax_preferences')`
     ),
     check(
       'chk_user_chart_preferences_period',

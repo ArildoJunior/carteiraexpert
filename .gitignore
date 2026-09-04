@@ -39,3 +39,4 @@ blob-report/
 playwright/.cache/
 # Arquivos locais COTAHIST - não versionar
 .local-data/
+scratch/

@@ -23,6 +23,7 @@ export function DashboardNavbar({ user }: DashboardNavbarProps) {
     { label: 'Importações', href: '/import', id: 'nav-link-import' },
     { label: 'Simulador', href: '/simulador', id: 'nav-link-simulador' },
     { label: 'Opções', href: '/options', id: 'nav-link-options' },
+    { label: 'Fiscal', href: '/fiscal', id: 'nav-link-fiscal' },
     { label: 'Planos', href: '/plans', id: 'nav-link-plans' },
   ];
 
@@ -34,6 +35,7 @@ export function DashboardNavbar({ user }: DashboardNavbarProps) {
     { label: 'BDRs', href: '/bdrs', id: 'dashboard-mobile-link-bdrs', badge: 'BDR' },
     { label: 'Simulador de Juros', href: '/simulador', id: 'dashboard-mobile-link-simulador', badge: 'PROJEÇÃO' },
     { label: 'Opções e Derivativos', href: '/options', id: 'dashboard-mobile-link-options', badge: 'DERIVATIVOS' },
+    { label: 'Apoio Fiscal IRPF', href: '/fiscal', id: 'dashboard-mobile-link-fiscal', badge: 'IRPF' },
   ];
 
   return (

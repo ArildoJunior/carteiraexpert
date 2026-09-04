@@ -29,6 +29,7 @@ export const APP_NAVIGATION_GROUPS: NavGroup[] = [
       { label: 'Histórico', href: '/history', id: 'nav-link-history' },
       { label: 'Importações', href: '/import', id: 'nav-link-import' },
       { label: 'Opções', href: '/options', id: 'nav-link-options' },
+      { label: 'Fiscal (IRPF)', href: '/fiscal', id: 'nav-link-fiscal' },
     ],
   },
   {

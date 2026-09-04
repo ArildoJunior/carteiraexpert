@@ -14,3 +14,4 @@ export * from './cvm-market-data';
 export * from './cash';
 export * from './custody';
 export * from './options';
+export * from './tax';
