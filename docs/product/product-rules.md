@@ -92,36 +92,50 @@ Quando um usuário possuir mais de 2 carteiras ativas e retornar ao plano Free (
 
 ## 8. Provedores Externos de Dados
 
-- Quando houver integração externa, o fluxo previsto será: Provedor Externo → Adaptador Interno → Validação/Normalização → Banco Interno → Motores → Interface. No estado atual, o fluxo efetivamente validado utiliza ingestão manual e adaptadores mock; não há provedor externo real confirmado.
+- O fluxo arquitetural consolidado é: Provedor Externo / Ingestão → Adaptador Interno → Validação/Normalização → Banco Interno → Motores → Interface. A interface consome dados exclusivamente do banco de dados interno da aplicação.
 - **Estado da implementação:**
   - Abstração `MarketDataProviderAdapter`: *Implementado e validado no código*.
   - Adaptador manual (`ManualPayloadAdapter`): *Implementado e validado no código*.
   - Adaptador mock (`MockProviderAdapter`): *Implementado e validado no código*.
+  - Adaptador público BRAPI (`BrapiAdapter`): *Implementado e validado no código*.
+  - Ingestão B3 COTAHIST (`CotahistIngestionService`, tabelas `b3_cotahist_batches`, `b3_historical_quotes`): *Implementado e validado no código*.
+  - Ingestão CVM DFP/ITR (`cvm_companies`, `cvm_company_assets`, `asset_fundamentals`): *Implementado e validado no código*.
   - Ingestão interna para tabelas `market_quotes` e `exchange_rates`: *Implementado e validado no código*.
-  - Integração automática com provedores externos reais: *Não implementada ou não verificada* (nenhum fornecedor exclusivo aprovado ou contratado neste momento).
+  - Automação contínua agendada via cron/workers em background: *Planejada, não implementada*.
 
-## 9. Opções (Roadmap / Planejado)
+## 9. Módulo Operacional de Opções e Derivativos (Módulo Implementado)
 
-- O módulo de opções está aprovado no roadmap para controle e acompanhamento operacional (compra, venda, lançamentos cobertos, exercício, vencimento, prêmios e alertas).
-- **Estado da implementação:** *Planejado, não implementado*. O valor `option` existe apenas como tipo de ativo no catálogo cadastral (`ASSET_TYPES`), sem módulo operacional, cálculos de gregas, controle de exercício/vencimento ou telas dedicadas.
+- O módulo de opções organiza contratos, alertas e métricas operacionais com finalidade estritamente informativa e de controle pelo usuário.
+- **Estado da implementação:** *Implementado e validado no código* (Etapa 8 — commit e testes no módulo `src/modules/options/`, migração `0021_add_options_contracts.sql`).
+  - Tabela `options_contracts` com integridade referencial a carteiras e ativos, tipos `CALL`/`PUT`, estilos `AMERICAN`/`EUROPEAN` e status `OPEN`/`EXERCISED`/`EXPIRED`/`CLOSED`.
+  - Motor Black-Scholes determinístico puro em `Decimal` (`black-scholes-engine.ts`) para cálculo de gregas teóricas (Delta, Gamma, Theta diário base 252, Vega, Rho), moneyness e pontos de payoff.
+  - Calendário oficial de vencimentos B3 (`expiration-calendar.ts`) com algoritmo determinístico de Gauss para feriados móveis e alertas de proximidade D-5 a D-0.
+  - Interface dedicada `/options` com banner regulatório CVM/ANBIMA.
+- **Limites permanentes de neutralidade:** a plataforma organiza e alerta; **não recomenda estratégias, não executa rolagens e não envia ordens**.
 
-## 10. Apoio Tributário Informativo
+## 10. Apoio Tributário Informativo e Relatórios de IRPF (Módulo Implementado)
 
-- O produto prevê apoio tributário estritamente informativo e organizacional.
-- **Estado da implementação:**
-  - Apuração de PnL realizado por operação de venda: *Parcialmente implementado e validado* (no motor de posições).
-  - Cálculo de proventos com retenção de IRRF sobre JCP e custo atribuído em bonificação: *Parcialmente implementado e validado* (no motor de ações corporativas).
-  - Relatórios tributários específicos e exportações fiscais estruturadas: *Planejado ou implementação pendente*.
-  - Módulo de apoio tributário completo: *Não implementado*.
-- **Limites permanentes fora do escopo:** emissão de DARF, declaração completa de IRPF, aconselhamento tributário definitivo e substituição de profissional contábil habilitado.
+- O produto disponibiliza apoio tributário estritamente informativo e de organização documental para o investidor pessoa física.
+- **Estado da implementação:** *Implementado e validado no código* (Etapa 9 — commit e testes no módulo `src/modules/tax/`, migração `0022_add_tax_calculation_tables.sql`).
+  - Tabelas `tax_calculation_runs`, `tax_monthly_summaries` e `tax_loss_credits`.
+  - Motor fiscal determinístico em `Decimal` (`tax-engine.ts`) com apuração mensal por classe (Ações, FIIs, BDRs, ETFs).
+  - Regra de isenção de R$ 20.000,00 em ações no mercado à vista conforme IN RFB 2054/2024 com trava de não compensação de prejuízos em meses isentos.
+  - Alíquotas segregadas de Day-Trade (20%) e FIIs (20% sem isenção de 20k).
+  - Compensação FIFO de créditos de prejuízos acumulados com validade legal de 5 anos.
+  - Interface visual `/fiscal` com parametrização de alíquotas, resumos mensais e abas completas de auxílio à declaração anual de IRPF (Bens e Direitos em 31/12, Rendimentos Isentos, Tributação Exclusiva, Controle de Prejuízos), com exportação CSV e impressão/PDF.
+- **Limites permanentes fora do escopo:** **não emite DARF**, não calcula imposto definitivo devido, não elabora nem transmite declaração completa de IRPF e não substitui profissional contábil habilitado.
 
-## 11. Inteligência Artificial Editorial Interna
+## 11. Inteligência Artificial Editorial Interna e Governança (Módulo Implementado)
 
 - O uso de IA é estritamente restrito ao fluxo editorial interno para apoio à equipe na redação de resumos e análises baseadas em documentos públicos de RI.
-- A IA não calcula métricas financeiras oficiais, PnL, custo médio ou impostos.
-- A IA não recomenda compra, venda ou estratégias de investimento.
-- A IA não interage com usuários finais através de chats ou assistentes conversacionais.
-- Conteúdo gerado com apoio de IA nunca é publicado automaticamente; revisão e aprovação humanas são obrigatórias com vínculo permanente ao documento-fonte.
+- **Estado da implementação:** *Implementado e validado no código* (Etapa 10 — commit e testes no módulo `src/modules/editorial/`, migração `0023_add_editorial_workflow_tables.sql`).
+  - Tabelas `editorial_documents`, `editorial_versions`, `editorial_reviews` e `editorial_ai_executions`.
+  - Máquina de estados rigorosa com transições seguras (`DRAFT` → `IN_REVIEW` → `APPROVED` → `PUBLISHED`).
+  - Revisão e aprovação humanas obrigatórias com segregação de funções e **proibição estrita de autoaprovação**.
+  - Guardrails regulatórios determinísticos pré e pós-geração CVM/ANBIMA.
+  - Provedor de IA desacoplado via adaptador (`MockEditorialAiAdapter` e contrato abstrato).
+  - Rota de gestão editorial em `/editorial`.
+- **Limites regulatórios inegociáveis:** a IA não calcula métricas financeiras oficiais, PnL, custo médio ou impostos; a IA não recomenda compra, venda ou estratégias de investimento; a IA não interage com usuários finais através de chats ou assistentes conversacionais; conteúdo gerado com apoio de IA **nunca é publicado automaticamente**.
 
 ## 12. Fora do Escopo Permanente da Plataforma
 

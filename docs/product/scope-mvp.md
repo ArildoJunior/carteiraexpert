@@ -12,7 +12,7 @@ Entregar uma base sólida, auditável e confiável de gestão patrimonial com su
   - Cadastro, autenticação com hash Argon2id e gerenciamento de sessões em banco de dados;
   - Redefinição atômica de senha com tokens criptograficamente seguros;
   - Aceite de termos e registro de consentimentos LGPD versionados (*append-only*);
-  - Verificação física de schema de banco de dados (36 tabelas oficiais validadas).
+  - Verificação física de schema de banco de dados (44 tabelas físicas no catálogo oficial validadas).
 - **Núcleo de Carteira, Posições e Finalidades:**
   - Carteira como entidade estrutural no banco de dados com atributo formal de finalidade (`purpose`: `REAL`, `ESTUDO`, `ANALISE`);
   - Unicidade da carteira `REAL` ativa por usuário via índice único parcial no PostgreSQL;
@@ -41,23 +41,30 @@ Entregar uma base sólida, auditável e confiável de gestão patrimonial com su
   - Bonificações de ações (`BONUS_SHARE`) com custo atribuído opcional e recálculo de custo médio;
   - Proventos em dinheiro: dividendos isentos (`DIVIDEND`) e Juros sobre Capital Próprio (`JCP`) com retenção de IRRF;
   - Gestão de Direitos e Ofertas de Subscrição (`subscription_offers`, `subscription_rights`, `subscription_exercises`).
-- **Dados de Mercado e Gráficos:**
+- **Dados de Mercado, Histórico B3 COTAHIST, CVM e Gráficos (Etapa 6):**
   - Abstração `MarketDataProviderAdapter` e adaptadores manual (`ManualPayloadAdapter`), mock (`MockProviderAdapter`) e conector público BRAPI;
   - Ingestão interna em lote para persistência em `market_quotes` e `exchange_rates`;
+  - Ingestão de séries históricas B3 COTAHIST (`b3_cotahist_batches`, `b3_historical_quotes`);
+  - Ingestão de companhias CVM e fundamentos contábeis (`cvm_companies`, `cvm_company_assets`, `asset_fundamentals`);
+  - Modelos teóricos de valuation Bazin, Graham e DCF simplificado (`theoretical-valuation-engine.ts`);
   - Catálogo público de ativos por classe (`/acoes`, `/fiis`, `/etfs`, `/bdrs`, `/ativos`);
   - Gráficos de alocação patrimonial por ativo, classe e moeda, e evolução temporal "Mercado vs. Custo";
   - Persistência atômica de preferências visuais de gráficos por usuário e contexto (`user_chart_preferences`).
+- **Simulador de Projeções e Juros Compostos (Etapa 7):**
+  - Simulador determinístico em `Decimal` com aportes mensais, taxa e inflação configuráveis e efeito de proventos reinvestidos (`/simulador`).
+- **Módulo Operacional de Opções e Derivativos (Etapa 8):**
+  - Cadastro de opções (`options_contracts`), modelo Black-Scholes determinístico com cálculo de gregas fundamentais em `Decimal`, alertas de vencimento B3 e curvas de payoff na rota `/options`.
+- **Módulo Fiscal Dedicado e Relatórios Auxiliares de IRPF (Etapa 9):**
+  - Apuração determinística em `Decimal` de ganhos e perdas por classe, isenção de R$ 20k em ações (IN RFB 2054/2024), Day-Trade 20%, FIIs sem isenção, compensação FIFO de prejuízos acumulados e relatórios auxiliares anuais em `/fiscal` (`tax_calculation_runs`, `tax_monthly_summaries`, `tax_loss_credits`).
+- **Workflow Editorial e Governança com IA (Etapa 10):**
+  - Apoio à redação de análises baseado em documentos de RI com máquina de estados rigorosa, revisão/aprovação humana obrigatória, proibição de autoaprovação e guardrails regulatórios na rota `/editorial` (`editorial_documents`, `editorial_versions`, `editorial_reviews`, `editorial_ai_executions`).
 
-### 2.2. Capacidades Aprovadas, mas Não Entregues no MVP Atual
+### 2.2. Capacidades Aprovadas para Fases Futuras (Não Entregues no MVP)
 
-- Modelos teóricos de valuation (Bazin, Graham, DCF) — Planejado (Etapa 6).
-- Simulador de aportes, juros compostos e projeções — Planejado (Etapa 7).
-- Módulo operacional de opções (gregas, travas, alertas de vencimento) — Planejado (Etapa 8).
-- Módulo fiscal dedicado e relatórios auxiliares consolidados para IRPF — Planejado (Etapa 9).
-- IA editorial interna com fluxo de revisão humana para documentos de RI — Planejada (Etapa 10).
-- Automação contínua da ingestão B3/CVM via workers assíncronos/cron — Planejada.
-- Gateways de pagamento reais (Stripe/Asaas) — Fora do escopo temporário.
-- Comparação explícita entre carteiras distintas — Planejada, não implementada.
+- Automação contínua da ingestão B3/CVM via workers assíncronos/cron periódicos — Planejada.
+- Gateways de pagamento reais com cartões/PIX no webhook (Stripe/Asaas) — Fora do escopo temporário.
+- Comparação analítica sob demanda entre carteiras distintas — Planejada, não implementada.
+- Suporte a planilhas binárias `.xlsx` e notas em PDF com bucket privado seguro — Planejado.
 
 ## 3. Não Incluído no MVP Inicial (Fora do Escopo)
 

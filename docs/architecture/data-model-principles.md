@@ -59,9 +59,9 @@ Para garantir desempenho e evitar inconsistências, posições e métricas anal�
 
 ## 5. Estrutura Física do Banco de Dados
 
-O banco de dados relacional oficial do CarteiraExpert é composto exatamente por **36 tabelas físicas de aplicação** (além da tabela técnica de controle `__drizzle_migrations`, totalizando 37 tabelas no PostgreSQL), validadas pelo Schema Guardian (`src/lib/db/verify-schema.ts`).
+O banco de dados relacional oficial do CarteiraExpert é composto exatamente por **44 tabelas físicas de aplicação** (além da tabela técnica de controle `__drizzle_migrations`, totalizando 45 tabelas no PostgreSQL), validadas pelo Schema Guardian (`src/lib/db/verify-schema.ts`).
 
-### 5.1. Catálogo Físico Canônico das 36 Tabelas (Paridade Estrita com Schema Guardian e Delivery Status)
+### 5.1. Catálogo Físico Canônico das 44 Tabelas (Paridade Estrita com Schema Guardian e Delivery Status)
 
 1. `audit_logs` — Trilha de auditoria transversal de segurança e mutações de dados;
 2. `users` — Contas de usuários autenticados com credenciais seguras;
@@ -73,20 +73,20 @@ O banco de dados relacional oficial do CarteiraExpert é composto exatamente por
 8. `assets` — Catálogo canônico de instrumentos financeiros globais e customizados;
 9. `portfolio_events` — Fatos históricos financeiros e operacionais (`BUY`, `SELL`, `TRANSFER_IN`, `TRANSFER_OUT`, `MANUAL_ADJUSTMENT`, `REVERSAL`), com coluna `direction` e chave estrangeira `custody_account_id` (`ON DELETE SET NULL`);
 10. `subscription_offers` — Ofertas de subscrição de ativos reguladas pelo mercado;
-11. `subscription_rights` — Lotes de custódia de direitos de subscrição alocados por carteira;
-12. `subscription_exercises` — Exercício liquidado de direitos gerando evento operacional `BUY` com chave `idempotencyKey`;
-13. `market_quotes` — Cotações consolidadas locais com status de defasagem (EOD, realtime);
-14. `exchange_rates` — Taxas de câmbio históricas e diárias entre pares de moedas;
-15. `commercial_plans` — Catálogo de planos comerciais e quotas numéricas (`max_active_portfolios`);
-16. `plan_entitlements` — Chaves de autorização funcional (flags) por plano;
-17. `user_plans` — Vínculo vigente do usuário com seu plano comercial;
-18. `billing_subscriptions` — Assinaturas comerciais e ciclo de vida de faturamento;
-19. `payment_events` — Histórico de cobranças e liquidações com chave de idempotência (`idempotency_key`);
-20. `billing_groups` — Grupos de faturamento compartilhado (Plano Família/Compartilhado);
-21. `billing_group_members` — Membros participantes de grupo compartilhado com isolamento estrito de carteiras;
-22. `billing_group_invitations` — Convites formais emitidos para participação em grupos com token único;
-23. `user_chart_preferences` — Preferências de visualização gráfica por usuário e contexto;
-24. `import_batches` — Lotes de importação CSV com status, deduplicação e chave estrangeira `custody_account_id`;
+11. `subscription_rights` — Custódia e direitos de subscrição vinculados por carteira;
+12. `subscription_exercises` — Liquidações atômicas de exercícios de subscrição;
+13. `market_quotes` — Cotações de fechamento ou diferidas ingeridas internamente;
+14. `exchange_rates` — Taxas de câmbio históricas e diárias para conversão multi-moeda;
+15. `commercial_plans` — Catálogo canônico de planos e limites comerciais (`max_active_portfolios`);
+16. `plan_entitlements` — Recursos e privilégios específicos associados a cada plano;
+17. `user_plans` — Associação ativa de planos por usuário com constraint de unicidade;
+18. `billing_subscriptions` — Ciclo de vida de assinaturas de pagamento com idempotência;
+19. `payment_events` — Fatos históricos de transações financeiras de faturamento;
+20. `billing_groups` — Estruturas de faturamento compartilhado sob responsabilidade de um titular pagante;
+21. `billing_group_members` — Vínculos de usuários dependentes aos benefícios do titular;
+22. `billing_group_invitations` — Convites para ingresso em grupos com tokens criptográficos;
+23. `user_chart_preferences` — Preferências visuais de visualização de gráficos persistidas por usuário;
+24. `import_batches` — Metadados de lotes de importação de arquivos com hash de deduplicação;
 25. `import_batch_items` — Linhas brutas do lote para conciliação antes da criação de eventos;
 26. `b3_cotahist_batches` — Lotes de ingestão de séries históricas e arquivos diários B3 COTAHIST;
 27. `b3_historical_quotes` — Cotações históricas oficiais de fechamento (EOD) da B3;
@@ -98,7 +98,15 @@ O banco de dados relacional oficial do CarteiraExpert é composto exatamente por
 33. `cash_accounts` — Contas de caixa monetário por carteira, vinculáveis a contas de custódia (`custody_account_id`);
 34. `cash_transactions` — Movimentações de caixa (`DEPOSIT`, `WITHDRAWAL`, `TRANSFER`, `ADJUSTMENT`) com vínculo opcional a eventos de carteira;
 35. `custody_institutions` — Catálogo canônico pré-populado de corretoras, bancos e exchanges nacionais e globais;
-36. `custody_accounts` — Contas de custódia vinculadas à carteira e à instituição (`active`, `archived`) com desvinculação `ON DELETE SET NULL`.
+36. `custody_accounts` — Contas de custódia vinculadas à carteira e à instituição (`active`, `archived`) com desvinculação `ON DELETE SET NULL`;
+37. `options_contracts` — Contratos de opções sobre ativos (calls/puts, strike, vencimento, estilo, multiplicador e status operacional);
+38. `tax_calculation_runs` — Execuções de cálculo tributário por carteira e ano fiscal (`running`, `completed`, `failed`);
+39. `tax_monthly_summaries` — Resumos mensais consolidados de apuração tributária (vendas, isenção R$ 20k, ganhos, perdas, IRRF e imposto devido);
+40. `tax_loss_credits` — Registro e controle de saldo FIFO de prejuízos acumulados para compensação fiscal;
+41. `editorial_documents` — Documentos do acervo de análise editorial vinculados a fontes oficiais e companhias CVM;
+42. `editorial_versions` — Versões imutáveis de conteúdo editorial com ciclo de vida auditado e rastreabilidade de rascunhos de IA;
+43. `editorial_reviews` — Avaliações humanas obrigatórias de rascunhos editoriais com parecer, justificativa e bloqueio de autoaprovação;
+44. `editorial_ai_executions` — Registros de execuções de prompts de IA para assistência editorial com parâmetros, custo, tokens e métricas.
 
 ### 5.2. Mapeamento por Domínio Arquitetural
 
@@ -109,3 +117,7 @@ O banco de dados relacional oficial do CarteiraExpert é composto exatamente por
 | **Dados de Mercado, Cotações e Fundamentos** | 7 | `market_quotes` (13), `exchange_rates` (14), `user_chart_preferences` (23), `b3_historical_quotes` (27), `asset_fundamentals` (28), `cvm_companies` (29), `cvm_company_assets` (32) |
 | **Ingestão, Arquivos e Processamento em Lote** | 5 | `import_batches` (24), `import_batch_items` (25), `b3_cotahist_batches` (26), `cvm_source_files` (30), `cvm_ingestion_runs` (31) |
 | **Planos, Assinaturas e Faturamento** | 8 | `commercial_plans` (15), `plan_entitlements` (16), `user_plans` (17), `billing_subscriptions` (18), `payment_events` (19), `billing_groups` (20), `billing_group_members` (21), `billing_group_invitations` (22) |
+| **Opções e Derivativos** | 1 | `options_contracts` (37) |
+| **Apoio Fiscal e IRPF** | 3 | `tax_calculation_runs` (38), `tax_monthly_summaries` (39), `tax_loss_credits` (40) |
+| **IA Editorial e Publicações** | 4 | `editorial_documents` (41), `editorial_versions` (42), `editorial_reviews` (43), `editorial_ai_executions` (44) |
+| **Total de Tabelas Físicas de Aplicação** | **44** | Validadas pelo Schema Guardian em dev e test (total de 45 tabelas no PostgreSQL com `__drizzle_migrations`) |

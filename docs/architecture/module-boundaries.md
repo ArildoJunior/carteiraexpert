@@ -33,8 +33,7 @@ Este documento define os limites de responsabilidade, fronteiras arquiteturais e
   - Visualização operacional da carteira selecionada em `/portfolios/[id]` e Dashboard contextual.
 - **Limitações e Capacidades Futuras:**
   - Não cobre eventos societários complexos (delegados ao módulo `corporate-actions`);
-  - Módulo operacional de opções e derivativos (planejado para a Etapa 8);
-  - Ferramentas de valuation teórico Bazin/Graham/DCF (planejadas para a Etapa 6).
+  - Comparação analítica entre carteiras distintas sob demanda permanece planejada.
 
 ### 1.3. `corporate-actions`
 - **Estado:** *Implementado e validado*.
@@ -43,22 +42,23 @@ Este documento define os limites de responsabilidade, fronteiras arquiteturais e
   - Processamento auditável e idempotente dos eventos societários suportados: desdobramentos (`SPLIT`), grupamentos (`GROUPING`), bonificações de ações (`BONUS_SHARE`) e proventos em dinheiro (`DIVIDEND` e `JCP` com retenção na fonte de 15% de IRRF);
   - Gestão do ciclo de subscrições: ofertas de subscrição (`subscriptionOffers`), alocação de direitos por carteira (`subscriptionRights`) e exercício atômico com geração de evento `BUY` (`subscriptionExercises`).
 - **Limitações:**
-  - Não cobre outros eventos societários complexos (fusões, cisões, incorporações, amortizações ou OPAs);
-  - Não recomenda adesão a eventos societários ou compra de direitos.
+  - Não abrange eventos societários complexos (fusões, cisões, incorporações).
 
 ### 1.4. `market-data`
-- **Estado:** *Implementado internamente e integrado via BRAPI / Ingestão B3 COTAHIST planejada*.
+- **Estado:** *Implementado e validado*.
 - **Código Principal:** `src/modules/market-data/` e `src/lib/db/schema/market-data.ts`.
 - **Capacidades Implementadas e Validadas:**
   - Abstração de provedor de dados (`MarketDataProviderAdapter`);
   - Adaptadores internos: manual (`ManualPayloadAdapter`), mock (`MockProviderAdapter`) e conector público B3/BRAPI (`BrapiAdapter`);
-  - Script CLI administrativo de ingestão (`scripts/ingest-market-data.ts`, `pnpm market:ingest`);
   - Ingestão em lote e normalização temporal em UTC (`MarketDataIngestionService`);
-  - Persistência e consulta de cotações (`market_quotes`) e taxas de câmbio (`exchange_rates`);
+  - Persistência de cotações (`market_quotes`) e taxas de câmbio (`exchange_rates`);
+  - Ingestão de séries históricas B3 COTAHIST (`CotahistFixedLengthParser`, `CotahistIngestionService`, tabelas `b3_cotahist_batches` e `b3_historical_quotes`);
+  - Ingestão de companhias abertas e demonstrações financeiras da CVM (`cvm_companies`, `cvm_company_assets`, `asset_fundamentals`);
+  - Modelos teóricos de valuation Bazin, Graham e DCF simplificado (`theoretical-valuation-engine.ts`);
   - Motor de valuation de posições com tratamento de moeda e defasagem (`valuation-engine.ts`).
-- **Capacidades Pendentes / Especificadas:**
-  - *Ingestão Histórica B3 COTAHIST (Pacote 06.03 / ADR-010):* Upload privado de ZIPs, parser de largura fixa COTAHIST, armazenamento privado seguro e processamento assíncrono por workers;
-  - *Sincronização Automática em Background:* Cron jobs periódicos e streaming via WebSocket.
+- **Capacidades Futuras / Fora do Escopo:**
+  - Sincronização contínua em tempo real via WebSocket (plataforma opera com dados EOD e defasados);
+  - Integrações com provedores comerciais pagos adicionais.
 
 ### 1.5. `plans`
 - **Estado:** *Implementado e validado*.
@@ -75,13 +75,12 @@ Este documento define os limites de responsabilidade, fronteiras arquiteturais e
 - **Estado:** *Implementado e validado como estrutura interna*.
 - **Código Principal:** `src/modules/billing/` e `src/lib/db/schema/billing.ts`.
 - **Responsabilidades:**
-  - Ciclo de vida e estados de assinaturas pagas (`billing_subscriptions`);
-  - Registro e processamento idempotente de eventos de pagamento (`payment_events`);
-  - Sincronização atômica com `user_plans` e acionamento de downgrade/congelamento em caso de inadimplência (`unpaid`);
-  - Contrato abstrato e agnóstico de provedores (`PaymentGatewayAdapter`) e mock para testes (`MockPaymentGatewayAdapter`);
-  - Consulta segura de resumo de faturamento (`getUserBillingSummaryAction`).
+  - Gestão de ciclo de vida de assinaturas (`billing_subscriptions`);
+  - Processamento idempotente de eventos de pagamento (`payment_events`);
+  - Estrutura de grupos comerciais de planos compartilhados (`billing_groups`, `billing_group_members`, `billing_group_invitations`);
+  - Adaptação agnóstica de gateways de pagamento (`MockPaymentGateway`).
 - **Limitações:**
-  - Não faz chamadas de rede externas, não integra SDKs de terceiros (Stripe, Asaas) e não expõe webhooks ativos no momento.
+  - Não conecta diretamente com credenciais reais de produção de adquirentes (Stripe/Asaas); opera com gateway mock em ambiente de homologação.
 
 ### 1.7. `catalog`
 - **Estado:** *Implementado e validado*.
@@ -94,11 +93,11 @@ Este documento define os limites de responsabilidade, fronteiras arquiteturais e
   - Ação de lançamento em carteira autenticado com ativo pré-selecionado (`TransactionModal`).
 
 ### 1.8. `imports`
-- **Estado:** *Implementado e validado (Fase 07)*.
+- **Estado:** *Implementado e validado*.
 - **Código Principal:** `src/modules/imports/` e `src/lib/db/schema/imports.ts`.
 - **Responsabilidades:**
-  - Ingestão de planilhas CSV com auto-detecção de layout (`carteiraexpert_csv`, `b3_trades_csv`, `b3_movements_csv`);
-  - Validação rigorosa de limite de 5 MB e rejeição de arquivos vazios;
+  - Parser e detecção de layout CSV (`carteiraexpert_csv`, `b3_trades_csv`, `b3_movements_csv`);
+  - Validação de limite de 5 MB e rejeição de arquivos vazios;
   - Deduplicação inteligente por hash de arquivo SHA-256 e por linha (`raw_line_hash`);
   - Central de revisão de lotes em `/import/[id]` com KPIs em tempo real, filtros por status e edição manual de itens com `Decimal`;
   - Resolução explícita de ativos não identificados (`select_existing` / `create_custom`);
@@ -107,25 +106,70 @@ Este documento define os limites de responsabilidade, fronteiras arquiteturais e
 - **Limitações e Expansão Futura:**
   - Suporte a planilhas binárias `.xlsx` e extração de notas em PDF com bucket privado permanecem planejados no roadmap expandido.
 
-## 2. Módulos Planejados (Sem Implementação Efetiva)
+### 1.9. `projections`
+- **Estado:** *Implementado e validado*.
+- **Código Principal:** `src/modules/projections/` e rota `/simulador`.
+- **Responsabilidades:**
+  - Simulador determinístico de juros compostos e acumulação patrimonial em `Decimal` (`compound-interest.ts`);
+  - Projeção de aportes mensais com parâmetros configuráveis de rentabilidade e inflação;
+  - Simulação de fluxo de proventos com premissa explícita de reinvestimento de dividendos;
+  - Aviso legal proeminente de finalidade exclusivamente informativa e educacional.
+- **Limites Permanentes:** Projeções não constituem garantia ou promessa de rentabilidade futura.
 
-Os módulos abaixo possuem diretórios estruturais reservados em `src/modules/`, mas encontram-se sem código ou tabelas ativas no estado atual:
+### 1.10. `options`
+- **Estado:** *Implementado e validado*.
+- **Código Principal:** `src/modules/options/`, tabela `options_contracts` e rota `/options`.
+- **Responsabilidades:**
+  - Cadastro e acompanhamento operacional de opções de compra (`CALL`) e venda (`PUT`), estilos Americano e Europeu, posições compradas (`BUY`) e vendidas (`SELL`);
+  - Cálculo descritivo de sensibilidades e gregas fundamentais pelo modelo de Black-Scholes em `Decimal` (Delta, Gamma, Theta diário, Vega por 1% e Rho por 1%);
+  - Calendário de vencimentos B3 com alertas temporais (D-5 a D-1 e D-0);
+  - Simulação gráfica de payoff no vencimento por faixa de preço do ativo-objeto;
+  - Banner regulatório obrigatório permanente (`id="options-regulatory-disclaimer"`).
+- **Limites Permanentes:** A plataforma não recomenda estratégias, não executa rolagens e não envia ordens a corretoras.
 
-### 2.1. `tax` (Módulo Tributário Dedicado)
-- **Estado:** *Parcialmente implementado nos motores existentes / Módulo dedicado planejado*.
-- **Escopo Previsto:** Relatórios anuais de IRPF auxiliares, fechamento de períodos fiscais e consolidação de apuração.
-- **Realidade Atual:** O cálculo factual de PnL realizado por venda é executado no módulo `portfolio` e a retenção de IRRF em JCP é calculada no módulo `corporate-actions`. Não há módulo fiscal dedicado em `src/modules/tax/`.
-- **Limites Permanentes:** A plataforma não emite DARF, não elabora declaração completa e não substitui serviços contábeis.
+### 1.11. `tax`
+- **Estado:** *Implementado e validado*.
+- **Código Principal:** `src/modules/tax/`, tabelas `tax_calculation_runs`, `tax_monthly_summaries`, `tax_loss_credits` e rota `/fiscal`.
+- **Responsabilidades:**
+  - Apuração mensal determinística de ganhos e perdas líquidas por classe de ativo (Ações, FIIs, ETFs, BDRs);
+  - Aplicação estrita da isenção de R$ 20.000,00 para ações no mercado à vista (IN RFB 2054/2024), com regra de não compensação de prejuízos em meses isentos;
+  - Segregação de operações Day-Trade (alíquota padrão de 20%, sem isenção de R$ 20k);
+  - Segregação de Fundos Imobiliários (ganho de capital tributável sem isenção; proventos mensais isentos);
+  - Controle e compensação de prejuízos fiscais acumulados em ordem cronológica (FIFO) por até 5 anos-calendário;
+  - Geração de relatórios anuais auxiliares para a Declaração de Ajuste Anual do IRPF (Fichas: Bens e Direitos em 31/12, Rendimentos Isentos e Rendimentos Sujeitos à Tributação Exclusiva);
+  - Exportação em formato CSV e visualização para impressão/PDF;
+  - Banner regulatório RFB/CVM permanente (`id="tax-regulatory-disclaimer"`).
+- **Limites Permanentes:** A plataforma não emite DARF, não preenche declaração oficial da Receita Federal e não substitui profissional habilitado de contabilidade.
 
-### 2.4. `options` (Módulo Operacional de Opções)
+### 1.12. `editorial`
+- **Estado:** *Implementado e validado*.
+- **Código Principal:** `src/modules/editorial/`, tabelas `editorial_documents`, `editorial_versions`, `editorial_reviews`, `editorial_ai_executions` e rota `/editorial`.
+- **Responsabilidades:**
+  - Fluxo editorial interno restrito para apoio à redação de análises e resumos baseados em documentos públicos oficiais de empresas (RI);
+  - Máquina de estados estrita: `DRAFT -> IN_REVIEW -> CHANGES_REQUESTED -> APPROVED -> PUBLISHED -> ARCHIVED`;
+  - Segregação de funções obrigatória: proibição de autoaprovação (o autor não pode aprovar seu próprio documento);
+  - Revisão e aprovação humana obrigatórias antes de qualquer publicação;
+  - Vínculo permanente e auditável entre o conteúdo publicado e o documento público de origem;
+  - Guardrails regulatórios automatizados bloqueando termos proibidos (promessas de ganho, recomendações de investimento, garantias de retorno e emissão de DARF);
+  - Provedor de IA desacoplado (`MockEditorialAiProvider` em homologação) com sanitização de prompts e respostas;
+  - Banner regulatório obrigatório permanente (`id="editorial-regulatory-disclaimer"`).
+- **Limites Permanentes:** A IA não possui interface conversacional/chat para o usuário final, não calcula métricas financeiras oficiais e não publica conteúdo de forma autônoma.
+
+## 2. Capacidades Futuras Planejadas (Sem Implementação Efetiva)
+
+As seguintes funcionalidades encontram-se especificadas como expansões futuras e não possuem código ativo:
+
+### 2.1. Comparação Explícita entre Carteiras Distintas
 - **Estado:** *Planejado, não implementado*.
-- **Escopo Previsto:** Acompanhamento operacional de travas, posições cobertas, alertas de exercício/vencimento e cálculo descritivo de gregas.
-- **Realidade Atual:** Apenas a string `'option'` existe no catálogo cadastral de tipos de ativos (`asset_type`), sem lógica operacional.
+- **Escopo Previsto:** Ferramenta analítica sob demanda para confrontar métricas e curvas de rentabilidade entre duas ou mais carteiras (`REAL`, `ESTUDO` ou `ANALISE`), sem fundir eventos nem alterar saldos.
 
-### 2.5. `editorial-ai` (IA Editorial Interna)
+### 2.2. Ingestão Automatizada de Notas em PDF e Planilhas XLSX
 - **Estado:** *Planejado, não implementado*.
-- **Escopo Previsto:** Apoio interno à redação de resumos e relatórios analíticos a partir de documentos públicos de RI, sob fluxo estrito com revisão e aprovação humana obrigatória antes de qualquer publicação.
-- **Limites Permanentes:** A IA não possui autonomia para publicar conteúdo, não calcula métricas financeiras oficiais e não interage com usuários finais através de chats.
+- **Escopo Previsto:** Extração assistida de notas de corretagem em PDF via bucket privado seguro com URLs temporárias assinadas e processamento de planilhas binárias `.xlsx`.
+
+### 2.3. Análise Técnica Descritiva Avançada
+- **Estado:** *Planejado, não implementado*.
+- **Escopo Previsto:** Cálculo e plotagem de indicadores técnicos puramente descritivos (médias móveis, volatilidade histórica, drawdown acumulado) em interface interativa, sem geração de sinais de compra/venda.
 
 ## 3. Regras de Fronteira e Comunicação entre Módulos
 

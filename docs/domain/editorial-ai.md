@@ -28,7 +28,7 @@ Quando implementado, o fluxo de apoio editorial deve seguir estritamente as segu
 ## 3. Estado de Implementação (Etapa 10 — Implementada e Validada)
 
 - **Módulo `src/modules/editorial/`:** Implementado com arquitetura limpa em camadas (domain, server, ui).
-- **Catálogo Físico e Schema Guardian:** 4 novas tabelas versionadas criadas e validadas pela migração `0023_add_editorial_tables.sql`:
+- **Catálogo Físico e Schema Guardian:** 4 novas tabelas versionadas criadas e validadas pela migração `0023_add_editorial_workflow_tables.sql`:
   1. `editorial_documents`: Documento mestre com título, slug, tipo, status, visibilidade, versão corrente, flags regulatórias e metadata.
   2. `editorial_versions`: Histórico imutável de versões com hash SHA-256 de integridade e registro de origem (`MANUAL`, `AI_DRAFT`, `AI_SUGGESTION`, `REVISION`).
   3. `editorial_reviews`: Registro de revisões humanas obrigatórias com decisão (`APPROVE`, `REJECT`, `REQUEST_CHANGES`), parecer do revisor e flags regulatórias.

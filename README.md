@@ -16,19 +16,32 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 - **Fase 06 — Dados de Mercado, Valuation e Gráficos:** Parcialmente Implementada (Pacotes 06.01 e 06.02 homologados — cotações, taxas de câmbio, adaptadores BRAPI/Manual/Mock, valuation determinístico, gráficos Recharts e persistência atômica de preferências em `user_chart_preferences`).
 - **Fase 06.5 — Alinhamento do MVP e Catálogo Público de Ativos:** Concluída e Homologada (Camada pública de descoberta com rotas `/acoes`, `/fiis`, `/etfs`, `/bdrs`, busca global `/ativos`, SEO e Landing Page `/`).
 - **Fase 07 — Importações Revisáveis:** Concluída e Homologada (ADR-007, parsers CSV com auto-detecção para B3 e formato canônico, limite de 5 MB, deduplicação em 2 níveis, central de revisão `/import/[id]`, resolução explícita de ativos e confirmação atômica em `portfolio_events`).
-- **Plano Mestre de Conclusão Funcional (Etapas 1 a 10):**
+- **Plano Mestre de Conclusão Funcional (Etapas 1 a 10 Concluídas):**
   - **Etapa 1 — Resiliência Operacional, Segurança e Health Check:** Concluída (Commit `c4ee5cf`, Route Handler `/api/health`, error boundaries, headers HTTP de segurança, runner `/api/jobs/ingest` e scripts de backup/restore).
   - **Etapa 2 — Documentação Operacional de Ingestão e Backup:** Concluída (Commit `64cc2e8`, playbooks operacionais `docs/operations/backup-and-restore.md` e `docs/operations/market-data-ingestion.md`).
   - **Etapa 3 — Finalidades de Carteira (`REAL`, `ESTUDO`, `ANALISE`) e Dashboard Contextual:** Concluída (Commit `f30faf8`, migração `0018_add_portfolio_purpose.sql`, atributo `purpose: 'REAL' | 'ESTUDO' | 'ANALISE'`, índice único parcial `idx_unique_user_real_portfolio` e `DashboardContextSelector`).
   - **Etapa 4 — Gestão de Caixa e Movimentações Monetárias:** Concluída e Publicada (Commit `40341ba`, migração `0019_add_cash_accounts_and_transactions.sql`, tabelas `cash_accounts` e `cash_transactions`, saldos determinísticos em `Decimal`, validação de saldo não negativo, tela `/portfolios/[id]/cash`).
   - **Etapa 5 — Instituições e Contas de Custódia:** Concluída e Publicada (Commit `78f2a5c`, migração `0020_add_custody_entities.sql`, ADR-012, tabelas `custody_institutions` com seed canônico e `custody_accounts`, associação opcional `ON DELETE SET NULL` em eventos, contas de caixa e importações, proteção IDOR e filtro de custódia em `/history`).
-  - **Etapas 6 a 10:** Planejadas:
-    - **Etapa 6 — Modelos Teóricos de Valuation (Bazin, Graham, DCF):** Motores matemáticos puros em `Decimal` baseados em dados contábeis CVM (`asset_fundamentals`), com avisos regulatórios formais obrigatórios.
-    - **Etapa 7 — Simulador de Aportes, Juros Compostos e Projeções:** Motor determinístico de projeção com premissas configuráveis pelo usuário, sem promessa de rentabilidade.
-    - **Etapa 8 — Módulo Operacional de Opções:** Cadastro e custódia de derivativos, controle de vencimentos, alertas D-5/D-0 e gregas informativas.
-    - **Etapa 9 — Módulo Fiscal Dedicado e Relatórios Auxiliares de IRPF:** Módulo `src/modules/tax/`, isenção de R$ 20k em ações, compensação de prejuízos e relatório anual auxiliar para IRPF.
-    - **Etapa 10 — IA Editorial Interna com Fluxo de Revisão Humana Obrigatória:** Pipeline editorial interno para documentos públicos de RI, com rascunhos apoiados por IA e aprovação humana mandatória pré-publicação.
-- **Próxima Etapa:** **Etapa 6 — Modelos Teóricos de Valuation (Bazin, Graham, DCF)**.
+  - **Etapa 6 — Modelos Teóricos de Valuation (Bazin, Graham, DCF):** Concluída e Validada (Motores matemáticos puros determinísticos em `Decimal` para Preço Teto de Bazin, Fórmula de Graham e DCF Simplificado em `src/modules/market-data/domain/theoretical-valuation-engine.ts`, componente interativo `TheoreticalValuationCard` nas rotas públicas `/acoes` e `/fiis`, com avisos regulatórios CVM).
+  - **Etapa 7 — Simulador de Aportes, Juros Compostos e Projeções:** Concluída e Validada (Módulo `src/modules/projections/`, motor puramente determinístico em `Decimal`, taxas nominais e reais descontadas pela inflação, componente visual `CompoundInterestSimulator`, rota `/simulador`, aviso regulatório CVM, sem persistência nem contaminação da carteira real).
+  - **Etapa 8 — Módulo Operacional de Opções:** Concluída e Validada (Módulo `src/modules/options/`, migração `0021_add_options_contracts.sql`, tabela `options_contracts`, motor determinístico Black-Scholes em `Decimal`, cálculo de gregas informativas Delta, Gamma, Theta base 252, Vega e Rho, monitoramento de vencimentos D-5/D-0, tela analítica `/options` com avisos regulatórios formais CVM/ANBIMA, sem envio de ordens nem rolagem automatizada).
+  - **Etapa 9 — Módulo Fiscal Dedicado e Relatórios Auxiliares de IRPF:** Concluída e Validada (Módulo `src/modules/tax/`, migração `0022_add_tax_calculation_tables.sql`, tabelas `tax_calculation_runs`, `tax_monthly_summaries` e `tax_loss_credits`, motor determinístico em `Decimal`, isenção de R$ 20k em ações com regra de perda em meses isentos conforme IN RFB 2054/2024, segregação de day-trade 20%, FIIs 20%, JCP 15%, retenção de IRRF na fonte sobre alienações (antecipação), créditos de prejuízo acumulado compensados via FIFO em até 5 anos, relatório anual IRPF, aviso regulatório obrigatório `id="tax-regulatory-disclaimer"` e tela `/fiscal`).
+  - **Etapa 10 — IA Editorial Interna com Fluxo de Revisão Humana Obrigatória:** Concluída e Validada (Módulo `src/modules/editorial/`, migração `0023_add_editorial_workflow_tables.sql`, 4 tabelas `editorial_documents`, `editorial_versions`, `editorial_reviews`, `editorial_ai_executions`, máquina de estados rigorosa `DRAFT -> IN_REVIEW -> CHANGES_REQUESTED -> APPROVED -> PUBLISHED -> ARCHIVED`, segregação de funções obrigatória com bloqueio de autoaprovação, guardrails regulatórios determinísticos CVM/ANBIMA, provedor desacoplado `MockEditorialAiProvider` com sanitização preventiva e interface administrativa `/editorial`).
+- **Próximas Etapas no Roadmap:** Com as Etapas 1 a 10 do plano mestre funcional concluídas e homologadas (44 tabelas de aplicação + 1 tabela técnica `__drizzle_migrations`, totalizando 45 tabelas no PostgreSQL), os próximos passos técnicos incluem automação contínua de ingestão de dados de mercado (cron jobs / workers assíncronos pós-fechamento B3/CVM), integração de gateways de pagamento reais (Stripe/Asaas) com webhooks ativos e expansão de parsers para planilhas binárias (`.xlsx`) e notas de corretagem em PDF via bucket privado.
+
+---
+
+## Prontidão Operacional, Riscos Técnicos e Pendências de Produção
+
+> [!IMPORTANT]
+> **Status de Homologação:** A conclusão e validação integral das **Etapas 1 a 10 no plano funcional** comprova a maturidade das regras de negócio, a integridade matemática determinística em `Decimal` e a aprovação das suítes de teste (1.223 testes unitários, 499 de integração e 172 E2E). Contudo, **isto NÃO equivale a prontidão irrestrita para publicação imediata em produção aberta**.
+>
+> Para a liberação segura em ambiente de produção, devem ser atendidas as seguintes pendências técnicas e operacionais identificadas na auditoria interna:
+>
+> 1. **Startup Guard para Segredos Críticos:** Implementar validação mandatória na inicialização da aplicação (startup guard) que exija strings aleatórias de alta entropia (mínimo de 32 caracteres) para `CRON_SECRET` e `AUTH_RATE_LIMIT_SECRET`, impedindo o boot do serviço em modo de produção com segredos fracos ou ausentes.
+> 2. **Endurecimento de RBAC no Módulo Editorial:** O módulo editorial (`/editorial`) implementa máquina de estados rigorosa, segregação de funções e bloqueio de autoaprovação entre autor e revisor, mas a rota HTTP e as Server Actions admitem qualquer usuário autenticado. É necessário implementar controle de acesso baseado em papéis (RBAC com atributo `role` no usuário) para restringir o acesso exclusivamente à equipe interna de redação/revisão.
+> 3. **Definição do Orquestrador de Ingestão:** Definir e configurar o serviço oficial de orquestração em nuvem (ex.: GCP Cloud Scheduler, AWS EventBridge ou cron do servidor) responsável por acionar autenticadamente a rota `/api/jobs/ingest` pós-fechamento B3/CVM.
+> 4. **Limpeza de Dependência Residual:** Remover a dependência órfã `"biome": "0.3.3"` do `package.json`, preservando unicamente a ferramenta oficial `@biomejs/biome: 2.5.7`.
 
 ---
 
@@ -133,11 +146,46 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 - **Filtro de Custódia Integrado:** Extrato multicarteiras `/history` com seletor de filtro por conta de custódia, permitindo conferência isolada por instituição.
 
 ### 13. Integridade de Schema, Contratos e Banco de Dados
-- **Schema Guardian:** Validação física em tempo de execução (`assertSchemaCompatible`) e via CLI (`db:verify`) inspecionando o catálogo PostgreSQL (**36 tabelas oficiais validadas**).
+- **Schema Guardian:** Validação física em tempo de execução (`assertSchemaCompatible`) e via CLI (`db:verify`) inspecionando o catálogo PostgreSQL (**44 tabelas de aplicação + 1 tabela técnica `__drizzle_migrations`, totalizando 45 tabelas físicas validadas**).
 - **Contratos Drizzle Tipados:** Exportação canônica de `Database`, `DatabaseTransaction`, `DbExecutor`, `SchemaQueryExecutor` e `AuditExecutor`, com eliminação de `any` em assinaturas e callbacks.
 - **Fixture Estática de Tipos:** Arquivo `tests/types/database-contracts.test-d.ts` validando compatibilidade estrutural e rejeição em tempo de compilação via `@ts-expect-error`.
 - **Migrações Versionadas:** Script de migração (`scripts/migrate.ts`) com pre-flight check e trava de segurança exigindo `ALLOW_DATABASE_MUTATION=true` para o banco principal.
 - **Seed de Desenvolvimento Protegido:** Script `scripts/seed-dev.ts` com trava obrigatória `ALLOW_DEV_SEED=true` e bloqueio automático em produção.
+
+### 14. Módulo Fiscal Dedicado e Relatórios Auxiliares de IRPF (Etapa 9)
+- **Aviso Regulatório Obrigatório:** Elemento `id="tax-regulatory-disclaimer"` presente em todas as telas, cards e relatórios informando a natureza estritamente auxiliar e informativa, sem emissão de DARF, sem retenção tributária e sem intermediação junto à Receita Federal.
+- **Motor Matemático em Decimal:** Cálculo determinístico de custo médio ponderado por ativo, segregação de day-trade (20%) vs swing-trade (15%), FIIs (20%) e JCP (15%).
+- **Isenção de R$ 20k em Ações:** Regra de isenção mensal para vendas normais de ações até R$ 20.000,00, com perda sem direito a crédito futuro em meses isentos (conforme IN RFB 2054/2024).
+- **Compensação de Prejuízos:** Histórico de créditos fiscais (`tax_loss_credits`) segregados por categoria (swing-trade, day-trade, FIIs), com dedução estrita FIFO e validade de 5 anos fiscais.
+- **Retenção de IRRF na Fonte:** Rastreabilidade e segregação de IRRF retido na fonte sobre alienações (antecipação) e proventos tributados.
+- **Relatório Anual e Fichas IRPF:** Posição em 31/12 (Bens e Direitos com código e discriminação), Rendimentos Isentos (dividendos e alienação isenta) e Rendimentos Sujeitos à Tributação Exclusiva (JCP e ganhos líquidos mensais).
+- **Exportação e Impressão:** Geração de arquivo CSV estruturado e impressão formatada (`window.print()`) otimizada para consulta visual no momento da declaração manual.
+
+### 15. Modelos Teóricos de Valuation (Etapa 6)
+- **Motores Matemáticos Determinísticos:** Implementação pura em `Decimal` (`theoretical-valuation-engine.ts`) cobrindo Preço Teto pelo Método Décio Bazin (dividend yield mínimo configurável), Preço Justo pela Fórmula de Benjamin Graham (equilíbrio P/L e P/VP) e Fluxo de Caixa Descontado (DCF) simplificado em 2 estágios.
+- **Dados Contábeis Padronizados:** Integração com demonstrativos financeiros oficiais da CVM (`asset_fundamentals`) e cotações de fechamento B3 COTAHIST.
+- **Componente Visual Interativo:** Card interativo `TheoreticalValuationCard` nas páginas públicas de ações (`/acoes/[ticker]`) e FIIs (`/fiis/[ticker]`), permitindo ajuste de premissas em tempo real pelo usuário.
+- **Neutralidade Regulatória CVM:** Avisos formais de que os valores apresentados são modelos matemáticos teóricos baseados em dados públicos e premissas definidas pelo usuário, não configurando recomendação de investimento.
+
+### 16. Simulador de Projeções e Juros Compostos (Etapa 7)
+- **Motor Determinístico de Projeções:** Módulo `src/modules/projections/` com cálculos matemáticos em `Decimal` para acumulação patrimonial, aportes periódicos e reinvestimento de proventos.
+- **Desconto Inflacionário:** Simulação em termos nominais e reais (descontando inflação acumulada via taxa de juros real).
+- **Componente Visual e Rota Dedicada:** Interface interativa `CompoundInterestSimulator` na rota `/simulador` com gráficos Recharts e tabelas de evolução ano a ano.
+- **Isolamento de Carteiras:** Execução em memória no client/server sem persistência no banco e sem qualquer contaminação contábil nas carteiras reais do usuário.
+
+### 17. Módulo Operacional de Opções (Etapa 8)
+- **Cadastro e Gestão de Derivativos:** Tabela `options_contracts` (migração `0021_add_options_contracts.sql`) com rastreabilidade de strike, data de vencimento, estilo (Americana/Européia), tipo (Call/Put) e ativo subjacente.
+- **Modelo Black-Scholes em Decimal:** Implementação determinística com aproximação polinomial de alta precisão (Abramowitz & Stegun) para cálculo de volatilidade implícita e gregas informativas (Delta, Gamma, Theta anualizado em base 252 dias úteis, Vega e Rho).
+- **Calendário B3 e Alertas:** Detecção automatizada de vencimentos próximos com alertas operacionais em D-5 e D-0 baseados no calendário oficial de negociação da B3.
+- **Interface e Gráfico de Payoff:** Rota analítica `/options` com visualização de curvas de payoff de vencimento, decomposição entre valor intrínseco e extrínseco e aviso regulatório CVM/ANBIMA obrigatório (sem envio de ordens nem execução de rolagem automatizada).
+
+### 18. IA Editorial Interna e Governança com Revisão Humana Obrigatória (Etapa 10)
+- **Módulo Editorial Desacoplado:** Módulo `src/modules/editorial/` com tabelas `editorial_documents`, `editorial_versions`, `editorial_reviews` e `editorial_ai_executions` (migração `0023_add_editorial_workflow_tables.sql`).
+- **Máquina de Estados Rigorosa:** Ciclo de vida estrito `DRAFT -> IN_REVIEW -> CHANGES_REQUESTED -> APPROVED -> PUBLISHED -> ARCHIVED`, com bloqueio de transições inválidas e versões imutáveis indexadas por hash SHA-256.
+- **Segregação de Funções e Bloqueio de Autoaprovação:** O autor de um rascunho é impedido de atuar como revisor/aprovador do mesmo documento (`author_id !== reviewer_id`).
+- **Guardrails Regulatórios Determinísticos CVM/ANBIMA:** Filtros preventivos pré e pós-geração que bloqueiam promessas de rentabilidade garantida, alegações de ausência de risco e recomendações diretas de compra/venda de ativos.
+- **Provedor Desacoplado via Adapter:** Arquitetura limpa com sanitização de dados sensíveis antes de qualquer chamada e provedor mock (`MockEditorialAiProvider`).
+- **Interface Administrativa:** Painel `/editorial` com banner regulatório CVM/ANBIMA permanente (`id="editorial-regulatory-disclaimer"`), histórico de revisões humanas e rastreabilidade total em `audit_logs`.
 
 ---
 
@@ -161,7 +209,7 @@ O **CarteiraExpert** é um SaaS brasileiro de consolidação patrimonial, inteli
 
 ```text
 carteiraexpert/
-├── drizzle/                     # Migrações versionadas SQL (0000 a 0020)
+├── drizzle/                     # Migrações versionadas SQL (0000_rich_anita_blake.sql a 0023_add_editorial_workflow_tables.sql)
 │   └── migrations/
 ├── scripts/                     # Scripts de manutenção e infraestrutura
 │   ├── ingest-market-data.ts    # Ingestão administrativa de dados de mercado (BRAPI / Manual)
@@ -173,16 +221,20 @@ carteiraexpert/
 │   │   ├── (auth)/              # Rotas públicas (login, register, forgot-password, reset-password)
 │   │   ├── (dashboard)/         # Área autenticada protegida com verificação de termos
 │   │   │   ├── dashboard/       # Dashboard contextual de carteira REAL (/dashboard)
+│   │   │   ├── editorial/       # Gestão editorial interna, revisão humana e IA (/editorial)
+│   │   │   ├── fiscal/          # Módulo fiscal e relatórios de IRPF (/fiscal)
 │   │   │   ├── history/         # Extrato cronológico paginado com filtros avançados (carteira, custódia, tipo, ativo, datas)
 │   │   │   ├── import/          # Listagem de lotes (/import) e central de revisão (/import/[id])
+│   │   │   ├── options/         # Módulo operacional de opções, Black-Scholes e gregas (/options)
 │   │   │   ├── plans/           # Página de planos, quotas e transparência comercial
-│   │   │   └── portfolios/      # Listagem (/portfolios), detalhes (/portfolios/[id]) e gestão de caixa (/portfolios/[id]/cash)
+│   │   │   ├── portfolios/      # Listagem (/portfolios), detalhes (/portfolios/[id]) e gestão de caixa (/portfolios/[id]/cash)
+│   │   │   └── simulador/       # Simulador de juros compostos e projeções patrimoniais (/simulador)
 │   │   ├── (public)/            # Catálogo público de ativos (/acoes, /fiis, /etfs, /bdrs, /ativos)
 │   │   ├── terms-acceptance/    # Tela isolada de consentimentos pendentes LGPD
 │   │   ├── layout.tsx           # Layout raiz com script anti-FOUC e ThemeProvider
 │   │   └── globals.css          # Variáveis CSS semânticas e Tailwind inline theme
 │   ├── lib/
-│   │   ├── db/                  # Cliente PostgreSQL, contratos canônicos, auditoria e schemas (36 tabelas físicas)
+│   │   ├── db/                  # Cliente PostgreSQL, contratos canônicos, auditoria e schemas (44 tabelas de aplicação + 1 técnica __drizzle_migrations)
 │   │   └── theme/               # Provedor, hook useTheme, alternador e tokens semânticos
 │   ├── middleware.ts            # Proteção de rotas no Edge
 │   └── modules/
@@ -191,16 +243,39 @@ carteiraexpert/
 │       ├── billing/             # Módulo de assinaturas comerciais, eventos de pagamento e gateways
 │       ├── portfolio/           # Módulo de carteiras, ativos, motor de posições, valuation, caixa, custódia e gráficos
 │       ├── corporate-actions/   # Módulo de ações corporativas (split, grupamento, bonificação, proventos e subscrições)
-│       ├── market-data/         # Módulo de cotações, câmbio, adaptadores (Manual, Mock, BRAPI, COTAHIST) e ingestão
+│       ├── market-data/         # Módulo de cotações, câmbio, adaptadores (Manual, Mock, BRAPI, COTAHIST, CVM) e valuation teórico
 │       ├── catalog/             # Módulo do catálogo público de ativos, SEO e páginas por categoria
-│       └── imports/             # Módulo de importações revisáveis (parsers CSV, deduplicação, revisão e confirmação)
+│       ├── imports/             # Módulo de importações revisáveis (parsers CSV, deduplicação, revisão e confirmação)
+│       ├── projections/         # Módulo de simulação de juros compostos e projeções patrimoniais
+│       ├── options/             # Módulo operacional de opções, Black-Scholes e gregas informativas
+│       ├── tax/                 # Módulo fiscal dedicado e relatórios auxiliares de IRPF
+│       └── editorial/           # Módulo editorial interno, máquina de estados, revisão humana mandatória e IA
 ├── tests/
-│   ├── unit/                    # Testes unitários puros (87 arquivos, 1.059 testes)
-│   ├── integration/             # Testes de integração com PostgreSQL (50 arquivos, 471 testes)
+│   ├── unit/                    # Testes unitários puros (Snapshot auditado em 2026-09-04: 104 arquivos, 1.223 testes)
+│   ├── integration/             # Testes de integração com PostgreSQL (Snapshot auditado em 2026-09-04: 53 arquivos, 499 testes)
 │   └── types/                   # Fixtures de tipagem estática (database-contracts.test-d.ts)
-├── e2e/                         # Testes end-to-end com Playwright (12 arquivos, 168 testes em Chromium, Firefox e WebKit)
+├── e2e/                         # Testes end-to-end com Playwright (Snapshot auditado em 2026-09-04: 13 arquivos, 172 testes em Chromium, Firefox e WebKit)
 └── docs/                        # Documentação técnica, arquitetura, ADRs (001 a 012) e status de entrega
 ```
+
+### Módulos de Domínio (12 Módulos Independentes)
+
+A plataforma adota a convenção canônica de **12 módulos de domínio independentes**, correspondendo exatamente aos 12 subdiretórios presentes em `src/modules/`:
+
+1. **`identity`**: Autenticação, sessões em banco com SHA-256, controle de força bruta com HMAC, termos e consentimentos LGPD.
+2. **`plans`**: Catálogo comercial de planos, controle de quotas de carteiras ativas, entitlements funcionais e grupos compartilhados.
+3. **`billing`**: Assinaturas comerciais, ciclo de vida contratual, idempotência de eventos de pagamento e adaptadores de gateway.
+4. **`portfolio`**: Gestão de carteiras, ativos, motor de posições e custo médio em `Decimal`, contas de caixa, contas de custódia e gráficos.
+5. **`corporate-actions`**: Desdobramentos, grupamentos, bonificações, proventos (dividendos e JCP) e ofertas/direitos de subscrição.
+6. **`market-data`**: Cotações de mercado, taxas de câmbio, adaptadores (Manual, Mock, BRAPI, COTAHIST, CVM) e modelos de valuation teórico.
+7. **`catalog`**: Catálogo canônico público de instrumentos financeiros (Ações, FIIs, ETFs, BDRs), páginas por categoria e SEO.
+8. **`imports`**: Importações em lote (extratos CSV e B3), deduplicação inteligente em 2 níveis e revisão humana obrigatória.
+9. **`projections`**: Simulador de aportes, acumulação patrimonial e juros compostos com desconto inflacionário em `Decimal`.
+10. **`options`**: Cadastro de derivativos, modelo Black-Scholes em `Decimal`, cálculo de gregas informativas e calendário de vencimentos B3.
+11. **`tax`**: Apuração auxiliar de IRPF, segregação de operações, compensação FIFO de prejuízos e relatórios anuais de Bens e Direitos.
+12. **`editorial`**: Workflow editorial interno assistido por IA sanitizada, máquina de estados com segregação de funções e guardrails CVM/ANBIMA.
+
+> **Distinção entre `plans` e `billing`:** Embora ambos componham a camada comercial (Fase 05), são mantidos como módulos físicos e conceituais separados. O módulo `plans` governa as regras de produto (planos, limites de carteiras e grupos de membros), enquanto o módulo `billing` governa o ciclo financeiro externo de cobrança (faturamento, eventos transacionais de pagamento e integração com gateways).
 
 ---
 
@@ -240,14 +315,14 @@ pnpm lint:fix         # Corrigir problemas de lint automaticamente
 pnpm format:fix       # Verificar e aplicar formatação
 
 # Testes
-pnpm test:unit        # Testes unitários (Vitest — 87 arquivos, 1.059 testes)
-pnpm test:integration # Testes de integração com PostgreSQL (Vitest — 50 arquivos, 471 testes)
-pnpm test:e2e         # Testes End-to-End no Chromium, Firefox e WebKit (Playwright — 12 arquivos, 168 testes)
+pnpm test:unit        # Testes unitários (Vitest — snapshot auditado em 2026-09-04: 104 arquivos, 1.223 testes)
+pnpm test:integration # Testes de integração com PostgreSQL (Vitest — snapshot auditado em 2026-09-04: 53 arquivos, 499 testes)
+pnpm test:e2e         # Testes End-to-End no Chromium, Firefox e WebKit (Playwright — snapshot auditado em 2026-09-04: 13 arquivos, 172 testes)
 
 # Banco de Dados e Migrações
-# Inspecionar catálogo físico no banco de desenvolvimento/produção (36 tabelas)
+# Inspecionar catálogo físico no banco de desenvolvimento/produção (44 tabelas de aplicação + 1 tabela técnica __drizzle_migrations)
 pnpm db:verify
-# Inspecionar catálogo físico no banco de testes automatizados (36 tabelas)
+# Inspecionar catálogo físico no banco de testes automatizados (44 tabelas de aplicação + 1 tabela técnica __drizzle_migrations)
 pnpm db:verify -- --test
 # Executar migrações pendentes no banco principal (PowerShell no Windows)
 $env:ALLOW_DATABASE_MUTATION="true"; pnpm db:migrate
@@ -266,13 +341,10 @@ pnpm market:ingest    # Executar script administrativo de ingestão de dados de 
 
 ## Capacidades Planejadas (Não Implementadas)
 
-As seguintes funcionalidades representam direcionamentos no roadmap e permanecem como capacidades planejadas para as próximas etapas e fases futuras:
+As seguintes funcionalidades representam direcionamentos no roadmap e permanecem como capacidades planejadas para expansões futuras:
 
-1. **Etapa 6 — Modelos Teóricos de Valuation (Bazin, Graham, DCF):** Motores de cálculo determinísticos baseados em `Decimal` sobre demonstrativos CVM (`asset_fundamentals`), com avisos regulatórios obrigatórios.
-2. **Etapa 7 — Simulador de Aportes, Juros Compostos e Projeções:** Simulação determinística de acumulação patrimonial, cálculo de juros compostos e projeção de proventos com premissas transparentes configuráveis pelo usuário.
-3. **Etapa 8 — Módulo Operacional de Opções:** Cadastro e custódia de contratos de derivativos, controle de vencimentos, alertas de proximidade (D-5/D-0) e cálculo descritivo de gregas fundamentais (sem envio de ordens ou rolagem).
-4. **Etapa 9 — Módulo Fiscal Dedicado e Relatórios Auxiliares de IRPF:** Módulo `src/modules/tax/`, apuração de ganhos líquidos mensais, isenção de R$ 20k em ações, compensação de prejuízos e relatório anual auxiliar para declaração do IRPF (sem emissão de DARF).
-5. **Etapa 10 — IA Editorial Interna com Fluxo de Revisão Humana Obrigatória:** Pipeline editorial interno para comunicados e DFPs da CVM, com rascunhos apoiados por IA e aprovação humana mandatória pré-publicação.
-6. **Fase 05 (Expansão) — Pagamentos Reais e Grupos Compartilhados:** Gateways de pagamento reais (Stripe/Asaas), webhooks ativos e cobrança compartilhada de grupos (ADR-004).
-7. **Fase 07 (Expansão) — Importações Avançadas:** Upload de planilhas binárias `.xlsx`, extratos bancários/corretora (OFX) e extração assistida de notas de corretagem em PDF com bucket privado e URLs temporárias assinadas.
-8. **Automação Contínua da Ingestão de Mercado:** Rotinas agendadas em background (cron jobs / workers) para execução periódica pós-fechamento B3/CVM e streaming de cotações via WebSocket.
+1. **Fase 05 (Expansão) — Pagamentos Reais e Grupos Compartilhados:** Gateways de pagamento reais (Stripe/Asaas), webhooks ativos e cobrança compartilhada de grupos (ADR-004).
+2. **Fase 07 (Expansão) — Importações Avançadas:** Upload de planilhas binárias `.xlsx`, extratos bancários/corretora (OFX) e extração assistida de notas de corretagem em PDF com bucket privado e URLs temporárias assinadas.
+3. **Fase 08 (Expansão) — Conexão Direta a Exchanges e Custódia On-Chain:** Integração via API de leitura com corretoras e exchanges cripto, além de rastreamento de carteiras on-chain públicas.
+4. **Automação Contínua da Ingestão de Mercado:** Rotinas agendadas em background (cron jobs / workers) para execução periódica pós-fechamento B3/CVM e streaming de cotações via WebSocket.
+5. **Screening de Ativos e Métricas Customizadas:** Filtros avançados de mercado e fórmulas parametrizadas por usuário, mantendo neutralidade analítica sem recomendação de investimentos.

@@ -39,15 +39,15 @@
 - **Fase 07 — Importações Revisáveis:** **HOMOLOGADA COM SUCESSO (`PASS`)** (Módulo `src/modules/imports/` com tabelas `import_batches` e `import_batch_items` via migração `0011`; parsers CSV com auto-detecção para `carteiraexpert_csv`, `b3_trades_csv` e `b3_movements_csv`; limite de 5 MB; deduplicação por hash SHA-256; tela de upload `/import`; central de revisão `/import/[id]` com KPIs em tempo real, edição com `Decimal`, exclusão por linha e resolução explícita de ativos; confirmação transacional atômica com lock `FOR UPDATE` gravando em `portfolio_events` com `source = 'csv_import'`).
 - **Fase 08 — Ativos Internacionais e Criptoativos:** **PARCIALMENTE IMPLEMENTADA** (Multi-moeda, `exchange_rates`, conversão cambial determinística no valuation e precisão `NUMERIC(28, 10)` para criptoativos entregues; custódia on-chain e conexão direta a exchanges via API permanecem planejadas).
 - **Fase 09 — Projeções, Opções e Apoio Tributário:** **IMPLEMENTADA E VALIDADA** (Bases factuais de PnL realizado, IRRF sobre JCP, Simulador de Projeções da Etapa 7, Módulo Operacional de Opções da Etapa 8 e Módulo Fiscal Dedicado e Relatórios Auxiliares de IRPF da Etapa 9 entregues e integrados).
-- **Fase 10 — IA Editorial e Preparação de Lançamento:** **PLANEJADA, NÃO IMPLEMENTADA** (Diretrizes de governança editorial aprovadas no ADR-005; pipeline técnico planejado para a Etapa 10).
-- **Sistema Global de Tema e Identidade Visual:** **IMPLEMENTADO E VALIDADO** (Temas Claro, Escuro e Automático com `prefers-color-scheme`, hook `useTheme`, alternador acessível `ThemeToggle`, tokens semânticos, persistência sob `carteiraexpert_theme`, script anti-FOUC no `<head>`).pipeline técnico planejado para a Etapa 10).
+- **Fase 10 — IA Editorial e Governança:** **IMPLEMENTADA E VALIDADA** (Módulo `src/modules/editorial/`, migração `0023_add_editorial_workflow_tables.sql`; tabelas `editorial_documents`, `editorial_versions`, `editorial_reviews`, `editorial_ai_executions`; máquina de estados rigorosa com transições seguras, histórico imutável de versões, revisão e aprovação humanas obrigatórias com segregação de funções, proibição estrita de autoaprovação, guardrails regulatórios determinísticos CVM/ANBIMA, provedor de IA mock desacoplado via adapter e interface administrativa/editorial em `/editorial`).
 - **Sistema Global de Tema e Identidade Visual:** **IMPLEMENTADO E VALIDADO** (Temas Claro, Escuro e Automático com `prefers-color-scheme`, hook `useTheme`, alternador acessível `ThemeToggle`, tokens semânticos, persistência sob `carteiraexpert_theme`, script anti-FOUC no `<head>`).
 
 ---
 
-## Catálogo Físico de Tabelas Validadas no PostgreSQL (37 tabelas)
+## Catálogo Físico de Tabelas Validadas no PostgreSQL (44 tabelas de aplicação + 1 de controle = 45 tabelas no total)
 
-O banco de dados relacional oficial do CarteiraExpert é composto exatamente pelas seguintes 40 tabelas físicas de aplicação (além da tabela de controle `__drizzle_migrations`, totalizando 41 tabelas):
+O banco de dados relacional oficial do CarteiraExpert é composto exatamente pelas seguintes 44 tabelas físicas de aplicação (além da tabela de controle `__drizzle_migrations`, totalizando 45 tabelas):
+
 
 1. `audit_logs`: Trilha de auditoria e registro transversal de alterações sensíveis;
 2. `users`: Contas de usuários autenticados com credenciais seguras;

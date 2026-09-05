@@ -36,10 +36,10 @@ Os planos superiores ao Free ampliam a capacidade analítica e operacional da pl
 - **Gestão Visual e Transparência Comercial:** página `/plans` com exibição de quotas, limites, status de vigência e aviso de preparação de pagamentos sem cobrança real (*Implementado e validado no código*).
 - **Comparação entre Carteiras:** ferramenta analítica para comparação explícita de métricas entre carteiras (*Planejado, não implementado*).
 - **Importações Avançadas:** processamento de planilhas binárias (.xlsx) e importação assistida de notas de corretagem em PDF com tela de conferência (*Módulo base de importações CSV implementado na Fase 07; extração de PDF e XLSX permanece planejada*).
-- **Projeções e Simulações:** modelagem de cenários hipotéticos sem afetar a carteira real (*Planejado, não implementado*).
-- **Módulo de Opções:** controle operacional de travas, posições cobertas e alertas de vencimento (*Planejado, não implementado*).
-- **Apoio Tributário Avançado:** relatórios auxiliares consolidados e exportações estruturadas para contabilidade (*Planejado, não implementado*).
-- **Conteúdo Editorial:** resumos e análises fundamentadas produzidas pela equipe editorial com apoio de IA interna (*Planejado*).
+- **Projeções e Simulações:** modelagem de cenários hipotéticos sem afetar a carteira real (*Implementado no módulo `projections` e na rota `/simulador` — Etapa 7*).
+- **Módulo de Opções:** controle operacional de contratos, gregas informativas, alertas B3 e curvas de payoff (*Implementado no módulo `options` e na rota `/options` — Etapa 8*).
+- **Apoio Tributário Avançado:** apuração mensal, isenção de R$ 20k, prejuízos acumulados e relatórios anuais de IRPF (*Implementado no módulo `tax` e na rota `/fiscal` — Etapa 9*).
+- **Conteúdo Editorial:** resumos e análises fundamentadas produzidas pela equipe editorial com apoio de IA interna, revisão humana obrigatória e máquina de estados rigorosa (*Implementado no módulo `editorial` e na rota `/editorial` — Etapa 10*).
 - **Armazenamento Documental:** maior limite para armazenamento privado de comprovantes e documentos financeiros (*Planejado*).
 
 ## 4. Plano Compartilhado
@@ -49,7 +49,7 @@ O Plano Compartilhado permite que um titular pagante ofereça benefícios a um g
 - **Conceito de Produto:** uma assinatura unificada gerenciada pelo titular pagante que concede entitlements dos planos superiores aos membros convidados.
 - **Contas Independentes:** cada membro possui sua própria conta de acesso individual, protegida e isolada.
 - **Isolamento Absoluto de Dados:** o titular pagante **não visualiza, não edita e não infere** dados de carteiras, ativos, operações, saldos, documentos, estudos ou relatórios tributários dos membros.
-- **Estado da Implementação:** o conceito de plano compartilhado é uma decisão de produto aprovada. A infraestrutura comercial, convites, gestão de membros, faturamento e controle automático de entitlements ainda não estão implementados no código atual (*Regra de produto aprovada, implementação pendente*).
+- **Estado da Implementação:** modelo relacional de grupos, membros e convites implementado no banco (`billing_groups`, `billing_group_members`, `billing_group_invitations`) com isolamento estrito de dados garantido; fluxos automáticos de checkout integrado, convites por e-mail e gestão de membros na interface permanecem como roadmap comercial (*Parcialmente implementado no backend/banco; interface pendente*).
 
 ## 5. Política de Downgrade e Inadimplência
 
