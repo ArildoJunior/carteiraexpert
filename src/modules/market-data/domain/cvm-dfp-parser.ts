@@ -8,12 +8,25 @@ import {
   CvmInvalidHeaderError,
   CvmInvalidIdentifierError,
   CvmInvalidScaleError,
+  isValidCalendarDate,
+  parseStrictPositiveInteger,
   type CvmAggregatedStatement,
   type CvmCadCompany,
+  type CvmCapitalCompositionData,
   type CvmDfpMetrics,
+  type CvmDmplOriginEvidence,
   type CvmParserContext,
   type CvmStatementPhysicalType,
 } from './cvm-parser.types';
+import {
+  extractDfcDepreciationAmortization,
+  isDeclaredDividendsAccount,
+} from './cvm-fundamentals-engine';
+import {
+  DMPL_REJECTED_COLUMNS,
+  parseCvmDmplStream,
+  type ParsedCvmDmplRow,
+} from './cvm-dmpl-parser';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -188,14 +201,14 @@ export async function* parseCvmStatementStream(
       const cnpj = validateAndNormalizeCnpj(parts[headerIndices.cnpjIdx]);
       const cvmCode = validateAndNormalizeCvmCode(parts[headerIndices.cvmCodeIdx]);
       const referenceDate = parts[headerIndices.refDateIdx];
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(referenceDate)) {
+      if (!isValidCalendarDate(referenceDate)) {
         metrics.corruptedLinesCount++;
         continue;
       }
 
       const versionRaw = parts[headerIndices.versionIdx];
-      const version = parseInt(versionRaw, 10);
-      if (Number.isNaN(version) || version < 1) {
+      const version = parseStrictPositiveInteger(versionRaw);
+      if (version === null) {
         metrics.corruptedLinesCount++;
         continue;
       }
@@ -253,6 +266,7 @@ export async function* parseCvmStatementStream(
  */
 export class CvmDfpAggregator {
   private readonly context: CvmParserContext;
+  private readonly statementType: 'CONSOLIDATED' | 'INDIVIDUAL';
   private readonly eligibleCompanies: Map<string, CvmCadCompany> | null;
   private readonly metrics: CvmDfpMetrics;
 
@@ -262,37 +276,77 @@ export class CvmDfpAggregator {
   // Armazena contas em slots fisicamente isolados por arquivo: chave "CNPJ#CD_CVM#DT_REFER#PHYSICAL_TYPE#VERSAO" -> Map<accountCode, Decimal>
   private readonly accountSlots = new Map<string, Map<string, Decimal>>();
 
+  // Armazena descrições de contas por slot: chave "CNPJ#CD_CVM#DT_REFER#PHYSICAL_TYPE#VERSAO" -> Map<accountCode, string>
+  private readonly accountDescriptions = new Map<string, Map<string, string>>();
+
   // Rastreia períodos com duplicidades conflitantes para descarte seguro
   private readonly conflictingPeriods = new Set<string>();
 
   // Armazena Razão Social por CNPJ
   private readonly companyNames = new Map<string, string>();
 
+  // Armazena Composição de Capital por chave: `${cnpj}#${referenceDate}#${version}` (Etapa 2)
+  private readonly capitalCompositionSlots = new Map<string, CvmCapitalCompositionData>();
+
+  // Armazena contas da DMPL segregadas por slot e por coluna (Etapa 4):
+  // chave: `${cnpj}#${cvmCode}#${referenceDate}#${version}` -> Map<coluna, { accounts: Map<accountCode, Decimal>, descriptions: Map<accountCode, string> }>
+  private readonly dmplSlots = new Map<
+    string,
+    Map<string, { accounts: Map<string, Decimal>; descriptions: Map<string, string> }>
+  >();
+
   // Rastreia conjuntos de períodos contábeis únicos: "CNPJ#CD_CVM#DT_REFER"
   private readonly periodKeys = new Set<string>();
 
   constructor(
     context: CvmParserContext,
-    eligibleCompanies?: Map<string, CvmCadCompany> | null,
-    metrics?: CvmDfpMetrics
+    statementTypeOrEligibleCompanies?: 'CONSOLIDATED' | 'INDIVIDUAL' | Map<string, CvmCadCompany> | null,
+    eligibleCompaniesOrMetrics?: Map<string, CvmCadCompany> | CvmDfpMetrics | null,
+    maybeMetrics?: CvmDfpMetrics
   ) {
     validateCvmParserContext(context);
     this.context = context;
-    this.eligibleCompanies = eligibleCompanies ?? null;
-    this.metrics = metrics ?? {
-      totalLinesRead: 0,
-      relevantLinesProcessed: 0,
-      skippedPenultimoLines: 0,
-      invalidScaleLines: 0,
-      corruptedLinesCount: 0,
-      conflictingDuplicateLines: 0,
-      conflictingStatementsDiscarded: 0,
-      unregisteredCompaniesSkipped: 0,
-      unsupportedSectorCompaniesSkipped: 0,
-      highestVersionIncompleteDiscarded: 0,
-      missingNetIncomeDiscarded: 0,
-      completeStatementsEmitted: 0,
-    };
+
+    if (
+      statementTypeOrEligibleCompanies === 'INDIVIDUAL' ||
+      statementTypeOrEligibleCompanies === 'CONSOLIDATED'
+    ) {
+      this.statementType = statementTypeOrEligibleCompanies;
+      this.eligibleCompanies =
+        (eligibleCompaniesOrMetrics as Map<string, CvmCadCompany> | null) ?? null;
+      this.metrics = maybeMetrics ?? {
+        totalLinesRead: 0,
+        relevantLinesProcessed: 0,
+        skippedPenultimoLines: 0,
+        invalidScaleLines: 0,
+        corruptedLinesCount: 0,
+        conflictingDuplicateLines: 0,
+        conflictingStatementsDiscarded: 0,
+        unregisteredCompaniesSkipped: 0,
+        unsupportedSectorCompaniesSkipped: 0,
+        highestVersionIncompleteDiscarded: 0,
+        missingNetIncomeDiscarded: 0,
+        completeStatementsEmitted: 0,
+      };
+    } else {
+      this.statementType = 'CONSOLIDATED';
+      this.eligibleCompanies =
+        (statementTypeOrEligibleCompanies as Map<string, CvmCadCompany> | null) ?? null;
+      this.metrics = (eligibleCompaniesOrMetrics as CvmDfpMetrics) ?? {
+        totalLinesRead: 0,
+        relevantLinesProcessed: 0,
+        skippedPenultimoLines: 0,
+        invalidScaleLines: 0,
+        corruptedLinesCount: 0,
+        conflictingDuplicateLines: 0,
+        conflictingStatementsDiscarded: 0,
+        unregisteredCompaniesSkipped: 0,
+        unsupportedSectorCompaniesSkipped: 0,
+        highestVersionIncompleteDiscarded: 0,
+        missingNetIncomeDiscarded: 0,
+        completeStatementsEmitted: 0,
+      };
+    }
   }
 
   public getMetrics(): CvmDfpMetrics {
@@ -346,6 +400,12 @@ export class CvmDfpAggregator {
       accountsMap = new Map<string, Decimal>();
       this.accountSlots.set(slotKey, accountsMap);
     }
+    let descriptionsMap = this.accountDescriptions.get(slotKey);
+    if (!descriptionsMap) {
+      descriptionsMap = new Map<string, string>();
+      this.accountDescriptions.set(slotKey, descriptionsMap);
+    }
+    descriptionsMap.set(row.accountCode, row.accountDescription);
 
     // 5. Tratamento de Duplicidades
     const existingValue = accountsMap.get(row.accountCode);
@@ -359,6 +419,86 @@ export class CvmDfpAggregator {
       }
     } else {
       accountsMap.set(row.accountCode, row.accountValue);
+    }
+  }
+
+  /**
+   * Consome uma linha de composição de capital social (Etapa 2).
+   * Mapeia para a chave tripartite de resolução: `${cnpj}#${referenceDate}#${version}`
+   */
+  public ingestCapitalCompositionRow(row: CvmCapitalCompositionData): void {
+    const slotKey = `${row.cnpj}#${row.referenceDate}#${row.version}`;
+    this.capitalCompositionSlots.set(slotKey, row);
+  }
+
+  /**
+   * Consome uma linha da DMPL (Demonstração das Mutações do Patrimônio Líquido) - Etapa 4.
+   * Aplica isolamento estrito:
+   * 1. Rejeita contaminação entre DMPL_con e DMPL_ind conforme statementType;
+   * 2. Rejeita sempre colunas de não controladores e terceiros;
+   * 3. Isola contas em mapas separados por coluna para impedir combinação indevida;
+   * 4. Trata duplicidades idênticas com idempotência e duplicidades conflitantes com descarte.
+   */
+  public ingestDmplRow(row: ParsedCvmDmplRow): void {
+    if (this.eligibleCompanies) {
+      const cad = this.eligibleCompanies.get(row.cnpj);
+      if (!cad || cad.sectorDecision !== 'PROCESSABLE') {
+        return;
+      }
+    }
+
+    // 1. Bloqueio estrito de contaminação cruzada:
+    // Se este agregador for CONSOLIDATED, rejeita categoricamente linhas de DMPL_ind;
+    // Se este agregador for INDIVIDUAL, rejeita categoricamente linhas de DMPL_con;
+    if (this.statementType === 'CONSOLIDATED' && row.statementOrigin !== 'DMPL_con') {
+      return;
+    }
+    if (this.statementType === 'INDIVIDUAL' && row.statementOrigin !== 'DMPL_ind') {
+      return;
+    }
+
+    // 2. Rejeição incondicional de participação de não controladores e terceiros
+    const normCol = row.column
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+    if (DMPL_REJECTED_COLUMNS.has(normCol)) {
+      return;
+    }
+
+    const periodKey = `${row.cnpj}#${row.cvmCode}#${row.referenceDate}`;
+    this.periodKeys.add(periodKey);
+
+    const slotKey = `${row.cnpj}#${row.cvmCode}#${row.referenceDate}#${row.version}`;
+    let columnsMap = this.dmplSlots.get(slotKey);
+    if (!columnsMap) {
+      columnsMap = new Map();
+      this.dmplSlots.set(slotKey, columnsMap);
+    }
+
+    let colData = columnsMap.get(row.column);
+    if (!colData) {
+      colData = {
+        accounts: new Map<string, Decimal>(),
+        descriptions: new Map<string, string>(),
+      };
+      columnsMap.set(row.column, colData);
+    }
+
+    colData.descriptions.set(row.accountCode, row.accountDescription);
+
+    const existingValue = colData.accounts.get(row.accountCode);
+    if (existingValue !== undefined) {
+      if (existingValue.equals(row.accountValue)) {
+        // Idempotência
+      } else {
+        // Conflito
+        this.conflictingPeriods.add(periodKey);
+        this.metrics.conflictingDuplicateLines++;
+      }
+    } else {
+      colData.accounts.set(row.accountCode, row.accountValue);
     }
   }
 
@@ -383,14 +523,37 @@ export class CvmDfpAggregator {
 
       const companyLegalName = this.companyNames.get(cnpj) || 'COMPANHIA CVM';
 
-      // 2. Busca os slots de BPA_con, BPP_con e DRE_con exclusivamente na maior versão
-      const bpaSlotKey = `${cnpj}#${cvmCode}#${referenceDate}#BPA_con#${highestVersion}`;
-      const bppSlotKey = `${cnpj}#${cvmCode}#${referenceDate}#BPP_con#${highestVersion}`;
-      const dreSlotKey = `${cnpj}#${cvmCode}#${referenceDate}#DRE_con#${highestVersion}`;
+      // 2. Busca os slots de BPA, BPP e DRE exclusivamente na maior versão
+      const bpaType = this.statementType === 'CONSOLIDATED' ? 'BPA_con' : 'BPA_ind';
+      const bppType = this.statementType === 'CONSOLIDATED' ? 'BPP_con' : 'BPP_ind';
+      const dreType = this.statementType === 'CONSOLIDATED' ? 'DRE_con' : 'DRE_ind';
 
-      const bpaAccounts = this.accountSlots.get(bpaSlotKey);
-      const bppAccounts = this.accountSlots.get(bppSlotKey);
-      const dreAccounts = this.accountSlots.get(dreSlotKey);
+      let bpaAccounts = this.accountSlots.get(
+        `${cnpj}#${cvmCode}#${referenceDate}#${bpaType}#${highestVersion}`
+      );
+      let bppAccounts = this.accountSlots.get(
+        `${cnpj}#${cvmCode}#${referenceDate}#${bppType}#${highestVersion}`
+      );
+      let dreAccounts = this.accountSlots.get(
+        `${cnpj}#${cvmCode}#${referenceDate}#${dreType}#${highestVersion}`
+      );
+
+      // Compatibilidade defensiva para demonstrativos individuais inseridos como _con
+      if (!bpaAccounts && this.statementType === 'INDIVIDUAL') {
+        bpaAccounts = this.accountSlots.get(
+          `${cnpj}#${cvmCode}#${referenceDate}#BPA_con#${highestVersion}`
+        );
+      }
+      if (!bppAccounts && this.statementType === 'INDIVIDUAL') {
+        bppAccounts = this.accountSlots.get(
+          `${cnpj}#${cvmCode}#${referenceDate}#BPP_con#${highestVersion}`
+        );
+      }
+      if (!dreAccounts && this.statementType === 'INDIVIDUAL') {
+        dreAccounts = this.accountSlots.get(
+          `${cnpj}#${cvmCode}#${referenceDate}#DRE_con#${highestVersion}`
+        );
+      }
 
       // 3. Se a maior versão não formar o conjunto completo com BPA, BPP e DRE, descarta!
       if (!bpaAccounts || !bppAccounts || !dreAccounts) {
@@ -416,7 +579,26 @@ export class CvmDfpAggregator {
         continue;
       }
 
-      // 6. Geração e validação estrita de sourceReference com serialização determinística
+      // 6. Extração de contas opcionais de balanço (BPA e BPP) - Etapa 1
+      // Diferenciação estrita: conta ausente -> null; conta presente com valor zero -> Decimal(0)
+      const cashEquivalents = bpaAccounts.has('1.01.01')
+        ? bpaAccounts.get('1.01.01')!
+        : null;
+
+      const shortTermDebt = bppAccounts.has('2.01.04')
+        ? bppAccounts.get('2.01.04')!
+        : null;
+      const longTermDebt = bppAccounts.has('2.02.01')
+        ? bppAccounts.get('2.02.01')!
+        : null;
+
+      // Regra estrita: Dívida Bruta calculada somente quando as duas parcelas forem conhecidas
+      const grossDebt =
+        shortTermDebt !== null && longTermDebt !== null
+          ? shortTermDebt.add(longTermDebt)
+          : null;
+
+      // 7. Geração e validação estrita de sourceReference com serialização determinística
       const sourceReferencePayload = {
         source: 'cvm_dfp' as const,
         fileId: this.context.fileId,
@@ -425,7 +607,7 @@ export class CvmDfpAggregator {
         cvmCode,
         referenceDate,
         periodType: 'annual' as const,
-        statementType: 'CONSOLIDATED' as const,
+        statementType: this.statementType,
         exerciseOrder: 'ÚLTIMO' as const,
         version: highestVersion,
         parserVersion: this.context.parserVersion,
@@ -437,25 +619,159 @@ export class CvmDfpAggregator {
       const validatedSourceRef = cvmSourceReferenceSchema.parse(sourceReferencePayload);
       const sourceReference = JSON.stringify(validatedSourceRef);
 
-      // 7. Montagem do demonstrativo agregado
+      // 8. Resolução de Composição de Capital Social (Etapa 2)
+      const capKey = `${cnpj}#${referenceDate}#${highestVersion}`;
+      const capitalComposition = this.capitalCompositionSlots.get(capKey) ?? null;
+
+      // 9. Extração de contas opcionais de DRE e DFC para EBITDA (Etapa 3)
+      // EBIT proveniente da conta DRE 3.05
+      const ebit = dreAccounts.has('3.05') ? dreAccounts.get('3.05')! : null;
+
+      // Busca slot de DFC Método Indireto estritamente no mesmo contexto
+      const dfcType = this.statementType === 'CONSOLIDATED' ? 'DFC_MI_con' : 'DFC_MI_ind';
+      let dfcSlotKey = `${cnpj}#${cvmCode}#${referenceDate}#${dfcType}#${highestVersion}`;
+      let dfcAccounts = this.accountSlots.get(dfcSlotKey);
+      let dfcDescs = this.accountDescriptions.get(dfcSlotKey);
+      if (!dfcAccounts && this.statementType === 'INDIVIDUAL') {
+        dfcSlotKey = `${cnpj}#${cvmCode}#${referenceDate}#DFC_MI_con#${highestVersion}`;
+        dfcAccounts = this.accountSlots.get(dfcSlotKey);
+        dfcDescs = this.accountDescriptions.get(dfcSlotKey);
+      }
+
+      // Resolução de Depreciação e Amortização da DFC (Etapa 3)
+      const depreciationAmortization = extractDfcDepreciationAmortization(dfcAccounts, dfcDescs);
+
+      // Cálculo determinístico de EBITDA = EBIT (3.05) + D&A (DFC)
+      // Exige estritamente a presença de ambos os componentes; caso contrário, ebitda = null
+      let ebitda: Decimal | null = null;
+      if (ebit !== null && depreciationAmortization !== null) {
+        ebitda = ebit.add(depreciationAmortization);
+      }
+
+      // 10. Extração de Dividendos Declarados da DMPL com Origem Auditável (Etapa 4)
+      const dmplSlotKey = `${cnpj}#${cvmCode}#${referenceDate}#${highestVersion}`;
+      const columnsMap = this.dmplSlots.get(dmplSlotKey);
+
+      let selectedColumn: string | null = null;
+      let dmplAccounts: Map<string, Decimal> | null = null;
+      let dmplDescs: Map<string, string> | null = null;
+
+      if (columnsMap) {
+        if (this.statementType === 'CONSOLIDATED') {
+          // Precedência determinística para CONSOLIDATED:
+          // 1. Prioridade absoluta para 'Patrimônio Líquido' (controladores)
+          // 2. Fallback secundário para 'Patrimônio Líquido Consolidado' exclusivamente quando 'Patrimônio Líquido' não existir
+          if (columnsMap.has('Patrimônio Líquido')) {
+            selectedColumn = 'Patrimônio Líquido';
+            const colData = columnsMap.get('Patrimônio Líquido')!;
+            dmplAccounts = colData.accounts;
+            dmplDescs = colData.descriptions;
+          } else if (columnsMap.has('Patrimônio Líquido Consolidado')) {
+            selectedColumn = 'Patrimônio Líquido Consolidado';
+            const colData = columnsMap.get('Patrimônio Líquido Consolidado')!;
+            dmplAccounts = colData.accounts;
+            dmplDescs = colData.descriptions;
+          }
+        } else {
+          // Para INDIVIDUAL: aceita exclusivamente 'Patrimônio Líquido'
+          if (columnsMap.has('Patrimônio Líquido')) {
+            selectedColumn = 'Patrimônio Líquido';
+            const colData = columnsMap.get('Patrimônio Líquido')!;
+            dmplAccounts = colData.accounts;
+            dmplDescs = colData.descriptions;
+          }
+        }
+      }
+
+      let dividendsDeclared: Decimal | null = null;
+      let dmplOrigin: CvmDmplOriginEvidence | null = null;
+
+      if (selectedColumn && dmplAccounts) {
+        // 1. Prioridade absoluta para a conta sintética padrão 5.04.06
+        if (dmplAccounts.has('5.04.06')) {
+          const desc = dmplDescs?.get('5.04.06') || '';
+          if (isDeclaredDividendsAccount('5.04.06', desc)) {
+            const rawVal = dmplAccounts.get('5.04.06')!;
+            dividendsDeclared = rawVal.abs();
+            dmplOrigin = {
+              statementOrigin: this.statementType === 'CONSOLIDATED' ? 'DMPL_con' : 'DMPL_ind',
+              statementType: this.statementType,
+              selectedColumn,
+              cnpj,
+              cvmCode,
+              referenceDate,
+              version: highestVersion,
+              accountCode: '5.04.06',
+              validatedDescription: desc,
+              declaredAmount: dividendsDeclared,
+              exerciseOrder: 'ÚLTIMO',
+            };
+          }
+        } else {
+          // 2. Agregação de subcontas 5.04.06.* exclusivamente quando a sintética estiver ausente
+          const validSubaccounts: Array<{ code: string; desc: string; val: Decimal }> = [];
+          for (const [code, val] of dmplAccounts.entries()) {
+            if (/^5\.04\.06\.\d+$/.test(code)) {
+              const desc = dmplDescs?.get(code) || '';
+              if (isDeclaredDividendsAccount(code, desc)) {
+                validSubaccounts.push({ code, desc, val: val.abs() });
+              }
+            }
+          }
+
+          if (validSubaccounts.length > 0) {
+            validSubaccounts.sort((a, b) => a.code.localeCompare(b.code));
+            let subSum = new Decimal(0);
+            const codes: string[] = [];
+            const descs: string[] = [];
+            for (const sub of validSubaccounts) {
+              subSum = subSum.add(sub.val);
+              codes.push(sub.code);
+              descs.push(sub.desc);
+            }
+            dividendsDeclared = subSum;
+            dmplOrigin = {
+              statementOrigin: this.statementType === 'CONSOLIDATED' ? 'DMPL_con' : 'DMPL_ind',
+              statementType: this.statementType,
+              selectedColumn,
+              cnpj,
+              cvmCode,
+              referenceDate,
+              version: highestVersion,
+              accountCode: codes.join('+'),
+              validatedDescription: descs.join('; '),
+              declaredAmount: dividendsDeclared,
+              exerciseOrder: 'ÚLTIMO',
+            };
+          }
+        }
+      }
+
+      // 11. Montagem do demonstrativo agregado
       const statement: CvmAggregatedStatement = {
         cnpj,
         cvmCode,
         companyLegalName,
         referenceDate,
         periodType: 'annual',
-        statementType: 'CONSOLIDATED',
+        statementType: this.statementType,
         exerciseOrder: 'ÚLTIMO',
         version: highestVersion,
         netRevenue,
         netIncome,
         totalEquity,
         totalAssets,
-        grossDebt: null,
-        cashEquivalents: null,
-        ebitda: null,
+        grossDebt,
+        cashEquivalents,
+        shortTermDebt,
+        longTermDebt,
+        capitalComposition,
         sharesCount: null,
-        dividendsDeclared: null,
+        ebit,
+        depreciationAmortization,
+        ebitda,
+        dividendsDeclared,
+        dmplOrigin,
         sourceReference,
       };
 

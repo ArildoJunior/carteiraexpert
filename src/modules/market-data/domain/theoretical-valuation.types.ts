@@ -1,13 +1,39 @@
 import type { Decimal } from '@/lib/decimal';
 import type { FundamentalQuoteAudit } from './fundamentals.types';
 
-export type ValuationModelType = 'BAZIN' | 'GRAHAM' | 'DCF_SIMPLIFIED';
+export type ValuationModelType =
+  | 'BAZIN'
+  | 'GRAHAM'
+  | 'DCF_SIMPLIFIED'
+  | 'MULTIPLES'
+  | 'CONSENSUS';
 
 export type ValuationCalculationStatus =
   | 'VALID'
   | 'NOT_APPLICABLE'
   | 'INSUFFICIENT_DATA'
-  | 'INVALID_PREMISES';
+  | 'INVALID_PREMISES'
+  | 'INCOMPATIBLE';
+
+export type DataQualityStatus =
+  | 'VALID'
+  | 'STALE'
+  | 'INCOMPLETE'
+  | 'INCOMPATIBLE'
+  | 'UNVERIFIED'
+  | 'UNAVAILABLE';
+
+export interface ValuationTraceability {
+  source: string;
+  referencePeriod: string;
+  currency: string;
+  referenceDate: string;
+  methodology: string;
+  formula: string;
+  premises: Record<string, unknown>;
+  methodologyVersion: string;
+  limitations: string[];
+}
 
 export interface ValuationQuoteContext {
   price: Decimal;
@@ -32,6 +58,7 @@ export interface ValuationFundamentalContext {
   referencePeriod: string;
   referenceDate: Date | string;
   statementType: string;
+  source?: string;
 }
 
 // ─── 1. Bazin Model Types ───────────────────────────────────────────────────
@@ -109,6 +136,99 @@ export interface DcfIntermediates {
   presentValueOfTerminalValue: string | null;
 }
 
+// ─── 4. Multiples Model Types ───────────────────────────────────────────────
+
+export type MultiplesSelectionMethod = 'PE' | 'EV_EBITDA' | 'PB' | 'AVERAGE';
+
+export interface MultiplesPremises {
+  /** P/L alvo (ex: 10.0 ou 15.0) */
+  targetPe?: Decimal | null;
+  /** EV/EBITDA alvo (ex: 6.0 ou 8.0) */
+  targetEvToEbitda?: Decimal | null;
+  /** P/VP alvo (ex: 1.5 ou 2.0) */
+  targetPb?: Decimal | null;
+  /** Método de consolidação do valor intrínseco (padrão: 'AVERAGE') */
+  selectedMultipleMethod?: MultiplesSelectionMethod;
+}
+
+export interface MultiplesFactualInputs {
+  netIncome: string | null;
+  totalEquity: string | null;
+  ebitda: string | null;
+  grossDebt: string | null;
+  cashEquivalents: string | null;
+  netDebt: string | null;
+  sharesCount: string | null;
+  lpa: string | null;
+  vpa: string | null;
+  currency: string;
+}
+
+export interface MultiplesIntermediates {
+  lpaDecimal: string | null;
+  vpaDecimal: string | null;
+  netDebtDecimal: string | null;
+  fairPricePe: string | null;
+  fairPriceEvToEbitda: string | null;
+  fairPricePb: string | null;
+  methodApplied: MultiplesSelectionMethod;
+  modelsUsedCount: number;
+}
+
+// ─── 5. Consensus Model Types ───────────────────────────────────────────────
+
+export interface ConsensusModelWeight {
+  model: ValuationModelType;
+  modelName: string;
+  targetPrice: Decimal;
+  weight: Decimal;
+  status: ValuationCalculationStatus;
+}
+
+export interface SerializedConsensusModelWeight {
+  model: ValuationModelType;
+  modelName: string;
+  targetPrice: string;
+  weight: string;
+  status: ValuationCalculationStatus;
+}
+
+export interface ConsensusValuationResult {
+  model: 'CONSENSUS';
+  modelName: string;
+  status: ValuationCalculationStatus;
+  statusReason: string | null;
+  dataQualityStatus: DataQualityStatus;
+  methodologyVersion: string;
+  traceability: ValuationTraceability;
+  weightedTargetPrice: Decimal | null;
+  marginOfSafetyPercent: Decimal | null;
+  marketPriceUsed: Decimal | null;
+  currency: string;
+  modelsIncluded: ValuationModelType[];
+  modelWeights: ConsensusModelWeight[];
+  disclaimer: string;
+  calculatedAt: Date;
+}
+
+export interface SerializedConsensusValuationResult {
+  model: 'CONSENSUS';
+  modelName: string;
+  status: ValuationCalculationStatus;
+  statusReason: string | null;
+  dataQualityStatus?: DataQualityStatus;
+  methodologyVersion?: string;
+  traceability?: ValuationTraceability;
+  weightedTargetPrice: string | null;
+  marginOfSafetyPercent: string | null;
+  marketPriceUsed: string | null;
+  currency: string;
+  modelsIncluded: ValuationModelType[];
+  modelWeights: SerializedConsensusModelWeight[];
+  disclaimer: string;
+  calculatedAt: string;
+}
+
 // ─── Generic Model Result Interface ─────────────────────────────────────────
 
 export interface TheoreticalModelResult<TPremises, TFactual, TIntermediates> {
@@ -116,6 +236,9 @@ export interface TheoreticalModelResult<TPremises, TFactual, TIntermediates> {
   modelName: string;
   status: ValuationCalculationStatus;
   statusReason: string | null;
+  dataQualityStatus: DataQualityStatus;
+  methodologyVersion: string;
+  traceability: ValuationTraceability;
   intrinsicValue: Decimal | null;
   marginOfSafetyPercent: Decimal | null; // ((intrinsicValue - marketPrice) / marketPrice) * 100
   marketPriceUsed: Decimal | null;
@@ -131,6 +254,9 @@ export interface SerializedTheoreticalModelResult<TPremisesSerialized, TFactual,
   modelName: string;
   status: ValuationCalculationStatus;
   statusReason: string | null;
+  dataQualityStatus?: DataQualityStatus;
+  methodologyVersion?: string;
+  traceability?: ValuationTraceability;
   intrinsicValue: string | null;
   marginOfSafetyPercent: string | null;
   marketPriceUsed: string | null;
@@ -151,9 +277,12 @@ export interface TheoreticalValuationResultSet {
   statementType: string;
   quoteAudit: FundamentalQuoteAudit | null;
   currencyMismatch: boolean;
+  dataQualityStatus: DataQualityStatus;
   bazin: TheoreticalModelResult<BazinPremises, BazinFactualInputs, BazinIntermediates>;
   graham: TheoreticalModelResult<GrahamPremises, GrahamFactualInputs, GrahamIntermediates>;
   dcf: TheoreticalModelResult<DcfPremises, DcfFactualInputs, DcfIntermediates>;
+  multiples: TheoreticalModelResult<MultiplesPremises, MultiplesFactualInputs, MultiplesIntermediates>;
+  consensus: ConsensusValuationResult;
   globalDisclaimer: string;
   calculatedAt: Date;
 }
@@ -173,6 +302,13 @@ export interface SerializedDcfPremises {
   projectionYears: number;
 }
 
+export interface SerializedMultiplesPremises {
+  targetPe: string | null;
+  targetEvToEbitda: string | null;
+  targetPb: string | null;
+  selectedMultipleMethod: MultiplesSelectionMethod;
+}
+
 export interface SerializedTheoreticalValuationResultSet {
   assetId: string;
   ticker: string;
@@ -181,6 +317,7 @@ export interface SerializedTheoreticalValuationResultSet {
   statementType: string;
   quoteAudit: FundamentalQuoteAudit | null;
   currencyMismatch: boolean;
+  dataQualityStatus?: DataQualityStatus;
   bazin: SerializedTheoreticalModelResult<
     SerializedBazinPremises,
     BazinFactualInputs,
@@ -196,6 +333,12 @@ export interface SerializedTheoreticalValuationResultSet {
     DcfFactualInputs,
     DcfIntermediates
   >;
+  multiples?: SerializedTheoreticalModelResult<
+    SerializedMultiplesPremises,
+    MultiplesFactualInputs,
+    MultiplesIntermediates
+  >;
+  consensus?: SerializedConsensusValuationResult;
   globalDisclaimer: string;
   calculatedAt: string;
 }

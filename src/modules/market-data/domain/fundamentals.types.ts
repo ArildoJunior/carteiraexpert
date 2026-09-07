@@ -1,4 +1,5 @@
 import type { Decimal } from '@/lib/decimal';
+import type { DataQualityStatus } from './theoretical-valuation.types';
 
 export type StatementPeriodType = 'annual' | 'quarterly' | 'ttm';
 export type StatementType = 'CONSOLIDATED' | 'INDIVIDUAL';
@@ -41,21 +42,43 @@ export interface FundamentalQuoteAudit {
   currency: string;
 }
 
-export interface CalculatedFundamentalIndicators {
-  // Grandeza contábil derivada auxiliar (R$ monetário)
-  netDebt: string | null;
+export interface IndicatorTraceability {
+  source: string;
+  referencePeriod: string;
+  currency: string;
+  referenceDate: string;
+  methodology: string;
+  formula: string;
+  premises: Record<string, unknown>;
+  methodologyVersion: string;
+  limitations: string[];
+}
 
-  // 10 Indicadores financeiros determinísticos
+export interface CalculatedFundamentalIndicators {
+  // Grandezas contábeis derivadas auxiliares (R$ monetário)
+  netDebt: string | null;
+  enterpriseValue?: string | null;
+
+  // 14 Indicadores financeiros determinísticos
   netMargin: string | null;        // NetIncome / NetRevenue (4 decimais)
   ebitdaMargin: string | null;     // EBITDA / NetRevenue (4 decimais)
   roe: string | null;              // NetIncome / TotalEquity (4 decimais)
   roa: string | null;              // NetIncome / TotalAssets (4 decimais)
+  roic?: string | null;            // NOPAT / CapitalInvestido (4 decimais)
   lpa: string | null;              // NetIncome / SharesCount (4 decimais)
   vpa: string | null;              // TotalEquity / SharesCount (4 decimais)
   netDebtToEbitda: string | null;  // NetDebt / EBITDA (2 decimais)
+  grossDebtToEquity?: string | null;// GrossDebt / TotalEquity (2 decimais)
+  netDebtToEquity?: string | null;  // NetDebt / TotalEquity (2 decimais)
   peRatio: string | null;          // QuotePrice / LPA (2 decimais)
   pbRatio: string | null;          // QuotePrice / VPA (2 decimais)
+  evToEbitda?: string | null;       // EV / EBITDA (2 decimais)
   dividendYield: string | null;    // (DividendsDeclared / SharesCount) / QuotePrice (4 decimais)
+
+  // Governança v2
+  dataQualityStatus?: DataQualityStatus;
+  methodologyVersion?: string;
+  traceability?: Record<string, IndicatorTraceability>;
 
   // Metadados de auditoria de cotação para múltiplos
   quoteAudit: FundamentalQuoteAudit | null;

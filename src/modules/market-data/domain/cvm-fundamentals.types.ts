@@ -1,6 +1,7 @@
 import type { Decimal } from '@/lib/decimal';
-import type { CvmParserContext } from './cvm-parser.types';
+import type { CvmCapitalCompositionData, CvmDmplOriginEvidence, CvmParserContext } from './cvm-parser.types';
 
+export type { CvmDmplOriginEvidence };
 export type CvmStatementType = 'CONSOLIDATED' | 'INDIVIDUAL';
 export type CvmPeriodType = 'annual' | 'quarterly' | 'ttm';
 
@@ -20,6 +21,21 @@ export interface CvmRawStatementData {
 
   // Mapa de contas contábeis indexadas por CD_CONTA
   accounts: Map<string, Decimal>;
+
+  // Descrições opcionais de contas indexadas por CD_CONTA (para validação semântica de DFC)
+  accountDescriptions?: Map<string, string>;
+
+  // Composição do Capital Social (Etapa 2)
+  capitalComposition?: CvmCapitalCompositionData | null;
+
+  // Parcela explícita de Depreciação e Amortização da DFC (Etapa 3)
+  dfcDepreciationAmortization?: Decimal | null;
+
+  // Parcela explícita de Dividendos Declarados da DMPL (Etapa 4)
+  dmplDividendsDeclared?: Decimal | null;
+
+  // Evidência de Origem da DMPL (Etapa 4 - Bloqueio de Injeção Artificial)
+  dmplOrigin?: CvmDmplOriginEvidence | null;
 
   // Metadados de proveniência
   sourceReference: string;
@@ -45,6 +61,7 @@ export interface ConvertedFundamentals {
   netIncome: Decimal;
   totalEquity: Decimal;
   totalAssets: Decimal;
+  depreciationAmortization: Decimal | null;
   ebitda: Decimal | null;
 
   // Dívida e Disponibilidades
@@ -56,6 +73,9 @@ export interface ConvertedFundamentals {
   sharesCount: Decimal | null;
   dividendsDeclared: Decimal | null;
   notes: string | null;
+
+  // Composição de capital de origem (Etapa 2 - para resolução contextual por ativo/classe)
+  capitalComposition?: CvmCapitalCompositionData | null;
 }
 
 /**

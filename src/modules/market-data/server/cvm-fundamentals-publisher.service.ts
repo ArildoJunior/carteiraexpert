@@ -6,6 +6,7 @@ import { cvmBindingService } from './cvm-binding.service';
 import {
   selectStatementsForPublication,
 } from '../domain/cvm-fundamentals-engine';
+import { resolveSharesCountByClass } from '../domain/cvm-capital-composition-parser';
 import { publishFundamentalsInputSchema } from '../domain/cvm-fundamentals.schema';
 import {
   type ConvertedFundamentals,
@@ -14,6 +15,7 @@ import {
   type PublishFundamentalsInput,
   type PublishFundamentalsResult,
 } from '../domain/cvm-fundamentals.types';
+import type { ResolvedAssetTarget } from '../domain/cvm-binding.types';
 
 type DbExecutor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -101,7 +103,7 @@ export class CvmFundamentalsPublisherService {
    */
   private async publishForSingleAsset(
     tx: any,
-    targetAsset: { assetId: string; ticker: string },
+    targetAsset: ResolvedAssetTarget,
     cnpj: string,
     cvmCode: string,
     converted: ConvertedFundamentals,
@@ -132,6 +134,21 @@ export class CvmFundamentalsPublisherService {
     const recordId = existingRecord ? existingRecord.id : crypto.randomUUID();
     const now = new Date();
 
+    const referenceDateStr =
+      converted.referenceDate instanceof Date
+        ? converted.referenceDate.toISOString().slice(0, 10)
+        : String(converted.referenceDate).slice(0, 10);
+
+    // Etapa 2: Resolução estrita de sharesCount por classe de ação do ativo
+    const effectiveSharesCount =
+      targetAsset.shareClass && converted.capitalComposition
+        ? resolveSharesCountByClass(converted.capitalComposition, targetAsset.shareClass, {
+            cnpj,
+            referenceDate: referenceDateStr,
+            version: converted.version,
+          })
+        : converted.sharesCount;
+
     const valuesToPersist = {
       id: recordId,
       assetId: targetAsset.assetId,
@@ -152,7 +169,7 @@ export class CvmFundamentalsPublisherService {
       totalAssets: converted.totalAssets ? converted.totalAssets.toFixed(4) : null,
       grossDebt: converted.grossDebt ? converted.grossDebt.toFixed(4) : null,
       cashEquivalents: converted.cashEquivalents ? converted.cashEquivalents.toFixed(4) : null,
-      sharesCount: converted.sharesCount ? converted.sharesCount.toFixed(10) : null,
+      sharesCount: effectiveSharesCount ? effectiveSharesCount.toFixed(10) : null,
       dividendsDeclared: converted.dividendsDeclared ? converted.dividendsDeclared.toFixed(4) : null,
       notes: converted.notes,
       updatedAt: now,
@@ -169,6 +186,7 @@ export class CvmFundamentalsPublisherService {
         existingRecord.totalAssets === valuesToPersist.totalAssets &&
         existingRecord.grossDebt === valuesToPersist.grossDebt &&
         existingRecord.cashEquivalents === valuesToPersist.cashEquivalents &&
+        existingRecord.sharesCount === valuesToPersist.sharesCount &&
         existingRecord.sourceReference === valuesToPersist.sourceReference;
 
       if (isIdentical) {
@@ -218,6 +236,7 @@ export class CvmFundamentalsPublisherService {
             totalAssets: sql`excluded.total_assets`,
             grossDebt: sql`excluded.gross_debt`,
             cashEquivalents: sql`excluded.cash_equivalents`,
+            sharesCount: sql`excluded.shares_count`,
             sourceReference: sql`excluded.source_reference`,
             isRestated: sql`excluded.is_restated`,
             updatedAt: sql`excluded.updated_at`,

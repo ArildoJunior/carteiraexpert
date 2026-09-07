@@ -9,6 +9,26 @@ export type CvmBindingMatchMethod =
 
 export type CvmShareClass = 'ON' | 'PN' | 'PNA' | 'PNB' | 'UNT';
 
+export const CVM_SHARE_CLASSES: readonly CvmShareClass[] = [
+  'ON',
+  'PN',
+  'PNA',
+  'PNB',
+  'UNT',
+] as const;
+
+export function isCvmShareClass(value: unknown): value is CvmShareClass {
+  return (
+    typeof value === 'string' &&
+    (CVM_SHARE_CLASSES as readonly string[]).includes(value)
+  );
+}
+
+export function parseCvmShareClass(value: unknown): CvmShareClass | null {
+  if (isCvmShareClass(value)) return value;
+  return null;
+}
+
 export type CvmBindingAuditAction =
   | 'CVM_BINDING_PROPOSED'
   | 'CVM_BINDING_APPROVED'

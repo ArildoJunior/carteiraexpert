@@ -16,8 +16,11 @@ import {
 import {
   CvmBindingError,
   CvmConflictingActiveBindingError,
+  isCvmShareClass,
+  parseCvmShareClass,
   type CvmBindingAuditAction,
   type CvmCompanyAssetBinding,
+  type CvmShareClass,
   type ProposeBindingInput,
   type ResolvedAssetTarget,
   type ReviewBindingInput,
@@ -246,7 +249,7 @@ export class CvmBindingService {
       }
 
       // 4. Validar compatibilidade de tipo e classe
-      validateShareClassCompatibility(binding.shareClass as any, asset.assetType, asset.ticker);
+      validateShareClassCompatibility(parseCvmShareClass(binding.shareClass), asset.assetType, asset.ticker);
 
       // 5. Verificar se já existe outro vínculo APPROVED ativo para este mesmo asset_id
       const [existingApproved] = await tx
@@ -585,7 +588,7 @@ export class CvmBindingService {
       assetId: r.assetId,
       ticker: r.ticker,
       assetType: r.assetType,
-      shareClass: r.shareClass as any,
+      shareClass: parseCvmShareClass(r.shareClass),
       bindingId: r.bindingId,
     }));
   }

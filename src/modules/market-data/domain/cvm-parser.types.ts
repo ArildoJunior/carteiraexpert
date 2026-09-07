@@ -11,7 +11,34 @@ export interface CvmParserContext {
 }
 
 // ─── Tipos Físicos de Demonstrativos DFP ──────────────────────────────────────
-export type CvmStatementPhysicalType = 'BPA_con' | 'BPP_con' | 'DRE_con';
+export type CvmStatementPhysicalType =
+  | 'BPA_con'
+  | 'BPP_con'
+  | 'DRE_con'
+  | 'DFC_MI_con'
+  | 'DFC_MD_con'
+  | 'DMPL_con'
+  | 'DMPL_ind'
+  | 'BPA_ind'
+  | 'BPP_ind'
+  | 'DRE_ind'
+  | 'DFC_MI_ind'
+  | 'DFC_MD_ind';
+
+// ─── Evidência Estruturada de Origem da DMPL (Etapa 4) ───────────────────────
+export interface CvmDmplOriginEvidence {
+  statementOrigin: 'DMPL_con' | 'DMPL_ind';
+  statementType: 'CONSOLIDATED' | 'INDIVIDUAL';
+  selectedColumn: string;
+  cnpj: string;
+  cvmCode: string;
+  referenceDate: string; // 'YYYY-MM-DD'
+  version: number;
+  accountCode: string; // '5.04.06' ou subcontas
+  validatedDescription: string;
+  declaredAmount: Decimal;
+  exerciseOrder: 'ÚLTIMO';
+}
 
 // ─── Tipos de Dados do Cadastro CVM (cad_cia_aberta.csv) ─────────────────────
 export interface CvmCadCompany {
@@ -46,7 +73,7 @@ export interface CvmAggregatedStatement {
   companyLegalName: string;
   referenceDate: string;         // 'YYYY-MM-DD'
   periodType: 'annual';
-  statementType: 'CONSOLIDATED';
+  statementType: 'CONSOLIDATED' | 'INDIVIDUAL';
   exerciseOrder: 'ÚLTIMO';
   version: number;               // Maior versão válida consolidada
 
@@ -56,15 +83,38 @@ export interface CvmAggregatedStatement {
   totalEquity: Decimal;          // Conta 2.03
   totalAssets: Decimal;          // Conta 1
 
-  // Grandezas mantidas obrigatoriamente como null no MVP
-  grossDebt: null;
-  cashEquivalents: null;
-  ebitda: null;
-  sharesCount: null;
-  dividendsDeclared: null;
+  // Dívida Bruta e Caixa (Etapa 1)
+  grossDebt: Decimal | null;
+  cashEquivalents: Decimal | null;
+  shortTermDebt?: Decimal | null;
+  longTermDebt?: Decimal | null;
+
+  // Composição do Capital Social (Etapa 2)
+  capitalComposition?: CvmCapitalCompositionData | null;
+  sharesCount: Decimal | null;
+
+  // EBITDA e componentes da Etapa 3
+  ebit?: Decimal | null;
+  depreciationAmortization?: Decimal | null;
+  ebitda: Decimal | null;
+  dividendsDeclared: Decimal | null;
+
+  // Evidência de Origem da DMPL (Etapa 4)
+  dmplOrigin?: CvmDmplOriginEvidence | null;
 
   // Proveniência Completa Serializada e Validada
   sourceReference: string;       // JSON conforme cvmSourceReferenceSchema
+}
+
+// ─── Dados de Composição do Capital Social (DFP) ─────────────────────────────
+export interface CvmCapitalCompositionData {
+  cnpj: string;                  // 14 dígitos numéricos normalizados
+  referenceDate: string;         // 'YYYY-MM-DD'
+  version: number;
+  companyLegalName?: string;
+  ordinaryShares: Decimal | null;
+  preferredShares: Decimal | null;
+  totalShares: Decimal | null;
 }
 
 // ─── Métricas do Parser DFP ──────────────────────────────────────────────────
@@ -131,4 +181,41 @@ export class CvmCorruptedDataError extends CvmParserError {
     super(message);
     this.name = 'CvmCorruptedDataError';
   }
+}
+
+// ─── Funções Utilitárias Puras de Validação Temporal e Versionamento ────────
+
+/**
+ * Valida se uma string no formato 'YYYY-MM-DD' representa uma data calendariamente válida.
+ * Rejeita regex matches inválidos como 2024-02-31, 2023-02-29, 2024-13-45 ou dias/meses zerados.
+ */
+export function isValidCalendarDate(dateStr?: string | null): boolean {
+  if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
+  const parts = dateStr.split('-');
+  const year = Number(parts[0]);
+  const month = Number(parts[1]);
+  const day = Number(parts[2]);
+
+  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+}
+
+/**
+ * Validação estrita de inteiro decimal positivo para VERSAO da CVM.
+ * Aceita apenas strings contendo estritamente dígitos decimais com valor >= 1.
+ * Rejeita explicitamente valores parciais ou inválidos como '1abc', '1.0', '1e5', '0', '-1'.
+ */
+export function parseStrictPositiveInteger(raw?: string | null): number | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!/^\d+$/.test(trimmed)) return null;
+  const num = Number(trimmed);
+  if (!Number.isSafeInteger(num) || num < 1) return null;
+  return num;
 }

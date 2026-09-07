@@ -611,4 +611,964 @@ describe('CVM DFP Parser & Streaming Aggregator (Unit & Stream)', () => {
       expect(semLucro).toBeUndefined();
     });
   });
+
+  describe('Mapeamento Contábil de BPA e BPP no CvmDfpAggregator (Etapa 1)', () => {
+    const baseRow = {
+      cnpj: '33000167000101',
+      cvmCode: '009512',
+      referenceDate: '2024-12-31',
+      version: 1,
+      companyLegalName: 'PETRÓLEO BRASILEIRO S.A.',
+    };
+
+    function feedRequiredAccounts(aggregator: CvmDfpAggregator) {
+      aggregator.ingestRow({
+        ...baseRow,
+        physicalType: 'BPA_con',
+        accountCode: '1',
+        accountDescription: 'Ativo Total',
+        accountValue: new Decimal('1000000000'),
+      });
+      aggregator.ingestRow({
+        ...baseRow,
+        physicalType: 'BPP_con',
+        accountCode: '2.03',
+        accountDescription: 'Patrimônio Líquido',
+        accountValue: new Decimal('400000000'),
+      });
+      aggregator.ingestRow({
+        ...baseRow,
+        physicalType: 'DRE_con',
+        accountCode: '3.01',
+        accountDescription: 'Receita Líquida',
+        accountValue: new Decimal('500000000'),
+      });
+      aggregator.ingestRow({
+        ...baseRow,
+        physicalType: 'DRE_con',
+        accountCode: '3.11',
+        accountDescription: 'Lucro Líquido',
+        accountValue: new Decimal('120000000'),
+      });
+    }
+
+    it('deve capturar 1.01.01 (caixa), 2.01.04 (CP) e 2.02.01 (LP), calculando dívida bruta quando ambas as parcelas estiverem presentes', () => {
+      const aggregator = new CvmDfpAggregator(validParentZipContext);
+      feedRequiredAccounts(aggregator);
+
+      // Ingestão de Caixa (BPA 1.01.01)
+      aggregator.ingestRow({
+        ...baseRow,
+        physicalType: 'BPA_con',
+        accountCode: '1.01.01',
+        accountDescription: 'Caixa e Equivalentes de Caixa',
+        accountValue: new Decimal('50000000.0000'),
+      });
+
+      // Ingestão de Dívida CP (BPP 2.01.04) e Dívida LP (BPP 2.02.01)
+      aggregator.ingestRow({
+        ...baseRow,
+        physicalType: 'BPP_con',
+        accountCode: '2.01.04',
+        accountDescription: 'Empréstimos e Financiamentos',
+        accountValue: new Decimal('30000000.0000'),
+      });
+      aggregator.ingestRow({
+        ...baseRow,
+        physicalType: 'BPP_con',
+        accountCode: '2.02.01',
+        accountDescription: 'Empréstimos e Financiamentos',
+        accountValue: new Decimal('70000000.0000'),
+      });
+
+      const statements = aggregator.finalize();
+      expect(statements).toHaveLength(1);
+      const stmt = statements[0];
+
+      expect(stmt.cashEquivalents?.toString()).toBe('50000000');
+      expect(stmt.shortTermDebt?.toString()).toBe('30000000');
+      expect(stmt.longTermDebt?.toString()).toBe('70000000');
+      expect(stmt.grossDebt?.toString()).toBe('100000000'); // 30M + 70M = 100M
+      expect(stmt.ebitda).toBeNull();
+      expect(stmt.sharesCount).toBeNull();
+      expect(stmt.dividendsDeclared).toBeNull();
+    });
+
+    it('deve definir grossDebt como null se a parcela de curto prazo (2.01.04) estiver ausente', () => {
+      const aggregator = new CvmDfpAggregator(validParentZipContext);
+      feedRequiredAccounts(aggregator);
+
+      // Somente parcela LP presente
+      aggregator.ingestRow({
+        ...baseRow,
+        physicalType: 'BPP_con',
+        accountCode: '2.02.01',
+        accountDescription: 'Empréstimos e Financiamentos',
+        accountValue: new Decimal('70000000.0000'),
+      });
+
+      const statements = aggregator.finalize();
+      expect(statements).toHaveLength(1);
+      const stmt = statements[0];
+
+      expect(stmt.shortTermDebt).toBeNull();
+      expect(stmt.longTermDebt?.toString()).toBe('70000000');
+      expect(stmt.grossDebt).toBeNull(); // Regra estrita: ausência de parcela invalida grossDebt
+    });
+
+    it('deve definir grossDebt como null se a parcela de longo prazo (2.02.01) estiver ausente', () => {
+      const aggregator = new CvmDfpAggregator(validParentZipContext);
+      feedRequiredAccounts(aggregator);
+
+      // Somente parcela CP presente
+      aggregator.ingestRow({
+        ...baseRow,
+        physicalType: 'BPP_con',
+        accountCode: '2.01.04',
+        accountDescription: 'Empréstimos e Financiamentos',
+        accountValue: new Decimal('30000000.0000'),
+      });
+
+      const statements = aggregator.finalize();
+      expect(statements).toHaveLength(1);
+      const stmt = statements[0];
+
+      expect(stmt.shortTermDebt?.toString()).toBe('30000000');
+      expect(stmt.longTermDebt).toBeNull();
+      expect(stmt.grossDebt).toBeNull(); // Regra estrita: ausência de parcela invalida grossDebt
+    });
+
+    it('deve definir cashEquivalents como null quando 1.01.01 estiver ausente', () => {
+      const aggregator = new CvmDfpAggregator(validParentZipContext);
+      feedRequiredAccounts(aggregator);
+
+      const statements = aggregator.finalize();
+      expect(statements).toHaveLength(1);
+      expect(statements[0].cashEquivalents).toBeNull();
+    });
+
+    it('deve diferenciar rigorosamente conta ausente (null) de conta presente com valor zero (Decimal(0))', () => {
+      const aggregator = new CvmDfpAggregator(validParentZipContext);
+      feedRequiredAccounts(aggregator);
+
+      // Ingestão com valor ZERO explícito para Caixa e Dívida CP
+      aggregator.ingestRow({
+        ...baseRow,
+        physicalType: 'BPA_con',
+        accountCode: '1.01.01',
+        accountDescription: 'Caixa e Equivalentes de Caixa',
+        accountValue: new Decimal('0'),
+      });
+      aggregator.ingestRow({
+        ...baseRow,
+        physicalType: 'BPP_con',
+        accountCode: '2.01.04',
+        accountDescription: 'Empréstimos e Financiamentos',
+        accountValue: new Decimal('0'),
+      });
+      aggregator.ingestRow({
+        ...baseRow,
+        physicalType: 'BPP_con',
+        accountCode: '2.02.01',
+        accountDescription: 'Empréstimos e Financiamentos',
+        accountValue: new Decimal('50000000.0000'),
+      });
+
+      const statements = aggregator.finalize();
+      expect(statements).toHaveLength(1);
+      const stmt = statements[0];
+
+      // Caixa presente com valor zero NÃO pode ser null
+      expect(stmt.cashEquivalents).not.toBeNull();
+      expect(stmt.cashEquivalents?.isZero()).toBe(true);
+      expect(stmt.cashEquivalents?.toString()).toBe('0');
+
+      // Dívida CP presente com valor zero NÃO pode ser null
+      expect(stmt.shortTermDebt).not.toBeNull();
+      expect(stmt.shortTermDebt?.isZero()).toBe(true);
+
+      // Dívida bruta calculada corretamente: 0 + 50M = 50M
+      expect(stmt.grossDebt).not.toBeNull();
+      expect(stmt.grossDebt?.toString()).toBe('50000000');
+    });
+
+    it('deve preservar precisão Decimal em escala MIL e UNIDADE para contas de balanço', async () => {
+      async function* mockStreamMil() {
+        yield 'CNPJ_CIA;DT_REFER;VERSAO;DENOM_CIA;CD_CVM;GRUPO_DFP;MOEDA;ESCALA_MOEDA;ORDEM_EXERC;DT_FIM_EXERC;CD_CONTA;DS_CONTA;VL_CONTA;ST_CONTA_FIXA';
+        yield '33.000.167/0001-01;2024-12-31;1;PETROBRAS;9512;DF Consolidado;REAL;MIL;ÚLTIMO;2024-12-31;1.01.01;Caixa e Equivalentes de Caixa;28595666.1234567890;S';
+        yield '33.000.167/0001-01;2024-12-31;1;PETROBRAS;9512;DF Consolidado;REAL;MIL;ÚLTIMO;2024-12-31;2.01.04;Empréstimos e Financiamentos;1276391.0000000000;S';
+        yield '33.000.167/0001-01;2024-12-31;1;PETROBRAS;9512;DF Consolidado;REAL;MIL;ÚLTIMO;2024-12-31;2.02.01;Empréstimos e Financiamentos;2176337.0000000000;S';
+      }
+
+      const metrics: any = { totalLinesRead: 0, relevantLinesProcessed: 0, skippedPenultimoLines: 0 };
+      const rows: any[] = [];
+      for await (const row of parseCvmStatementStream(mockStreamMil(), 'BPA_con', metrics)) {
+        rows.push(row);
+      }
+
+      expect(rows).toHaveLength(3);
+      // 28595666.1234567890 * 1000 = 28595666123.456789
+      expect(rows[0].accountValue.toString()).toBe('28595666123.456789');
+      // 1276391 * 1000 = 1276391000
+      expect(rows[1].accountValue.toString()).toBe('1276391000');
+      // 2176337 * 1000 = 2176337000
+      expect(rows[2].accountValue.toString()).toBe('2176337000');
+    });
+
+    it('deve associar capitalComposition à maior versão do demonstrativo contábil', () => {
+      const aggregator = new CvmDfpAggregator(validParentZipContext);
+      feedRequiredAccounts(aggregator);
+
+      // Ingestão de composição acionária com mesma versão (v1)
+      aggregator.ingestCapitalCompositionRow({
+        cnpj: '33000167000101',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETRÓLEO BRASILEIRO S.A.',
+        ordinaryShares: new Decimal('7442454142'),
+        preferredShares: new Decimal('5602042788'),
+        totalShares: new Decimal('13044496930'),
+      });
+
+      const statements = aggregator.finalize();
+      expect(statements).toHaveLength(1);
+      const stmt = statements[0];
+
+      expect(stmt.capitalComposition).toBeDefined();
+      expect(stmt.capitalComposition?.ordinaryShares?.toString()).toBe('7442454142');
+      expect(stmt.capitalComposition?.preferredShares?.toString()).toBe('5602042788');
+      expect(stmt.capitalComposition?.totalShares?.toString()).toBe('13044496930');
+    });
+
+    it('deve manter capitalComposition como null se houver divergência de versão', () => {
+      const aggregator = new CvmDfpAggregator(validParentZipContext);
+      feedRequiredAccounts(aggregator);
+
+      // Composição informada para v2, mas demonstrativo contábil consolidado em v1
+      aggregator.ingestCapitalCompositionRow({
+        cnpj: '33000167000101',
+        referenceDate: '2024-12-31',
+        version: 2, // Divergente
+        companyLegalName: 'PETRÓLEO BRASILEIRO S.A.',
+        ordinaryShares: new Decimal('7442454142'),
+        preferredShares: new Decimal('5602042788'),
+        totalShares: new Decimal('13044496930'),
+      });
+
+      const statements = aggregator.finalize();
+      expect(statements).toHaveLength(1);
+      expect(statements[0].capitalComposition).toBeNull();
+    });
+
+    it('deve descartar linhas com VERSAO parcial como "1abc" ou data inválida como "2024-02-31" em parseCvmStatementStream', async () => {
+      async function* invalidStream() {
+        yield 'CNPJ_CIA;CD_CVM;DT_REFER;VERSAO;DENOM_CIA;ESCALA_MOEDA;ORDEM_EXERC;CD_CONTA;DS_CONTA;VL_CONTA';
+        // Linha com VERSAO = '1abc' (deve ser descartada como corrompida)
+        yield '33.000.167/0001-01;009512;2024-12-31;1abc;PETROBRAS;MIL;ÚLTIMO;1;Ativo Total;1000';
+        // Linha com data impossível '2024-02-31' (deve ser descartada como corrompida)
+        yield '33.000.167/0001-01;009512;2024-02-31;1;PETROBRAS;MIL;ÚLTIMO;1;Ativo Total;1000';
+        // Linha válida
+        yield '33.000.167/0001-01;009512;2024-12-31;1;PETROBRAS;MIL;ÚLTIMO;1;Ativo Total;1000';
+      }
+
+      const metrics: CvmDfpMetrics = {
+        totalLinesRead: 0,
+        relevantLinesProcessed: 0,
+        skippedPenultimoLines: 0,
+        invalidScaleLines: 0,
+        corruptedLinesCount: 0,
+        conflictingDuplicateLines: 0,
+        conflictingStatementsDiscarded: 0,
+        unregisteredCompaniesSkipped: 0,
+        unsupportedSectorCompaniesSkipped: 0,
+        highestVersionIncompleteDiscarded: 0,
+        missingNetIncomeDiscarded: 0,
+        completeStatementsEmitted: 0,
+      };
+
+      const rows: any[] = [];
+      for await (const row of parseCvmStatementStream(invalidStream(), 'BPA_con', metrics)) {
+        rows.push(row);
+      }
+
+      expect(rows).toHaveLength(1);
+      expect(rows[0].version).toBe(1);
+      expect(rows[0].referenceDate).toBe('2024-12-31');
+      expect(metrics.corruptedLinesCount).toBe(2);
+    });
+  });
+
+  describe('Etapa 3 — Demonstração dos Fluxos de Caixa (DFC) e Cálculo de EBITDA', () => {
+    function feedCoreAccounts(
+      agg: CvmDfpAggregator,
+      cnpj = '33000167000101',
+      cvmCode = '009512',
+      refDate = '2024-12-31',
+      version = 1
+    ) {
+      agg.ingestRow({
+        cnpj,
+        cvmCode,
+        referenceDate: refDate,
+        version,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'BPA_con',
+        accountCode: '1',
+        accountDescription: 'Ativo Total',
+        accountValue: new Decimal('1000000000.0000'),
+      });
+      agg.ingestRow({
+        cnpj,
+        cvmCode,
+        referenceDate: refDate,
+        version,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'BPP_con',
+        accountCode: '2.03',
+        accountDescription: 'Patrimônio Líquido',
+        accountValue: new Decimal('500000000.0000'),
+      });
+      agg.ingestRow({
+        cnpj,
+        cvmCode,
+        referenceDate: refDate,
+        version,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DRE_con',
+        accountCode: '3.01',
+        accountDescription: 'Receita Líquida',
+        accountValue: new Decimal('800000000.0000'),
+      });
+      agg.ingestRow({
+        cnpj,
+        cvmCode,
+        referenceDate: refDate,
+        version,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DRE_con',
+        accountCode: '3.11',
+        accountDescription: 'Lucro Líquido',
+        accountValue: new Decimal('150000000.0000'),
+      });
+    }
+
+    it('deve parsear stream de DFC_MI_con e DFC_MD_con com parseCvmStatementStream', async () => {
+      async function* mockDfcStream() {
+        yield 'CNPJ_CIA;CD_CVM;DT_REFER;VERSAO;DENOM_CIA;ESCALA_MOEDA;ORDEM_EXERC;CD_CONTA;DS_CONTA;VL_CONTA';
+        yield '33.000.167/0001-01;009512;2024-12-31;1;PETROBRAS;MIL;ÚLTIMO;6.01.01.04;Depreciação, depleção e amortização;67033000.0000000000';
+      }
+
+      const metrics: any = { totalLinesRead: 0, relevantLinesProcessed: 0, skippedPenultimoLines: 0 };
+      const rows: any[] = [];
+      for await (const row of parseCvmStatementStream(mockDfcStream(), 'DFC_MI_con', metrics)) {
+        rows.push(row);
+      }
+
+      expect(rows).toHaveLength(1);
+      expect(rows[0].physicalType).toBe('DFC_MI_con');
+      expect(rows[0].accountCode).toBe('6.01.01.04');
+      // 67033000 * 1000 = 67033000000
+      expect(rows[0].accountValue.toString()).toBe('67033000000');
+    });
+
+    it('deve calcular EBITDA quando EBIT (DRE 3.05) e D&A (DFC 6.01.01) forem conhecidos', () => {
+      const aggregator = new CvmDfpAggregator(validParentZipContext);
+      feedCoreAccounts(aggregator);
+
+      // EBIT em DRE 3.05 = 100.000.000
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DRE_con',
+        accountCode: '3.05',
+        accountDescription: 'Resultado Antes do Resultado Financeiro e dos Tributos',
+        accountValue: new Decimal('100000000.0000'),
+      });
+
+      // D&A em DFC_MI 6.01.01.02 = 45.000.000
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DFC_MI_con',
+        accountCode: '6.01.01.02',
+        accountDescription: 'Depreciação e Amortização',
+        accountValue: new Decimal('45000000.0000'),
+      });
+
+      const statements = aggregator.finalize();
+      expect(statements).toHaveLength(1);
+      const stmt = statements[0];
+
+      expect(stmt.ebit?.toString()).toBe('100000000');
+      expect(stmt.depreciationAmortization?.toString()).toBe('45000000');
+      // EBITDA = 100M + 45M = 145M
+      expect(stmt.ebitda?.toString()).toBe('145000000');
+      expect(stmt.dividendsDeclared).toBeNull();
+    });
+
+    it('deve manter ebitda como null quando a DFC estiver ausente', () => {
+      const aggregator = new CvmDfpAggregator(validParentZipContext);
+      feedCoreAccounts(aggregator);
+
+      // Apenas DRE 3.05, sem DFC
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DRE_con',
+        accountCode: '3.05',
+        accountDescription: 'Resultado Antes do Resultado Financeiro e dos Tributos',
+        accountValue: new Decimal('100000000.0000'),
+      });
+
+      const statements = aggregator.finalize();
+      expect(statements).toHaveLength(1);
+      const stmt = statements[0];
+
+      expect(stmt.ebit?.toString()).toBe('100000000');
+      expect(stmt.depreciationAmortization).toBeNull();
+      expect(stmt.ebitda).toBeNull();
+    });
+
+    it('deve manter ebitda como null quando o EBIT (3.05) estiver ausente, mesmo com DFC presente', () => {
+      const aggregator = new CvmDfpAggregator(validParentZipContext);
+      feedCoreAccounts(aggregator); // sem 3.05
+
+      // D&A presente
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DFC_MI_con',
+        accountCode: '6.01.01.02',
+        accountDescription: 'Depreciação e Amortização',
+        accountValue: new Decimal('45000000.0000'),
+      });
+
+      const statements = aggregator.finalize();
+      expect(statements).toHaveLength(1);
+      const stmt = statements[0];
+
+      expect(stmt.ebit).toBeNull();
+      expect(stmt.depreciationAmortization?.toString()).toBe('45000000');
+      expect(stmt.ebitda).toBeNull();
+    });
+
+    it('deve diferenciar estritamente conta ausente (null) de conta presente com valor zero (Decimal 0)', () => {
+      const aggregator = new CvmDfpAggregator(validParentZipContext);
+      feedCoreAccounts(aggregator);
+
+      // EBIT = 50.000.000
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DRE_con',
+        accountCode: '3.05',
+        accountDescription: 'Resultado Antes do Resultado Financeiro e dos Tributos',
+        accountValue: new Decimal('50000000.0000'),
+      });
+
+      // D&A presente com valor exatamente ZERO
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DFC_MI_con',
+        accountCode: '6.01.01.02',
+        accountDescription: 'Depreciação e Amortização',
+        accountValue: new Decimal(0),
+      });
+
+      const statements = aggregator.finalize();
+      expect(statements).toHaveLength(1);
+      const stmt = statements[0];
+
+      expect(stmt.depreciationAmortization).not.toBeNull();
+      expect(stmt.depreciationAmortization?.isZero()).toBe(true);
+      // EBITDA = 50M + 0 = 50M (calculável e não nulo!)
+      expect(stmt.ebitda?.toString()).toBe('50000000');
+    });
+
+    it('deve calcular EBITDA corretamente com sinais contábeis oficiais (EBIT negativo/prejuízo operacional)', () => {
+      const aggregator = new CvmDfpAggregator(validParentZipContext);
+      feedCoreAccounts(aggregator);
+
+      // EBIT negativo: -80.000.000 (prejuízo operacional)
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DRE_con',
+        accountCode: '3.05',
+        accountDescription: 'Resultado Antes do Resultado Financeiro e dos Tributos',
+        accountValue: new Decimal('-80000000.0000'),
+      });
+
+      // D&A positivo: +50.000.000
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DFC_MI_con',
+        accountCode: '6.01.01.02',
+        accountDescription: 'Depreciação e Amortização',
+        accountValue: new Decimal('50000000.0000'),
+      });
+
+      const statements = aggregator.finalize();
+      expect(statements).toHaveLength(1);
+      const stmt = statements[0];
+
+      expect(stmt.ebit?.toString()).toBe('-80000000');
+      expect(stmt.depreciationAmortization?.toString()).toBe('50000000');
+      // EBITDA = -80M + 50M = -30M
+      expect(stmt.ebitda?.toString()).toBe('-30000000');
+    });
+
+    it('deve consolidar múltiplas subcontas legítimas de D&A na DFC', () => {
+      const aggregator = new CvmDfpAggregator(validParentZipContext);
+      feedCoreAccounts(aggregator);
+
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DRE_con',
+        accountCode: '3.05',
+        accountDescription: 'Resultado Antes do Resultado Financeiro e dos Tributos',
+        accountValue: new Decimal('100000000.0000'),
+      });
+
+      // Subconta 1: Depreciação de imobilizado (40M)
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DFC_MI_con',
+        accountCode: '6.01.01.02',
+        accountDescription: 'Depreciação de Imobilizado',
+        accountValue: new Decimal('40000000.0000'),
+      });
+
+      // Subconta 2: Depreciação direito de uso (15M)
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DFC_MI_con',
+        accountCode: '6.01.01.03',
+        accountDescription: 'Depreciação do ativo de direito de uso',
+        accountValue: new Decimal('15000000.0000'),
+      });
+
+      // Subconta 3: Exaustão (5M)
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DFC_MI_con',
+        accountCode: '6.01.01.04',
+        accountDescription: 'Exaustão de Recursos Minerais',
+        accountValue: new Decimal('5000000.0000'),
+      });
+
+      const statements = aggregator.finalize();
+      expect(statements).toHaveLength(1);
+      const stmt = statements[0];
+
+      // D&A total = 40M + 15M + 5M = 60M
+      expect(stmt.depreciationAmortization?.toString()).toBe('60000000');
+      // EBITDA = 100M + 60M = 160M
+      expect(stmt.ebitda?.toString()).toBe('160000000');
+    });
+
+    it('deve excluir amortizações financeiras e despesas antecipadas do cálculo de D&A', () => {
+      const aggregator = new CvmDfpAggregator(validParentZipContext);
+      feedCoreAccounts(aggregator);
+
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DRE_con',
+        accountCode: '3.05',
+        accountDescription: 'Resultado Antes do Resultado Financeiro e dos Tributos',
+        accountValue: new Decimal('100000000.0000'),
+      });
+
+      // D&A operacional legítimo (35M)
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DFC_MI_con',
+        accountCode: '6.01.01.02',
+        accountDescription: 'Depreciação e Amortização',
+        accountValue: new Decimal('35000000.0000'),
+      });
+
+      // Amortização financeira de empréstimos/debêntures (não operacional)
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DFC_MI_con',
+        accountCode: '6.01.01.18',
+        accountDescription: 'Amortização de custos de captação de debêntures',
+        accountValue: new Decimal('10000000.0000'),
+      });
+
+      // Amortização de despesas antecipadas (não operacional)
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DFC_MI_con',
+        accountCode: '6.01.01.19',
+        accountDescription: 'Amortização de despesas antecipadas',
+        accountValue: new Decimal('2000000.0000'),
+      });
+
+      const statements = aggregator.finalize();
+      expect(statements).toHaveLength(1);
+      const stmt = statements[0];
+
+      // Apenas a D&A operacional de 35M deve ser considerada
+      expect(stmt.depreciationAmortization?.toString()).toBe('35000000');
+      expect(stmt.ebitda?.toString()).toBe('135000000');
+    });
+
+    it('não deve fazer fallback de DFC para versões inferiores quando a versão vencedora não possuir DFC', () => {
+      const aggregator = new CvmDfpAggregator(validParentZipContext);
+
+      // V1 completa com DFC
+      feedCoreAccounts(aggregator, '33000167000101', '009512', '2024-12-31', 1);
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DRE_con',
+        accountCode: '3.05',
+        accountDescription: 'EBIT',
+        accountValue: new Decimal('100000000.0000'),
+      });
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DFC_MI_con',
+        accountCode: '6.01.01.02',
+        accountDescription: 'Depreciação e Amortização',
+        accountValue: new Decimal('30000000.0000'),
+      });
+
+      // V2 (versão vencedora) completa com BPA, BPP, DRE, mas SEM DFC
+      feedCoreAccounts(aggregator, '33000167000101', '009512', '2024-12-31', 2);
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 2,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DRE_con',
+        accountCode: '3.05',
+        accountDescription: 'EBIT',
+        accountValue: new Decimal('120000000.0000'),
+      });
+
+      const statements = aggregator.finalize();
+      expect(statements).toHaveLength(1);
+      const stmt = statements[0];
+
+      expect(stmt.version).toBe(2);
+      expect(stmt.ebit?.toString()).toBe('120000000');
+      // Proibido fallback para DFC da v1!
+      expect(stmt.depreciationAmortization).toBeNull();
+      expect(stmt.ebitda).toBeNull();
+    });
+
+    it('não deve associar DFC de períodos incompatíveis', () => {
+      const aggregator = new CvmDfpAggregator(validParentZipContext);
+
+      // Demonstrativo de 2024
+      feedCoreAccounts(aggregator, '33000167000101', '009512', '2024-12-31', 1);
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DRE_con',
+        accountCode: '3.05',
+        accountDescription: 'EBIT',
+        accountValue: new Decimal('100000000.0000'),
+      });
+
+      // DFC de 2023 fornecida erroneamente
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2023-12-31', // Período anterior
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DFC_MI_con',
+        accountCode: '6.01.01.02',
+        accountDescription: 'Depreciação e Amortização',
+        accountValue: new Decimal('40000000.0000'),
+      });
+
+      const statements = aggregator.finalize();
+      expect(statements).toHaveLength(1);
+      const stmt2024 = statements.find((s) => s.referenceDate === '2024-12-31');
+
+      expect(stmt2024).toBeDefined();
+      expect(stmt2024?.ebitda).toBeNull();
+      expect(stmt2024?.depreciationAmortization).toBeNull();
+    });
+
+    it('não deve utilizar conta 3.99 ou contas arbitrárias não documentadas como fallback', () => {
+      const aggregator = new CvmDfpAggregator(validParentZipContext);
+      feedCoreAccounts(aggregator);
+
+      // DRE contendo conta arbitrária 3.99 ao invés de 3.05
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DRE_con',
+        accountCode: '3.99',
+        accountDescription: 'Outras Receitas/Despesas 3.99',
+        accountValue: new Decimal('100000000.0000'),
+      });
+
+      // DFC contendo conta fora de 6.01.01 (ex: amortização de empréstimo 6.03.02)
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DFC_MI_con',
+        accountCode: '6.03.02',
+        accountDescription: 'Amortização de Empréstimos',
+        accountValue: new Decimal('50000000.0000'),
+      });
+
+      const statements = aggregator.finalize();
+      expect(statements).toHaveLength(1);
+      const stmt = statements[0];
+
+      // Conta 3.99 não é aceita para EBIT
+      expect(stmt.ebit).toBeNull();
+      // Conta 6.03.02 não é aceita para D&A
+      expect(stmt.depreciationAmortization).toBeNull();
+      expect(stmt.ebitda).toBeNull();
+    });
+
+    it('deve rejeitar DFC direta (DFC_MD_con) com código não comprovado e manter ebitda como null', () => {
+      const aggregator = new CvmDfpAggregator(validParentZipContext);
+      feedCoreAccounts(aggregator);
+
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DRE_con',
+        accountCode: '3.05',
+        accountDescription: 'Resultado Antes do Resultado Financeiro e dos Tributos',
+        accountValue: new Decimal('80000000.0000'),
+      });
+
+      // DFC Método Direto fornecida (comprovadamente não possui D&A na CVM)
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DFC_MD_con',
+        accountCode: '6.01.02',
+        accountDescription: 'Fornecedores - Materiais e Serviços',
+        accountValue: new Decimal('20000000.0000'),
+      });
+
+      const statements = aggregator.finalize();
+      expect(statements).toHaveLength(1);
+      const stmt = statements[0];
+
+      // DFC Direta não fornece D&A -> depreciationAmortization e ebitda devem ser null
+      expect(stmt.ebit?.toString()).toBe('80000000');
+      expect(stmt.depreciationAmortization).toBeNull();
+      expect(stmt.ebitda).toBeNull();
+    });
+
+    it('deve rejeitar conta de DFC quando accountDescription estiver ausente ou vazia', () => {
+      const aggregator = new CvmDfpAggregator(validParentZipContext);
+      feedCoreAccounts(aggregator);
+
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DRE_con',
+        accountCode: '3.05',
+        accountDescription: 'Resultado Antes do Resultado Financeiro e dos Tributos',
+        accountValue: new Decimal('100000000.0000'),
+      });
+
+      // Conta 6.01.01.02 sem descrição (string vazia ou apenas espaços)
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DFC_MI_con',
+        accountCode: '6.01.01.02',
+        accountDescription: '',
+        accountValue: new Decimal('30000000.0000'),
+      });
+
+      const statements = aggregator.finalize();
+      expect(statements).toHaveLength(1);
+      const stmt = statements[0];
+
+      expect(stmt.depreciationAmortization).toBeNull();
+      expect(stmt.ebitda).toBeNull();
+    });
+
+    it('deve rejeitar amortização financeira sem descrição ou com descrição de captação/dívida', () => {
+      const aggregator = new CvmDfpAggregator(validParentZipContext);
+      feedCoreAccounts(aggregator);
+
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DRE_con',
+        accountCode: '3.05',
+        accountDescription: 'Resultado Antes do Resultado Financeiro e dos Tributos',
+        accountValue: new Decimal('100000000.0000'),
+      });
+
+      // 1. Amortização financeira com descrição de dívida/captação
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DFC_MI_con',
+        accountCode: '6.01.01.18',
+        accountDescription: 'Amortização do custo de transação de empréstimos e debêntures',
+        accountValue: new Decimal('15000000.0000'),
+      });
+
+      // 2. Amortização financeira com código não operacional fora de 6.01.01 e sem descrição
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DFC_MI_con',
+        accountCode: '6.03.03',
+        accountDescription: '',
+        accountValue: new Decimal('25000000.0000'),
+      });
+
+      const statements = aggregator.finalize();
+      expect(statements).toHaveLength(1);
+      const stmt = statements[0];
+
+      expect(stmt.depreciationAmortization).toBeNull();
+      expect(stmt.ebitda).toBeNull();
+    });
+
+    it('não deve combinar DRE_con com DFC individual (incompatibilidade entre tipos de demonstração)', () => {
+      const aggregator = new CvmDfpAggregator(validParentZipContext);
+      feedCoreAccounts(aggregator);
+
+      // DRE Consolidada
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DRE_con',
+        accountCode: '3.05',
+        accountDescription: 'Resultado Antes do Resultado Financeiro e dos Tributos',
+        accountValue: new Decimal('100000000.0000'),
+      });
+
+      // DFC fornecida em demonstrativo não consolidado (individual / outro physicalType)
+      aggregator.ingestRow({
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'PETROBRAS',
+        physicalType: 'DFC_MD_con', // Não é DFC_MI_con
+        accountCode: '6.01.01.02',
+        accountDescription: 'Depreciação e Amortização',
+        accountValue: new Decimal('50000000.0000'),
+      });
+
+      const statements = aggregator.finalize();
+      expect(statements).toHaveLength(1);
+      const stmt = statements[0];
+
+      // Deve preservar isolamento do slot DFC_MI_con: D&A e EBITDA permanecem nulos
+      expect(stmt.depreciationAmortization).toBeNull();
+      expect(stmt.ebitda).toBeNull();
+    });
+  });
 });
