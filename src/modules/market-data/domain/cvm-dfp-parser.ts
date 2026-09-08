@@ -231,7 +231,11 @@ export async function* parseCvmStatementStream(
       const rawDecimal = new Decimal(valRaw);
       let accountValue: Decimal;
 
-      if (scale === 'MIL') {
+      if (accountCode.startsWith('3.99')) {
+        // Contas de Lucro por Ação (3.99, 3.99.01, 3.99.01.01 etc.) são SEMPRE em Reais/ação (unidade),
+        // conforme CPC 41 / IAS 33, independentemente de ESCALA_MOEDA no cabeçalho geral da DRE ser MIL.
+        accountValue = rawDecimal;
+      } else if (scale === 'MIL') {
         accountValue = rawDecimal.mul(1000);
       } else if (scale === 'UNIDADE') {
         accountValue = rawDecimal;
@@ -648,6 +652,13 @@ export class CvmDfpAggregator {
         ebitda = ebit.add(depreciationAmortization);
       }
 
+      // Extração de Lucro Básico por Ação (LPA) oficial da DRE (3.99.01.01 primária para ON, 3.99.01 ou 3.99)
+      const officialLpa =
+        dreAccounts.get('3.99.01.01') ??
+        dreAccounts.get('3.99.01') ??
+        dreAccounts.get('3.99') ??
+        null;
+
       // 10. Extração de Dividendos Declarados da DMPL com Origem Auditável (Etapa 4)
       const dmplSlotKey = `${cnpj}#${cvmCode}#${referenceDate}#${highestVersion}`;
       const columnsMap = this.dmplSlots.get(dmplSlotKey);
@@ -772,6 +783,7 @@ export class CvmDfpAggregator {
         ebitda,
         dividendsDeclared,
         dmplOrigin,
+        officialLpa,
         sourceReference,
       };
 

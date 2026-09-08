@@ -23,6 +23,8 @@ export interface PublicAssetSummary {
   freshnessStatus: DerivedFreshnessStatus;
   dailyVariation: string | null; // Percentual com 2 casas decimais (ex: "1.45" ou "-0.82")
   variationStatus: VariationStatus;
+  isTradeable?: boolean | null;
+  status?: string | null;
 }
 
 export interface PublicAssetDetail extends PublicAssetSummary {

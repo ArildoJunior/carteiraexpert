@@ -190,9 +190,39 @@ export function classifyCanonicalCandidate(
     };
   }
 
-  // 7. Classificação de Fundos Imobiliários (FIIs) vs. Units de Ações (Final 11)
+  // 7. Filtro Rigoroso de Direitos, Recibos de Subscrição e Bônus
+  if (
+    bdiCode === '10' ||
+    bdiCode === '22' ||
+    specUpper.includes('DIR') ||
+    specUpper.includes('REC') ||
+    specUpper.includes('BNS') ||
+    (ticker.endsWith('1') && !ticker.endsWith('11')) ||
+    ticker.endsWith('2') ||
+    ticker.endsWith('9') ||
+    ticker.endsWith('10') ||
+    ticker.endsWith('12')
+  ) {
+    return {
+      decision: 'REJECT',
+      ticker,
+      assetType: null,
+      shareClass: null,
+      market: 'B3',
+      currency: 'BRL',
+      canonicalName,
+      isin,
+      confidence: 'HIGH',
+      rejectionReason: 'SUBSCRIPTION_RIGHT_OR_RECEIPT',
+      conflictType: null,
+      justification: 'Instrumento de subscrição, direito, recibo ou bônus retido fora do catálogo de ativos de custódia principal.',
+      evaluatedAt,
+    };
+  }
+
+  // 8. Classificação de Fundos Imobiliários (FIIs) vs. Units de Ações (Final 11)
   if (ticker.endsWith('11')) {
-    // 7.1. Caso evidente de FII
+    // 8.1. Caso evidente de FII
     if (
       cvmHint?.isRegisteredFii === true ||
       bdiCode === '12' ||
@@ -219,9 +249,9 @@ export function classifyCanonicalCandidate(
       };
     }
 
-    // 7.2. Caso evidente de Unit de Ação
+    // 8.2. Caso evidente de Unit de Ação (BDI 02, 06, 07, 08 ou 58 com especificação UNT / cadastro CVM)
     if (
-      bdiCode === '02' &&
+      (bdiCode === '02' || bdiCode === '06' || bdiCode === '07' || bdiCode === '08' || bdiCode === '58') &&
       (specUpper.includes('UNT') ||
         specUpper.includes('UNIDADE') ||
         (cvmHint && cvmHint.isRegisteredFii === false && cvmHint.legalName))
@@ -238,12 +268,12 @@ export function classifyCanonicalCandidate(
         confidence: 'HIGH',
         rejectionReason: null,
         conflictType: null,
-        justification: 'Classificado como Unit de Ações (stock) com base no BDI 02 e especificação UNT / cadastro CVM.',
+        justification: `Classificado como Unit de Ações (stock) com base no BDI ${bdiCode} e especificação UNT / cadastro CVM.`,
         evaluatedAt,
       };
     }
 
-    // 7.3. Caso Ambíguo (Ticker final 11 com BDI 02 mas sem especificação nem dica CVM)
+    // 8.3. Caso Ambíguo (Ticker final 11 com BDI 02 mas sem especificação nem dica CVM)
     return {
       decision: 'PENDING_REVIEW',
       ticker,
@@ -261,16 +291,35 @@ export function classifyCanonicalCandidate(
     };
   }
 
-  // 8. Classificação de Ações Ordinárias e Preferenciais (Mercado à Vista Lote Padrão)
-  if (bdiCode === '02' || marketType === 10 || ticker.endsWith('3') || ticker.endsWith('4') || ticker.endsWith('5') || ticker.endsWith('6')) {
-    let shareClass: string = 'ON';
-    if (ticker.endsWith('4') || specUpper.includes('PN')) {
+  // 9. Classificação de Ações Ordinárias e Preferenciais (Mercado à Vista Lote Padrão, Concordatárias ou Recuperação Judicial)
+  const isStockBdi = bdiCode === '02' || bdiCode === '06' || bdiCode === '07' || bdiCode === '08' || bdiCode === '58' || bdiCode === '';
+  const isStockSuffix = /^[A-Z0-9._-]+(3|4|5|6|7|8|3B|4B|5B|6B|7B|8B)$/.test(ticker);
+
+  if ((isStockBdi || marketType === 10) && isStockSuffix) {
+    let shareClass = 'ON';
+    if (ticker.endsWith('3') || ticker.endsWith('3B')) {
+      shareClass = 'ON';
+    } else if (ticker.endsWith('4') || ticker.endsWith('4B')) {
       shareClass = 'PN';
-    } else if (ticker.endsWith('5') || specUpper.includes('PNA')) {
+    } else if (ticker.endsWith('5') || ticker.endsWith('5B')) {
       shareClass = 'PNA';
-    } else if (ticker.endsWith('6') || specUpper.includes('PNB')) {
+    } else if (ticker.endsWith('6') || ticker.endsWith('6B')) {
       shareClass = 'PNB';
-    } else if (ticker.endsWith('3') || specUpper.includes('ON')) {
+    } else if (ticker.endsWith('7') || ticker.endsWith('7B')) {
+      shareClass = 'PNC';
+    } else if (ticker.endsWith('8') || ticker.endsWith('8B')) {
+      shareClass = 'PND';
+    } else if (specUpper.includes('PNA') || specUpper.includes('PN A')) {
+      shareClass = 'PNA';
+    } else if (specUpper.includes('PNB') || specUpper.includes('PN B')) {
+      shareClass = 'PNB';
+    } else if (specUpper.includes('PNC') || specUpper.includes('PN C')) {
+      shareClass = 'PNC';
+    } else if (specUpper.includes('PND') || specUpper.includes('PN D')) {
+      shareClass = 'PND';
+    } else if (specUpper.includes('PN')) {
+      shareClass = 'PN';
+    } else if (specUpper.includes('ON')) {
       shareClass = 'ON';
     }
 
@@ -286,7 +335,7 @@ export function classifyCanonicalCandidate(
       confidence: 'HIGH',
       rejectionReason: null,
       conflictType: null,
-      justification: `Classificado como Ação (${shareClass}) do mercado à vista com base no BDI 02 e sufixo de negociação.`,
+      justification: `Classificado como Ação (${shareClass}) do mercado à vista com base no BDI (${bdiCode || '02'}) e sufixo de negociação.`,
       evaluatedAt,
     };
   }

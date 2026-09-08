@@ -119,6 +119,7 @@ export const searchAssetsSchema = z.object({
     .max(100, 'A busca não pode exceder 100 caracteres.')
     .default(''),
   assetType: z.enum(ASSET_TYPES).optional(),
+  isTradeableOnly: z.boolean().optional(),
   limit: z
     .number()
     .int('O limite deve ser um número inteiro.')

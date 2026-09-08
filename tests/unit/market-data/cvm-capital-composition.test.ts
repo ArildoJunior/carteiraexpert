@@ -497,4 +497,126 @@ describe('CVM Capital Composition & Shares Count Resolution (Unit - Etapa 2)', (
       expect(sharesCount).toBeNull();
     });
   });
+
+  describe('Calibração Determinística de Escala (Ambev x Petrobras x Casos de Borda)', () => {
+    const ambevComposition: CvmCapitalCompositionData = {
+      cnpj: '07526557000100',
+      referenceDate: '2024-12-31',
+      version: 1,
+      companyLegalName: 'AMBEV S.A.',
+      ordinaryShares: new Decimal('15757657'),
+      preferredShares: new Decimal('0'),
+      totalShares: new Decimal('15757657'),
+    };
+
+    const petrobrasComposition: CvmCapitalCompositionData = {
+      cnpj: '33000167000101',
+      referenceDate: '2024-12-31',
+      version: 1,
+      companyLegalName: 'PETRÓLEO BRASILEIRO S.A. - PETROBRAS',
+      ordinaryShares: new Decimal('7442454142'),
+      preferredShares: new Decimal('5602042788'),
+      totalShares: new Decimal('13044496930'),
+    };
+
+    it('deve calibrar a escala da Ambev (x1000) usando o LPA oficial da DRE (3.99.01.01)', () => {
+      const ambevContext = {
+        cnpj: '07526557000100',
+        referenceDate: '2024-12-31',
+        version: 1,
+        netIncome: new Decimal('14458428000'), // R$ 14,46 bilhões
+        officialLpa: new Decimal('0.91755'), // R$ 0,91755 / ação
+        totalEquity: new Decimal('99579693000'), // R$ 99,58 bilhões
+      };
+
+      const shares = resolveSharesCountByClass(ambevComposition, 'ON', ambevContext);
+      expect(shares).not.toBeNull();
+      expect(shares?.toString()).toBe('15757657000');
+    });
+
+    it('deve preservar a escala unitária da Petrobras (x1) sem multiplicar por 1000', () => {
+      const petrContext = {
+        cnpj: '33000167000101',
+        referenceDate: '2024-12-31',
+        version: 1,
+        netIncome: new Decimal('124600000000'),
+        officialLpa: new Decimal('9.5523'),
+        totalEquity: new Decimal('485000000000'),
+      };
+
+      const sharesON = resolveSharesCountByClass(petrobrasComposition, 'ON', petrContext);
+      expect(sharesON).not.toBeNull();
+      expect(sharesON?.toString()).toBe('7442454142');
+
+      const sharesPN = resolveSharesCountByClass(petrobrasComposition, 'PN', petrContext);
+      expect(sharesPN).not.toBeNull();
+      expect(sharesPN?.toString()).toBe('5602042788');
+    });
+
+    it('deve retornar null para empresa sem ações declaradas ou composição ausente', () => {
+      const missingComposition: CvmCapitalCompositionData = {
+        cnpj: '07526557000100',
+        referenceDate: '2024-12-31',
+        version: 1,
+        companyLegalName: 'SEM ACOES S.A.',
+        ordinaryShares: null,
+        preferredShares: null,
+        totalShares: null,
+      };
+
+      const context = {
+        cnpj: '07526557000100',
+        referenceDate: '2024-12-31',
+        version: 1,
+      };
+
+      expect(resolveSharesCountByClass(missingComposition, 'ON', context)).toBeNull();
+      expect(resolveSharesCountByClass(missingComposition, 'PN', context)).toBeNull();
+      expect(resolveSharesCountByClass(missingComposition, 'UNT', context)).toBeNull();
+      expect(resolveSharesCountByClass(null, 'ON', context)).toBeNull();
+    });
+
+    it('deve aplicar calibração por VPA quando LPA oficial não estiver disponível mas VPA for anômalo (> 1000)', () => {
+      const ambevContextSemLpa = {
+        cnpj: '07526557000100',
+        referenceDate: '2024-12-31',
+        version: 1,
+        netIncome: new Decimal('14458428000'),
+        totalEquity: new Decimal('99579693000'), // PL ~99,58 bi / 15.757.657 = VPA 6319 > 1000
+      };
+
+      const shares = resolveSharesCountByClass(ambevComposition, 'ON', ambevContextSemLpa);
+      expect(shares).not.toBeNull();
+      expect(shares?.toString()).toBe('15757657000');
+    });
+
+    it('deve integrar calibração ao fluxo completo de convertStatementToFundamentals', () => {
+      const rawAmbev: CvmRawStatementData = {
+        cnpj: '07526557000100',
+        cvmCode: '023264',
+        companyLegalName: 'AMBEV S.A.',
+        referenceDate: '2024-12-31',
+        periodType: 'annual',
+        statementType: 'CONSOLIDATED',
+        exerciseOrder: 'ÚLTIMO',
+        version: 1,
+        filingDate: '2025-02-27',
+        accounts: new Map<string, Decimal>([
+          ['1', new Decimal('141203875000')],
+          ['2.03', new Decimal('99579693000')],
+          ['3.01', new Decimal('84323565000')],
+          ['3.11', new Decimal('14458428000')],
+          ['3.99.01.01', new Decimal('0.91755')],
+        ]),
+        capitalComposition: ambevComposition,
+        officialLpa: new Decimal('0.91755'),
+        sourceReference: JSON.stringify({ source: 'cvm_dfp' }),
+      };
+
+      const converted = convertStatementToFundamentals(rawAmbev, { shareClass: 'ON' });
+      expect(converted.sharesCount?.toString()).toBe('15757657000');
+      expect(converted.officialLpa?.toString()).toBe('0.91755');
+    });
+  });
 });
+

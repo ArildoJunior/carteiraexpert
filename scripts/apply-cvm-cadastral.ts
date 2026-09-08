@@ -109,8 +109,6 @@ async function main() {
       WHERE is_custom = false
         AND user_id IS NULL
         AND is_visible_catalog = true
-        AND is_tradeable = true
-        AND status = 'active'
         AND asset_type = 'stock'
       ORDER BY ticker ASC;
     `;

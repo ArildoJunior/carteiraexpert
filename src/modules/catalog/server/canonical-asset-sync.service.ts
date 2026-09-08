@@ -85,6 +85,7 @@ export interface GenerateSyncPlanParams {
   executionMode: CanonicalSyncRunMode;
   environment?: string;
   parserVersion?: string;
+  referenceDate?: string;
   candidates: RawCotahistCandidateInput[];
   existingAssets?: ExistingAssetSnapshot[];
   cvmHints?: Record<string, CvmContextHint>;
@@ -136,6 +137,26 @@ export class CanonicalAssetSyncService {
 
     const cvmHints = params.cvmHints || {};
     const actions: PlannedSyncAction[] = [];
+
+    // Determina a data de corte de 1 ano para transição automática active <-> delisted:
+    // 1. Se params.referenceDate for fornecido, usa-o.
+    // 2. Senão, se candidates contiverem datas de trade, usa a data máxima entre eles.
+    // 3. Fallback: data atual.
+    let refDate: Date;
+    if (params.referenceDate) {
+      refDate = new Date(params.referenceDate);
+    } else {
+      let maxCandidateDate = '';
+      for (const c of params.candidates) {
+        if (c.tradeDate && c.tradeDate > maxCandidateDate) {
+          maxCandidateDate = c.tradeDate;
+        }
+      }
+      refDate = maxCandidateDate ? new Date(maxCandidateDate) : new Date();
+    }
+    const oneYearCutoff = new Date(refDate);
+    oneYearCutoff.setFullYear(oneYearCutoff.getFullYear() - 1);
+    const oneYearCutoffStr = oneYearCutoff.toISOString().slice(0, 10);
 
     let proposedInserts = 0;
     let proposedUpdates = 0;
@@ -212,14 +233,16 @@ export class CanonicalAssetSyncService {
           ? 'curated_seed'
           : 'b3_cotahist';
 
+      const isHistorical = candidate.tradeDate ? candidate.tradeDate < oneYearCutoffStr : false;
+
       const proposedNewState = {
         name: classification.canonicalName,
         assetType: classification.assetType,
         market: classification.market,
         currency: classification.currency,
         isVisibleCatalog: true,
-        isTradeable: true,
-        status: 'active' as AssetLifecycleStatus,
+        isTradeable: !isHistorical,
+        status: (isHistorical ? 'delisted' : 'active') as AssetLifecycleStatus,
         isin: classification.isin,
         provenance: targetProvenance,
         lastSyncRunId: syncRunId,

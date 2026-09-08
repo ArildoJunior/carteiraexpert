@@ -19,6 +19,8 @@ interface LaunchOperationDialogProps {
     assetType: string;
     market: string;
     currency: string;
+    isTradeable?: boolean | null;
+    status?: string | null;
   };
   userPortfolios: UserPortfolioItem[];
   isAuthenticated: boolean;
@@ -37,6 +39,19 @@ export function LaunchOperationDialog({
   );
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Se o ativo estiver deslistado ou não for negociável, bloqueia oferta de compra/lançamento
+  if (asset.isTradeable === false || asset.status === 'delisted') {
+    return (
+      <div
+        id="badge-delisted-untradeable"
+        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-sm font-medium"
+      >
+        <span className="w-2 h-2 rounded-full bg-amber-500" />
+        <span>Ativo Não Negociável (Delisted / Histórico)</span>
+      </div>
+    );
+  }
 
   // Se não autenticado, redireciona para login com retorno seguro
   if (!isAuthenticated) {

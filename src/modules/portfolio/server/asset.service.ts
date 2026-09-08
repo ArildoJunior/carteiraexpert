@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { eq, and, or, isNull, ilike, asc } from 'drizzle-orm';
+import { eq, and, or, isNull, ilike, asc, sql } from 'drizzle-orm';
 import { db, type Database, type DatabaseTransaction, type DbExecutor } from '../../../lib/db';
 import { assets } from '../../../lib/db/schema/portfolio';
 import { insertAuditLog } from '../../../lib/db/audit';
@@ -55,6 +55,10 @@ export async function searchAssets(
 
   if (params.assetType) {
     conditions.push(eq(assets.assetType, params.assetType));
+  }
+
+  if (params.isTradeableOnly) {
+    conditions.push(sql`assets.is_tradeable = true`);
   }
 
   return await executor

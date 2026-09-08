@@ -102,6 +102,9 @@ export interface CvmAggregatedStatement {
   // Evidência de Origem da DMPL (Etapa 4)
   dmplOrigin?: CvmDmplOriginEvidence | null;
 
+  // Lucro Básico por Ação oficial da DRE (conta 3.99.01.01 / 3.99 em Reais por ação)
+  officialLpa?: Decimal | null;
+
   // Proveniência Completa Serializada e Validada
   sourceReference: string;       // JSON conforme cvmSourceReferenceSchema
 }

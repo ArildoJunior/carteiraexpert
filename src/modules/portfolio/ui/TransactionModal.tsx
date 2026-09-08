@@ -292,6 +292,7 @@ export function TransactionModal({
                 setCustomTickerInitial(rawQuery);
                 setIsCustomModalOpen(true);
               }}
+              isTradeableOnly={transactionType === 'BUY'}
               error={state.fieldErrors?.assetId?.[0]}
             />
 

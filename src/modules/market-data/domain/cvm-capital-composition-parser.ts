@@ -20,6 +20,9 @@ export interface CvmStatementCompositionContext {
   cnpj: string;
   referenceDate: string;
   version: number;
+  netIncome?: Decimal | null;
+  officialLpa?: Decimal | null;
+  totalEquity?: Decimal | null;
 }
 
 /**
@@ -162,17 +165,58 @@ export function resolveSharesCountByClass(
     if (composition.version !== statementContext.version) return null;
   }
 
+  let rawCount: Decimal | null = null;
   switch (shareClass) {
     case 'ON':
-      return composition.ordinaryShares;
+      rawCount = composition.ordinaryShares;
+      break;
     case 'PN':
     case 'PNA':
     case 'PNB':
-      return composition.preferredShares;
+      rawCount = composition.preferredShares;
+      break;
     case 'UNT':
-      return composition.totalShares;
+      rawCount = composition.totalShares;
+      break;
     default:
       return null;
   }
+
+  if (rawCount === null) {
+    return null;
+  }
+
+  // Calibração determinística de escala da CVM:
+  // A CVM não declara a escala no arquivo dfp_cia_aberta_composicao_capital.
+  // Determinadas companhias (ex: Ambev, Vale, Itaú) informam quantidades em milhares de ações,
+  // enquanto outras (ex: Petrobras, Magazine Luiza, WEG) informam em unidades.
+  let scaleMultiplier = 1;
+
+  if (statementContext && rawCount.gt(0)) {
+    const { netIncome, officialLpa, totalEquity } = statementContext;
+
+    // 1. Calibração primária: confronto estrito entre (Lucro Líquido / rawCount) e LPA Oficial da DRE (conta 3.99)
+    if (officialLpa && officialLpa.gt(0) && netIncome && !netIncome.isZero()) {
+      const impliedLpaRaw = netIncome.abs().dividedBy(rawCount);
+      const ratio = impliedLpaRaw.dividedBy(officialLpa);
+      // Se a razão estiver na faixa de 400x a 2.500x (~1.000x), a escala reportada é em milhares
+      if (ratio.gte(400) && ratio.lte(2500)) {
+        scaleMultiplier = 1000;
+      } else if (ratio.gte(0.4) && ratio.lte(2.5)) {
+        scaleMultiplier = 1;
+      }
+    }
+
+    // 2. Calibração secundária: sanidade de VPA caso LPA oficial não esteja disponível ou seja inconclusivo
+    if (scaleMultiplier === 1 && totalEquity && totalEquity.gt(0)) {
+      const vpaRaw = totalEquity.dividedBy(rawCount);
+      // No mercado brasileiro de capitais abertos, um VPA cru > R$ 1.000/ação indica escala em milhares
+      if (vpaRaw.gt(1000)) {
+        scaleMultiplier = 1000;
+      }
+    }
+  }
+
+  return scaleMultiplier === 1000 ? rawCount.mul(1000) : rawCount;
 }
 

@@ -736,5 +736,86 @@ describe('CVM Fundamentals Publisher Service (Integration)', () => {
         await client2.end();
       }
     });
+
+    it('deve atualizar registros existentes quando novos campos contábeis (EBITDA, proventos) forem calculados na mesma versão', async () => {
+      const binding = await cvmBindingService.proposeBinding(
+        {
+          companyId: companyPetrId,
+          assetId: assetPetr4Id,
+          shareClass: 'PN',
+          matchMethod: 'CURATED_SEED',
+          justification: 'Vínculo Petrobras PN PETR4 para teste de update',
+          source: 'seed',
+        },
+        db
+      );
+      createdBindingIds.add(binding.id);
+      await cvmBindingService.approveBinding(
+        { bindingId: binding.id, reviewerId: reviewerUserId, justification: 'Homologação PETR4' },
+        db
+      );
+
+      // 1. Primeira publicação sem EBITDA e sem Proventos
+      const stmtV1Initial = createSamplePetrobrasStatement(1);
+      const res1 = await cvmFundamentalsPublisherService.publishStatements(
+        { statements: [stmtV1Initial], actorId: reviewerUserId },
+        db
+      );
+      expect(res1.records[0].action).toBe('INSERTED');
+      createdFundamentalIds.add(res1.records[0].id);
+      createdAuditRecordIds.add(res1.records[0].id);
+
+      const check1 = await db
+        .select()
+        .from(schema.assetFundamentals)
+        .where(eq(schema.assetFundamentals.id, res1.records[0].id));
+      expect(check1[0].ebitda).toBeNull();
+      expect(check1[0].dividendsDeclared).toBeNull();
+
+      // 2. Segunda publicação da mesma versão contendo EBITDA e Proventos (ex: reprocessamento oficial)
+      const stmtV1Updated = createSamplePetrobrasStatement(1);
+      stmtV1Updated.accounts.set('3.05', new Decimal('100000000000.0000'));
+      stmtV1Updated.accounts.set('6.01.01.01', new Decimal('20000000000.0000'));
+      stmtV1Updated.accounts.set('5.04.06', new Decimal('45000000000.0000'));
+      stmtV1Updated.accountDescriptions = new Map([
+        ['6.01.01.01', 'Depreciação e Amortização'],
+        ['5.04.06', 'Dividendos'],
+      ]);
+      stmtV1Updated.dfcDepreciationAmortization = new Decimal('20000000000.0000');
+      stmtV1Updated.dmplOrigin = {
+        cnpj: '33000167000101',
+        cvmCode: '009512',
+        referenceDate: '2024-12-31',
+        version: 1,
+        statementType: 'CONSOLIDATED',
+        statementOrigin: 'DMPL_con',
+        exerciseOrder: 'ÚLTIMO',
+        selectedColumn: 'Patrimônio Líquido Consolidado',
+        accountCode: '5.04.06',
+        validatedDescription: 'Dividendos',
+        declaredAmount: new Decimal('45000000000.0000'),
+      };
+
+      const res2 = await cvmFundamentalsPublisherService.publishStatements(
+        { statements: [stmtV1Updated], actorId: reviewerUserId },
+        db
+      );
+      expect(res2.records[0].action).toBe('UPDATED');
+
+      const check2 = await db
+        .select()
+        .from(schema.assetFundamentals)
+        .where(eq(schema.assetFundamentals.id, res1.records[0].id));
+      expect(check2[0].ebitda).toBe('120000000000.0000');
+      expect(check2[0].dividendsDeclared).toBe('45000000000.0000');
+
+      // 3. Terceira publicação idêntica -> deve ser NO_OP
+      const res3 = await cvmFundamentalsPublisherService.publishStatements(
+        { statements: [stmtV1Updated], actorId: reviewerUserId },
+        db
+      );
+      expect(res3.records[0].action).toBe('NO_OP');
+    });
   });
 });
+

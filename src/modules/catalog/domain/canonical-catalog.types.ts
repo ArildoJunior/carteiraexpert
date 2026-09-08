@@ -47,7 +47,8 @@ export type RejectionReason =
   | 'INVALID_TICKER_FORMAT'    // Código de ticker fora dos padrões da B3
   | 'MISSING_MANDATORY_FIELDS' // Ausência de shortName, bdiCode ou tradeDate
   | 'UNSUPPORTED_MARKET_TYPE'  // Mercados a termo/futuro não suportados no catálogo à vista
-  | 'INACTIVE_EXPIRED';        // Série histórica sem negociação válida
+  | 'INACTIVE_EXPIRED'         // Série histórica sem negociação válida
+  | 'SUBSCRIPTION_RIGHT_OR_RECEIPT'; // Direitos, recibos de subscrição e bônus (sufixos 1, 2, 9, 10, etc.)
 
 /**
  * Tipos formais de conflitos cadastrais que direcionam o candidato para PENDING_REVIEW.

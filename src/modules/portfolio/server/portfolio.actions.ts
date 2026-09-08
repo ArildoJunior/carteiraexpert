@@ -343,7 +343,8 @@ export async function deletePortfolioAction(
 export async function searchAssetsAction(
   query: string,
   assetType?: string,
-  limit = 20
+  limit = 20,
+  isTradeableOnly?: boolean
 ): Promise<{ success: boolean; data: Asset[]; error?: string }> {
   try {
     const user = await requireAuth();
@@ -352,6 +353,7 @@ export async function searchAssetsAction(
       query: query || '',
       assetType: assetType || undefined,
       limit,
+      isTradeableOnly,
     });
 
     const assets = await searchAssets(parsed, user);

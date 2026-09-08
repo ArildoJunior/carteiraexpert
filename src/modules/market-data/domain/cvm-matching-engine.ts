@@ -80,6 +80,7 @@ export class CvmMatchingEngine {
   private readonly companiesByCvmCode = new Map<string, CvmCompanyMatchingInput>();
   private readonly companiesByCnpj = new Map<string, CvmCompanyMatchingInput>();
   private readonly securityMappingsByTicker = new Map<string, CvmSecurityMappingInput[]>();
+  private readonly securityMappingsByRoot = new Map<string, CvmSecurityMappingInput[]>();
   private readonly existingBindingsByAssetId = new Map<string, ExistingBindingMatchingInput>();
   private readonly existingBindingsByTicker = new Map<string, ExistingBindingMatchingInput>();
   private readonly strictCvmDirectEvidenceOnly: boolean;
@@ -95,7 +96,7 @@ export class CvmMatchingEngine {
       if (normCnpj) this.companiesByCnpj.set(normCnpj, company);
     }
 
-    // 2. Indexa mapeamentos de valores mobiliários CVM/FCA por Ticker em caixa alta
+    // 2. Indexa mapeamentos de valores mobiliários CVM/FCA por Ticker em caixa alta e raiz de 4 letras
     if (context.securityMappings) {
       for (const sec of context.securityMappings) {
         const t = sec.ticker.trim().toUpperCase();
@@ -103,6 +104,13 @@ export class CvmMatchingEngine {
         const list = this.securityMappingsByTicker.get(t) ?? [];
         list.push(sec);
         this.securityMappingsByTicker.set(t, list);
+
+        if (t.length >= 4 && /^[A-Z]{4}/.test(t)) {
+          const root = t.slice(0, 4);
+          const rootList = this.securityMappingsByRoot.get(root) ?? [];
+          rootList.push(sec);
+          this.securityMappingsByRoot.set(root, rootList);
+        }
       }
     }
 
@@ -258,7 +266,48 @@ export class CvmMatchingEngine {
     }
 
     // Regra 6: Busca correspondência cadastral oficial via Mapeamento de Valores Mobiliários CVM/FCA
-    const secMappings = this.securityMappingsByTicker.get(ticker) ?? [];
+    let secMappings = this.securityMappingsByTicker.get(ticker) ?? [];
+    let isRootMatch = false;
+
+    // 6.1 Resolução determinística por raiz de 4 letras quando não há mapeamento de ticker exato
+    if (secMappings.length === 0 && ticker.length >= 4 && /^[A-Z]{4}/.test(ticker)) {
+      const root = ticker.slice(0, 4);
+      const rootMappings = this.securityMappingsByRoot.get(root) ?? [];
+      if (rootMappings.length > 0) {
+        const distinctCompaniesForRoot = new Map<string, CvmCompanyMatchingInput>();
+        for (const m of rootMappings) {
+          const normCvm = normalizeCvmCodeDigits(m.cvmCode);
+          const normCnpj = normalizeCnpjDigits(m.cnpj);
+          const comp =
+            (normCvm ? this.companiesByCvmCode.get(normCvm) : null) ??
+            (normCnpj ? this.companiesByCnpj.get(normCnpj) : null);
+          if (comp) {
+            distinctCompaniesForRoot.set(comp.id, comp);
+          }
+        }
+
+        if (distinctCompaniesForRoot.size === 1) {
+          secMappings = rootMappings;
+          isRootMatch = true;
+        } else if (distinctCompaniesForRoot.size > 1) {
+          return {
+            assetId: asset.id,
+            ticker,
+            assetType,
+            decision: 'PENDING_REVIEW',
+            candidateCompany: null,
+            expectedShareClass: expectedClass,
+            provenShareClass: null,
+            matchMethod: 'HEURISTIC',
+            confidenceLevel: 'LOW',
+            evidences: ['MULTIPLE_CVM_COMPANIES_FOR_ROOT', `ROOT_${root}`],
+            evidenceProvenance: null,
+            justification: `Ambiguidade na resolução por raiz de 4 letras: "${root}" associada a ${distinctCompaniesForRoot.size} companhias distintas na CVM`,
+            requiresHumanReview: true,
+          };
+        }
+      }
+    }
 
     if (secMappings.length === 0) {
       // Regra 7: Sem mapeamento oficial - verifica se há correspondência isolada de ISIN
@@ -357,7 +406,9 @@ export class CvmMatchingEngine {
 
     const company = Array.from(distinctCompaniesMap.values())[0];
     const mapping = secMappings[0];
-    const provenClass = normalizeCvmShareClass(mapping.shareClass);
+    const provenClass = isRootMatch
+      ? expectedClass
+      : normalizeCvmShareClass(mapping.shareClass);
 
     // Constrói proveniência documental detalhada de cada evidência
     const provenance: CvmEvidenceProvenance = {
@@ -371,7 +422,7 @@ export class CvmMatchingEngine {
       },
       ticker: {
         value: ticker,
-        source: 'FCA(Codigo_Negociacao)',
+        source: isRootMatch ? `FCA_ROOT_DERIVED(${mapping.ticker.slice(0, 4)})` : 'FCA(Codigo_Negociacao)',
       },
       isin: {
         value: asset.isin ?? null,
@@ -379,7 +430,9 @@ export class CvmMatchingEngine {
       },
       provenShareClass: {
         value: provenClass,
-        source: mapping.rawValorMobiliario
+        source: isRootMatch
+          ? 'DERIVADO_SUFIXO_B3_VIA_RAIZ_CVM'
+          : mapping.rawValorMobiliario
           ? `FCA(Valor_Mobiliario: "${mapping.rawValorMobiliario}")`
           : 'FCA(CLASSE_ACAO)',
       },
@@ -402,12 +455,43 @@ export class CvmMatchingEngine {
         },
         expectedShareClass: expectedClass,
         provenShareClass: provenClass,
-        matchMethod: 'OFFICIAL_SECURITY_MAPPING',
+        matchMethod: isRootMatch ? 'HEURISTIC' : 'OFFICIAL_SECURITY_MAPPING',
         confidenceLevel: 'MEDIUM',
         evidences: ['CVM_COMPANY_INACTIVE', `STATUS_${company.status}`],
         evidenceProvenance: provenance,
         justification: `Companhia CVM associada (${company.legalName}) está com status inativo: "${company.status}"`,
         requiresHumanReview: true,
+      };
+    }
+
+    // Regra 9.1: Aprovação determinística de vínculo por raiz única quando a companhia está ativa
+    if (isRootMatch) {
+      return {
+        assetId: asset.id,
+        ticker,
+        assetType,
+        decision: 'APPROVED_CANDIDATE',
+        candidateCompany: {
+          companyId: company.id,
+          cvmCode: company.cvmCode,
+          cnpj: company.cnpj,
+          legalName: company.legalName,
+          status: company.status,
+          industrySector: company.industrySector ?? null,
+        },
+        expectedShareClass: expectedClass,
+        provenShareClass: provenClass ?? expectedClass,
+        matchMethod: 'HEURISTIC',
+        confidenceLevel: 'HIGH',
+        evidences: [
+          'CVM_ROOT_DETERMINISTIC_MATCH',
+          'CVM_COMPANY_ACTIVE',
+          'CNPJ_MATCHED',
+          'SHARE_CLASS_DERIVED_FROM_SUFFIX',
+        ],
+        evidenceProvenance: provenance,
+        justification: `Vínculo institucional por raiz determinística de 4 letras (${company.legalName}) com classe ${expectedClass} validada pelo sufixo de negociação`,
+        requiresHumanReview: false,
       };
     }
 

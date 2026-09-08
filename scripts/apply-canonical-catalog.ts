@@ -49,7 +49,7 @@ const sql = postgres(databaseUrl, { max: 1 });
 async function executeApply() {
   console.log('\x1b[34m[ETAPA-J-APPLY] Iniciando preparação da materialização do catálogo canônico...\x1b[0m');
 
-  // 1. Extração dos candidatos mais recentes dentro do escopo estrito
+  // 1. Extração dos candidatos mais recentes dentro do escopo completo do COTAHIST (incluindo histórico e recuperação judicial)
   const rawCandidates = await sql`
     SELECT DISTINCT ON (ticker)
       ticker,
@@ -64,13 +64,12 @@ async function executeApply() {
       trade_count,
       financial_volume::text as financial_volume
     FROM b3_historical_quotes
-    WHERE trade_date >= '2024-01-01'
-      AND market_type = 10
-      AND bdi_code IN ('02', '12', '14', '34', '36', '38')
+    WHERE market_type = 10
+      AND bdi_code IN ('02', '06', '07', '08', '12', '14', '34', '36', '38', '58')
     ORDER BY ticker, trade_date DESC;
   `;
 
-  console.log(`[ETAPA-J-APPLY] Candidatos elegíveis extraídos do escopo 2024-2026: ${rawCandidates.length}`);
+  console.log(`[ETAPA-J-APPLY] Candidatos elegíveis extraídos do COTAHIST completo: ${rawCandidates.length}`);
 
   // 2. Carregamento dos ativos existentes em public.assets
   const existingRows = await sql`
@@ -132,8 +131,8 @@ async function executeApply() {
   console.log(`Sync Run ID:                 ${plan.syncRunId}`);
   console.log(`Worker ID:                   ${plan.workerId}`);
   console.log(`Batch Hash:                  ${plan.batchHash}`);
-  console.log(`Escopo Temporal:             trade_date >= '2024-01-01'`);
-  console.log(`Mercado / BDIs:              market_type = 10 | BDIs '02', '12', '14', '34', '36', '38'`);
+  console.log(`Escopo Temporal:             Histórico Completo COTAHIST`);
+  console.log(`Mercado / BDIs:              market_type = 10 | BDIs '02', '08', '12', '14', '34', '36', '38', '58'`);
   console.log(`Total Candidatos Elegíveis:  ${plan.metrics.totalCandidates}`);
   console.log(`Previsão de INSERT:          ${plan.metrics.proposedInserts}`);
   console.log(`Previsão de UPDATE:          ${plan.metrics.proposedUpdates}`);
@@ -158,27 +157,41 @@ async function executeApply() {
 
   console.log(`✓ Bloqueio de Não-Elegíveis: ${rejectedCount} rejeitados e ${pendingCount} pendentes NÃO serão materializados.`);
   console.log(`✓ Total de Ações de Escrita Autorizadas: ${actionableInserts.length} INSERTs + ${actionableUpdates.length} UPDATEs.`);
-  console.log('================================================================\n');
+  // 4.1 Verificação de Idempotência no Banco: Lote idêntico já aplicado anteriormente
+  const [existingCompletedRun] = await sql`
+    SELECT id, status, total_candidates, inserted_assets, updated_assets, preserved_assets, created_at
+    FROM canonical_sync_runs
+    WHERE batch_hash = ${plan.batchHash}
+      AND execution_mode = 'APPLY'
+      AND status = 'COMPLETED';
+  `;
 
-  // 5. Execução Transacional Atômica com Advisory Lock
-  console.log('\x1b[34m[ETAPA-J-APPLY] Iniciando transação atômica no PostgreSQL...\x1b[0m');
+  let runIdForAudit = plan.syncRunId;
 
-  await sql.begin(async (tx) => {
-    // Advisory Lock exclusivo para governança de sincronização de catálogo (Key: 0xCA7A106)
-    await tx`SELECT pg_advisory_xact_lock(212513030);`;
+  if (existingCompletedRun && actionableInserts.length === 0 && actionableUpdates.length === 0) {
+    console.log(`\x1b[32m[IDEMPOTÊNCIA CONFIRMADA] O lote idêntico (hash: ${plan.batchHash}) já foi materializado com sucesso em ${existingCompletedRun.created_at}.\x1b[0m`);
+    console.log(`[IDEMPOTÊNCIA] Zero alterações pendentes (0 INSERTs, 0 UPDATEs, ${actionableNoOps.length} NO_OPs). Nenhuma escrita necessária.`);
+    runIdForAudit = existingCompletedRun.id;
+  } else {
+    // 5. Execução Transacional Atômica com Advisory Lock
+    console.log('\x1b[34m[ETAPA-J-APPLY] Iniciando transação atômica no PostgreSQL...\x1b[0m');
 
-    // 5.1 Criar registro da execução em canonical_sync_runs
-    await tx`
-      INSERT INTO canonical_sync_runs (
-        id, worker_id, batch_hash, execution_mode, parser_version,
-        total_candidates, inserted_assets, updated_assets, preserved_assets,
-        rejected_records, conflicts_detected, status, created_at, updated_at
-      ) VALUES (
-        ${plan.syncRunId}, ${plan.workerId}, ${plan.batchHash}, 'APPLY', ${plan.parserVersion},
-        ${plan.metrics.totalCandidates}, ${actionableInserts.length}, ${actionableUpdates.length},
-        ${actionableNoOps.length}, ${rejectedCount}, ${pendingCount}, 'RUNNING', now(), now()
-      );
-    `;
+    await sql.begin(async (tx) => {
+      // Advisory Lock exclusivo para governança de sincronização de catálogo (Key: 0xCA7A106)
+      await tx`SELECT pg_advisory_xact_lock(212513030);`;
+
+      // 5.1 Criar registro da execução em canonical_sync_runs
+      await tx`
+        INSERT INTO canonical_sync_runs (
+          id, worker_id, batch_hash, execution_mode, parser_version,
+          total_candidates, inserted_assets, updated_assets, preserved_assets,
+          rejected_records, conflicts_detected, status, created_at, updated_at
+        ) VALUES (
+          ${plan.syncRunId}, ${plan.workerId}, ${plan.batchHash}, 'APPLY', ${plan.parserVersion},
+          ${plan.metrics.totalCandidates}, ${actionableInserts.length}, ${actionableUpdates.length},
+          ${actionableNoOps.length}, ${rejectedCount}, ${pendingCount}, 'RUNNING', now(), now()
+        );
+      `;
 
     // 5.2 Executar INSERTs dos novos ativos canônicos oficiais e gravar seus itens de auditoria
     for (const act of actionableInserts) {
@@ -270,6 +283,7 @@ async function executeApply() {
   });
 
   console.log('\x1b[32m[SUCESSO] Materialização transacional concluída e confirmada no banco local.\x1b[0m');
+  }
 
   // 6. VALIDAÇÃO PÓS-EXECUÇÃO
   const [totalAssetsAfter] = await sql`SELECT count(*)::int as count FROM assets;`;
@@ -282,8 +296,8 @@ async function executeApply() {
     ) sub;
   `;
   const [b3QuotesCount] = await sql`SELECT count(*)::int as count FROM b3_historical_quotes;`;
-  const [syncRunDb] = await sql`SELECT * FROM canonical_sync_runs WHERE id = ${plan.syncRunId};`;
-  const [syncItemsDbCount] = await sql`SELECT count(*)::int as count FROM canonical_sync_run_items WHERE sync_run_id = ${plan.syncRunId};`;
+  const [syncRunDb] = await sql`SELECT * FROM canonical_sync_runs WHERE id = ${runIdForAudit};`;
+  const [syncItemsDbCount] = await sql`SELECT count(*)::int as count FROM canonical_sync_run_items WHERE sync_run_id = ${runIdForAudit};`;
 
   console.log('\n================================================================');
   console.log('             VALIDAÇÃO PÓS-EXECUÇÃO (AUDITORIA FINAL)           ');

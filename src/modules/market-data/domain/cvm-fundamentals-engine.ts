@@ -479,12 +479,23 @@ export function convertStatementToFundamentals(
     ebitda = ebit.add(depreciationAmortization);
   }
 
+  // Extrai LPA Oficial da DRE se disponível (3.99.01.01 primária para ON, 3.99.01 ou 3.99)
+  const officialLpa =
+    accounts.get('3.99.01.01') ??
+    accounts.get('3.99.01') ??
+    accounts.get('3.99') ??
+    statement.officialLpa ??
+    null;
+
   // Etapa 2: sharesCount resolvido deterministicamente a partir de capitalComposition pela classe homologada do ativo
   const sharesCount = options?.shareClass
     ? resolveSharesCountByClass(statement.capitalComposition, options.shareClass, {
         cnpj: statement.cnpj,
         referenceDate: statement.referenceDate,
         version: statement.version,
+        netIncome,
+        officialLpa,
+        totalEquity,
       })
     : null;
 
@@ -597,6 +608,7 @@ export function convertStatementToFundamentals(
     dividendsDeclared,
     notes: null,
     capitalComposition: statement.capitalComposition ?? null,
+    officialLpa,
   };
 
   validateFinancialSanity(result);
@@ -703,6 +715,9 @@ export function adaptAggregatedStatementToRawStatement(
     accounts.set(code, statement.dividendsDeclared);
     accountDescriptions.set(code, desc);
   }
+  if (statement.officialLpa !== null && statement.officialLpa !== undefined) {
+    accounts.set('3.99.01.01', statement.officialLpa);
+  }
 
   return {
     cnpj: statement.cnpj,
@@ -719,6 +734,7 @@ export function adaptAggregatedStatementToRawStatement(
     dfcDepreciationAmortization: statement.depreciationAmortization ?? null,
     dmplDividendsDeclared: statement.dividendsDeclared ?? null,
     dmplOrigin: statement.dmplOrigin ?? null,
+    officialLpa: statement.officialLpa ?? null,
     sourceReference: statement.sourceReference,
   };
 }

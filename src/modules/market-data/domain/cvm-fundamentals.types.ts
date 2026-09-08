@@ -37,6 +37,9 @@ export interface CvmRawStatementData {
   // Evidência de Origem da DMPL (Etapa 4 - Bloqueio de Injeção Artificial)
   dmplOrigin?: CvmDmplOriginEvidence | null;
 
+  // Lucro Básico por Ação oficial da DRE (conta 3.99.01.01 / 3.99)
+  officialLpa?: Decimal | null;
+
   // Metadados de proveniência
   sourceReference: string;
 }
@@ -76,6 +79,9 @@ export interface ConvertedFundamentals {
 
   // Composição de capital de origem (Etapa 2 - para resolução contextual por ativo/classe)
   capitalComposition?: CvmCapitalCompositionData | null;
+
+  // Lucro Básico por Ação oficial da DRE (conta 3.99.01.01 / 3.99)
+  officialLpa?: Decimal | null;
 }
 
 /**

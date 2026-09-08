@@ -139,13 +139,16 @@ export class CvmFundamentalsPublisherService {
         ? converted.referenceDate.toISOString().slice(0, 10)
         : String(converted.referenceDate).slice(0, 10);
 
-    // Etapa 2: Resolução estrita de sharesCount por classe de ação do ativo
+    // Etapa 2: Resolução estrita de sharesCount por classe de ação do ativo com calibração de escala
     const effectiveSharesCount =
       targetAsset.shareClass && converted.capitalComposition
         ? resolveSharesCountByClass(converted.capitalComposition, targetAsset.shareClass, {
             cnpj,
             referenceDate: referenceDateStr,
             version: converted.version,
+            netIncome: converted.netIncome,
+            officialLpa: converted.officialLpa ?? null,
+            totalEquity: converted.totalEquity,
           })
         : converted.sharesCount;
 
@@ -169,7 +172,11 @@ export class CvmFundamentalsPublisherService {
       totalAssets: converted.totalAssets ? converted.totalAssets.toFixed(4) : null,
       grossDebt: converted.grossDebt ? converted.grossDebt.toFixed(4) : null,
       cashEquivalents: converted.cashEquivalents ? converted.cashEquivalents.toFixed(4) : null,
-      sharesCount: effectiveSharesCount ? effectiveSharesCount.toFixed(10) : null,
+      // Respeita incondicionalmente a constraint chk_asset_fundamentals_shares_count (> 0 ou NULL)
+      sharesCount:
+        effectiveSharesCount && effectiveSharesCount.gt(0)
+          ? effectiveSharesCount.toFixed(10)
+          : null,
       dividendsDeclared: converted.dividendsDeclared ? converted.dividendsDeclared.toFixed(4) : null,
       notes: converted.notes,
       updatedAt: now,
@@ -181,12 +188,14 @@ export class CvmFundamentalsPublisherService {
       // Verifica se houve alteração real nos valores
       const isIdentical =
         existingRecord.netRevenue === valuesToPersist.netRevenue &&
+        existingRecord.ebitda === valuesToPersist.ebitda &&
         existingRecord.netIncome === valuesToPersist.netIncome &&
         existingRecord.totalEquity === valuesToPersist.totalEquity &&
         existingRecord.totalAssets === valuesToPersist.totalAssets &&
         existingRecord.grossDebt === valuesToPersist.grossDebt &&
         existingRecord.cashEquivalents === valuesToPersist.cashEquivalents &&
         existingRecord.sharesCount === valuesToPersist.sharesCount &&
+        existingRecord.dividendsDeclared === valuesToPersist.dividendsDeclared &&
         existingRecord.sourceReference === valuesToPersist.sourceReference;
 
       if (isIdentical) {
@@ -231,12 +240,14 @@ export class CvmFundamentalsPublisherService {
           ],
           set: {
             netRevenue: sql`excluded.net_revenue`,
+            ebitda: sql`excluded.ebitda`,
             netIncome: sql`excluded.net_income`,
             totalEquity: sql`excluded.total_equity`,
             totalAssets: sql`excluded.total_assets`,
             grossDebt: sql`excluded.gross_debt`,
             cashEquivalents: sql`excluded.cash_equivalents`,
             sharesCount: sql`excluded.shares_count`,
+            dividendsDeclared: sql`excluded.dividends_declared`,
             sourceReference: sql`excluded.source_reference`,
             isRestated: sql`excluded.is_restated`,
             updatedAt: sql`excluded.updated_at`,

@@ -90,8 +90,6 @@ export async function getPublicCatalogList(
     eq(assets.isCustom, false),
     isNull(assets.userId),
     sql`assets.is_visible_catalog = true`,
-    sql`assets.is_tradeable = true`,
-    sql`assets.status = 'active'`,
   ];
 
   if (params.category) {
@@ -145,9 +143,9 @@ export async function getPublicCatalogList(
   }
 
   // 2. Busca ativos oficiais em b3_historical_quotes compatíveis com a categoria e busca
-  let bdiFilterSql = sql`${b3HistoricalQuotes.bdiCode} IN ('02', '12', '14', '34', '36', '38') AND ${b3HistoricalQuotes.ticker} NOT LIKE '%F'`;
+  let bdiFilterSql = sql`${b3HistoricalQuotes.bdiCode} IN ('02', '06', '07', '08', '12', '14', '34', '36', '38', '58') AND ${b3HistoricalQuotes.ticker} NOT LIKE '%F'`;
   if (params.category === 'stock') {
-    bdiFilterSql = sql`${b3HistoricalQuotes.bdiCode} = '02' AND ${b3HistoricalQuotes.ticker} NOT LIKE '%F' AND ${b3HistoricalQuotes.ticker} NOT LIKE '%34' AND ${b3HistoricalQuotes.ticker} NOT LIKE '%35' AND ${b3HistoricalQuotes.ticker} NOT LIKE '%39'`;
+    bdiFilterSql = sql`${b3HistoricalQuotes.bdiCode} IN ('02', '06', '07', '08', '58') AND ${b3HistoricalQuotes.ticker} NOT LIKE '%F' AND ${b3HistoricalQuotes.ticker} NOT LIKE '%34' AND ${b3HistoricalQuotes.ticker} NOT LIKE '%35' AND ${b3HistoricalQuotes.ticker} NOT LIKE '%39'`;
   } else if (params.category === 'fii') {
     bdiFilterSql = sql`${b3HistoricalQuotes.bdiCode} = '12' AND ${b3HistoricalQuotes.ticker} NOT LIKE '%F'`;
   } else if (params.category === 'etf') {
@@ -415,8 +413,6 @@ export async function getPublicAssetDetailByTicker(
     isNull(assets.userId),
     eq(assets.ticker, normalizedTicker),
     sql`assets.is_visible_catalog = true`,
-    sql`assets.is_tradeable = true`,
-    sql`assets.status = 'active'`,
   ];
 
   if (category) {
@@ -426,7 +422,16 @@ export async function getPublicAssetDetailByTicker(
   }
 
   const [asset] = await executor
-    .select()
+    .select({
+      id: assets.id,
+      ticker: assets.ticker,
+      name: assets.name,
+      assetType: assets.assetType,
+      market: assets.market,
+      currency: assets.currency,
+      isTradeable: sql<boolean | null>`assets.is_tradeable`,
+      status: sql<string | null>`assets.status`,
+    })
     .from(assets)
     .where(and(...conditions))
     .limit(1);
@@ -530,6 +535,8 @@ export async function getPublicAssetDetailByTicker(
     variationStatus: variationResult.variationStatus,
     previousClosePrice: variationResult.previousClosePrice,
     previousCloseDate: variationResult.previousCloseDate,
+    isTradeable: asset?.isTradeable ?? false,
+    status: asset?.status ?? 'active',
   };
 }
 
