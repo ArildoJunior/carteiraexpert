@@ -12,6 +12,8 @@ import type {
   CvmContextHint,
   CanonicalClassificationResult,
   CatalogAssetCategory,
+  ClassificationConfidence,
+  CatalogConflictType,
 } from './canonical-catalog.types';
 import { isinSchema } from './canonical-catalog.schema';
 
@@ -35,6 +37,249 @@ export function deriveCanonicalName(
     return sName;
   }
   return ticker.toUpperCase();
+}
+
+/**
+ * Detecta evidência oficial suficiente para caracterizar um ativo como BDR.
+ * Considera especificação (DR3, DR3 A, DRN, BDR), nome oficial, ISIN e BDI.
+ */
+export function hasBdrEvidence(
+  ticker: string,
+  bdiCode?: string | null,
+  specification?: string | null,
+  shortName?: string | null,
+  isin?: string | null
+): boolean {
+  const normTicker = (ticker || '').trim().toUpperCase();
+  const specUpper = (specification || '').trim().toUpperCase();
+  const nameUpper = (shortName || '').trim().toUpperCase();
+  const bdi = (bdiCode || '').trim();
+  const isinUpper = (isin || '').trim().toUpperCase();
+
+  // 1. Especificação oficial indicando BDR / DR3 / DRN
+  const hasSpecEvidence =
+    specUpper.includes('DR3') ||
+    specUpper.includes('DRN') ||
+    specUpper.includes('BDR');
+
+  // 2. Nome oficial indicando BDR / DR3 / DRN
+  const hasNameEvidence =
+    nameUpper.includes('DR3') ||
+    nameUpper.includes('DRN') ||
+    nameUpper.includes('BDR');
+
+  // 3. ISIN oficial indicando BDR
+  const hasIsinEvidence =
+    isinUpper.includes('BDR') ||
+    isinUpper.startsWith('BRBDR');
+
+  // 4. BDI oficial reservado exclusivamente para BDRs (34, 36, 38)
+  const isBdrBdi = bdi === '34' || bdi === '36' || bdi === '38';
+
+  // 5. Sufixos tradicionais de BDR (34, 35, 39)
+  const isBdrStandardSuffix =
+    normTicker.endsWith('34') ||
+    normTicker.endsWith('35') ||
+    normTicker.endsWith('39');
+
+  // 6. Sufixo 33 ou 36 (ex: AURA33, NUBR33, BBTG36, PPLA36)
+  // Regra Estrita: NÃO classificar todo ticker 33 automaticamente como BDR.
+  // Exige evidência oficial (especificação DR3/DRN/BDR, nome, ISIN ou BDI compatível).
+  if (normTicker.endsWith('33') || normTicker.endsWith('36')) {
+    return hasSpecEvidence || hasNameEvidence || hasIsinEvidence || isBdrBdi;
+  }
+
+  // 7. BDI 02 ou 35 acompanhado de especificação ou nome DR3, BDR ou DRN
+  // Regra Estrita: NÃO classificar todo BDI 02 ou 35 como BDR.
+  if (bdi === '02' || bdi === '35') {
+    return hasSpecEvidence || hasNameEvidence || hasIsinEvidence;
+  }
+
+  // 8. Demais evidências diretas
+  return isBdrBdi || isBdrStandardSuffix || hasSpecEvidence || hasNameEvidence || hasIsinEvidence;
+}
+
+/**
+ * Detecta evidência oficial suficiente para caracterizar um ativo como FII (Fundo de Investimento Imobiliário).
+ * Evita rigorosamente tratar Units de ações (BPAC11, KLBN11, etc.) como FIIs.
+ */
+export function hasFiiEvidence(
+  ticker: string,
+  bdiCode?: string | null,
+  specification?: string | null,
+  shortName?: string | null,
+  cvmHint?: CvmContextHint
+): boolean {
+  const normTicker = (ticker || '').trim().toUpperCase();
+  const specUpper = (specification || '').trim().toUpperCase();
+  const nameUpper = (shortName || '').trim().toUpperCase();
+  const bdi = (bdiCode || '').trim();
+
+  // 1. Registro explícito na CVM como FII
+  if (cvmHint?.isRegisteredFii === true) {
+    return true;
+  }
+
+  // 2. Se a CVM indicar formalmente que NÃO é FII (ex: companhia aberta emissora de Unit), rejeita FII
+  if (cvmHint && cvmHint.isRegisteredFii === false && cvmHint.legalName) {
+    return false;
+  }
+
+  // 3. BDI 12 (Fundos Imobiliários)
+  if (bdi === '12') {
+    return true;
+  }
+
+  // 4. Denominação oficial contendo identificador de fundo imobiliário
+  if (
+    nameUpper.startsWith('FII ') ||
+    nameUpper.includes(' FII ') ||
+    nameUpper.includes('FDO INV IMOB') ||
+    nameUpper.includes('FDO INV IMOBILIARIO')
+  ) {
+    return true;
+  }
+
+  // 5. Especificação contendo FII
+  if (specUpper.includes('FII')) {
+    return true;
+  }
+
+  // 6. Série de balcão (11B) acompanhada de CI, BDI 12 ou nome FII
+  if (normTicker.endsWith('11B') && (specUpper.includes('CI') || bdi === '12' || nameUpper.includes('FII') || nameUpper.includes('IMOB'))) {
+    return true;
+  }
+
+  // 7. Direitos e recibos de FII (sufixos 12 a 16) com evidência de fundo imobiliário
+  if (
+    (normTicker.endsWith('12') || normTicker.endsWith('13') || normTicker.endsWith('14') || normTicker.endsWith('15') || normTicker.endsWith('16')) &&
+    (bdi === '12' || nameUpper.includes('FII') || specUpper.includes('FII') || nameUpper.includes('IMOB'))
+  ) {
+    return true;
+  }
+
+  // 8. Ticker final 11 com cota (CI) E evidência de nome FII/IMOB
+  if (normTicker.endsWith('11') && specUpper.includes('CI') && (nameUpper.includes('FII') || nameUpper.includes('IMOB'))) {
+    return true;
+  }
+
+  // Tickers terminados em 11 sem BDI 12 e sem indicação explícita de FII são Units de ações ou outros ativos.
+  return false;
+}
+
+/**
+ * Detecta evidência oficial suficiente para caracterizar um ativo como ETF (Fundo de Índice).
+ */
+export function hasEtfEvidence(
+  ticker: string,
+  bdiCode?: string | null,
+  specification?: string | null,
+  shortName?: string | null
+): boolean {
+  const specUpper = (specification || '').trim().toUpperCase();
+  const nameUpper = (shortName || '').trim().toUpperCase();
+  const bdi = (bdiCode || '').trim();
+
+  if (bdi === '14') return true;
+  if (specUpper.includes('ETF')) return true;
+  if (
+    nameUpper.includes('ISHARES') ||
+    nameUpper.includes('INDEX') ||
+    nameUpper.includes('ETF') ||
+    nameUpper.includes('FUNDO DE INDICE')
+  ) {
+    return true;
+  }
+  return false;
+}
+
+export interface InferredCategoryResult {
+  category: CatalogAssetCategory;
+  confidence: ClassificationConfidence;
+  justification: string;
+  conflictType: CatalogConflictType | null;
+}
+
+/**
+ * Função Pura, Centralizada e Reutilizável de Inferência de Categoria de Ativo.
+ * Utilizada uniformemente pelo classificador canônico, catálogo e rotas.
+ */
+export function inferCanonicalAssetCategory(input: {
+  ticker: string;
+  bdiCode?: string | null;
+  specification?: string | null;
+  shortName?: string | null;
+  isin?: string | null;
+  cvmHint?: CvmContextHint;
+}): InferredCategoryResult {
+  const ticker = (input.ticker || '').trim().toUpperCase();
+  const bdiCode = (input.bdiCode || '').trim();
+  const specification = (input.specification || '').trim();
+  const shortName = (input.shortName || '').trim();
+  const isin = (input.isin || '').trim();
+
+  // 1. Checagem de BDR (inclui BDRs DR3 com BDI 02/35 ou sufixos 33/36)
+  if (hasBdrEvidence(ticker, bdiCode, specification, shortName, isin)) {
+    return {
+      category: 'bdr',
+      confidence: 'HIGH',
+      justification: 'Classificado como BDR com base no BDI oficial (34/36/38), sufixo representativo (34/35/39/33/36) ou evidência DR3/DRN/BDR.',
+      conflictType: null,
+    };
+  }
+
+  // 2. Checagem de ETF
+  if (hasEtfEvidence(ticker, bdiCode, specification, shortName)) {
+    return {
+      category: 'etf',
+      confidence: 'HIGH',
+      justification: 'Classificado como ETF com base no BDI 14 ou especificação/nome de Fundo de Índice.',
+      conflictType: null,
+    };
+  }
+
+  // 3. Checagem de FII
+  if (hasFiiEvidence(ticker, bdiCode, specification, shortName, input.cvmHint)) {
+    return {
+      category: 'fii',
+      confidence: 'HIGH',
+      justification: 'Classificado como FII com base no BDI 12, série de balcão (11B), registro CVM ou denominação oficial de fundo imobiliário.',
+      conflictType: null,
+    };
+  }
+
+  // 4. Checagem de Ações e Units de Ações
+  const isStockBdi = bdiCode === '02' || bdiCode === '06' || bdiCode === '07' || bdiCode === '08' || bdiCode === '58' || bdiCode === '';
+  const specUpper = specification.toUpperCase();
+  const isUnit = ticker.endsWith('11') && (specUpper.includes('UNT') || specUpper.includes('UNIDADE') || (input.cvmHint && !input.cvmHint.isRegisteredFii));
+  const isStockSuffix = /^[A-Z0-9._-]+(3|4|5|6|7|8|11|3B|4B|5B|6B|7B|8B)$/.test(ticker);
+
+  if (isStockBdi && (isStockSuffix || isUnit)) {
+    return {
+      category: 'stock',
+      confidence: 'HIGH',
+      justification: `Classificado como Ação / Unit com base no BDI (${bdiCode || '02'}) e convenção acionária da B3.`,
+      conflictType: null,
+    };
+  }
+
+  return {
+    category: 'stock',
+    confidence: 'MEDIUM',
+    justification: 'Atribuído como ação por convenção residual do mercado à vista.',
+    conflictType: null,
+  };
+}
+
+export function inferAssetType(input: {
+  ticker: string;
+  bdiCode?: string | null;
+  specification?: string | null;
+  shortName?: string | null;
+  isin?: string | null;
+  cvmHint?: CvmContextHint;
+}): CatalogAssetCategory {
+  return inferCanonicalAssetCategory(input).category;
 }
 
 /**
@@ -138,17 +383,7 @@ export function classifyCanonicalCandidate(
   }
 
   // 5. Classificação de BDRs (Brazilian Depositary Receipts)
-  if (
-    bdiCode === '34' ||
-    bdiCode === '36' ||
-    bdiCode === '38' ||
-    ticker.endsWith('34') ||
-    ticker.endsWith('35') ||
-    ticker.endsWith('39') ||
-    specUpper.includes('BDR') ||
-    specUpper.includes('DRN') ||
-    nameUpper.includes('BDR')
-  ) {
+  if (hasBdrEvidence(ticker, bdiCode, specification, shortName, isin)) {
     return {
       decision: 'ACCEPT',
       ticker,
@@ -161,18 +396,13 @@ export function classifyCanonicalCandidate(
       confidence: 'HIGH',
       rejectionReason: null,
       conflictType: null,
-      justification: 'Classificado como BDR com base no código BDI oficial (34/36/38) ou sufixo representativo (34/35/39).',
+      justification: 'Classificado como BDR com base no código BDI oficial (34/36/38), sufixo representativo (34/35/39/33/36) ou especificação DR3/DRN/BDR.',
       evaluatedAt,
     };
   }
 
   // 6. Classificação de Fundos de Índice (ETFs)
-  if (
-    bdiCode === '14' ||
-    specUpper.includes('ETF') ||
-    nameUpper.includes('ISHARES') ||
-    nameUpper.includes('INDEX')
-  ) {
+  if (hasEtfEvidence(ticker, bdiCode, specification, shortName)) {
     return {
       decision: 'ACCEPT',
       ticker,
@@ -220,18 +450,10 @@ export function classifyCanonicalCandidate(
     };
   }
 
-  // 8. Classificação de Fundos Imobiliários (FIIs) vs. Units de Ações (Final 11)
-  if (ticker.endsWith('11')) {
+  // 8. Classificação de Fundos Imobiliários (FIIs) vs. Units de Ações (Final 11 / 11B / BDI 12)
+  if (bdiCode === '12' || ticker.endsWith('11B') || ticker.endsWith('11')) {
     // 8.1. Caso evidente de FII
-    if (
-      cvmHint?.isRegisteredFii === true ||
-      bdiCode === '12' ||
-      specUpper.includes('FII') ||
-      specUpper.includes('CI') ||
-      nameUpper.includes('FII') ||
-      nameUpper.includes('IMOB') ||
-      nameUpper.includes('FDO INV IMOB')
-    ) {
+    if (hasFiiEvidence(ticker, bdiCode, specification, shortName, cvmHint)) {
       return {
         decision: 'ACCEPT',
         ticker,
@@ -244,14 +466,14 @@ export function classifyCanonicalCandidate(
         confidence: 'HIGH',
         rejectionReason: null,
         conflictType: null,
-        justification: 'Classificado como FII com base no BDI 12, especificação CI/FII ou registro no cadastro da CVM.',
+        justification: 'Classificado como FII com base no BDI 12, série de balcão (11B), especificação CI/FII ou registro no cadastro da CVM.',
         evaluatedAt,
       };
     }
 
     // 8.2. Caso evidente de Unit de Ação (BDI 02, 06, 07, 08 ou 58 com especificação UNT / cadastro CVM)
     if (
-      (bdiCode === '02' || bdiCode === '06' || bdiCode === '07' || bdiCode === '08' || bdiCode === '58') &&
+      (bdiCode === '02' || bdiCode === '06' || bdiCode === '07' || bdiCode === '08' || bdiCode === '58' || bdiCode === '') &&
       (specUpper.includes('UNT') ||
         specUpper.includes('UNIDADE') ||
         (cvmHint && cvmHint.isRegisteredFii === false && cvmHint.legalName))
@@ -268,7 +490,7 @@ export function classifyCanonicalCandidate(
         confidence: 'HIGH',
         rejectionReason: null,
         conflictType: null,
-        justification: `Classificado como Unit de Ações (stock) com base no BDI ${bdiCode} e especificação UNT / cadastro CVM.`,
+        justification: `Classificado como Unit de Ações (stock) com base no BDI ${bdiCode || '02'} e especificação UNT / cadastro CVM.`,
         evaluatedAt,
       };
     }

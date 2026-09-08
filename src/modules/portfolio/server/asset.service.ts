@@ -55,6 +55,11 @@ export async function searchAssets(
 
   if (params.assetType) {
     conditions.push(eq(assets.assetType, params.assetType));
+    if (params.assetType === 'stock') {
+      conditions.push(
+        sql`NOT (${assets.name} ILIKE 'FII %' OR ${assets.name} ILIKE '% FII %' OR (${assets.ticker} LIKE '%33' AND (${assets.name} ILIKE '%DRN%' OR ${assets.name} ILIKE '%BDR%' OR ${assets.name} ILIKE '%DR3%')))`
+      );
+    }
   }
 
   if (params.isTradeableOnly) {

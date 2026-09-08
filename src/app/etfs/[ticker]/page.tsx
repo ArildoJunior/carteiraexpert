@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: EtfDetailPageProps): Promise<
   const { ticker } = await params;
   const asset = await getPublicAssetDetailByTicker(ticker, 'etf');
 
-  if (!asset) {
+  if (!asset || asset.assetType !== 'etf') {
     return {
       title: 'ETF Não Encontrado | CarteiraExpert',
     };
@@ -51,7 +51,7 @@ export default async function EtfDetailPage({ params, searchParams }: EtfDetailP
 
   const asset = await getPublicAssetDetailByTicker(ticker, 'etf');
 
-  if (!asset) {
+  if (!asset || asset.assetType !== 'etf') {
     notFound();
   }
 

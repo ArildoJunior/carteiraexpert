@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: FiiDetailPageProps): Promise<
   const { ticker } = await params;
   const asset = await getPublicAssetDetailByTicker(ticker, 'fii');
 
-  if (!asset) {
+  if (!asset || asset.assetType !== 'fii') {
     return {
       title: 'FII Não Encontrado | CarteiraExpert',
     };
@@ -54,7 +54,7 @@ export default async function FiiDetailPage({ params, searchParams }: FiiDetailP
 
   const asset = await getPublicAssetDetailByTicker(ticker, 'fii');
 
-  if (!asset) {
+  if (!asset || asset.assetType !== 'fii') {
     notFound();
   }
 

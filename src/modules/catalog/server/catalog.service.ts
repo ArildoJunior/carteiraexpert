@@ -25,6 +25,12 @@ import {
   getMarketTradingDay,
   B3_TIMEZONE,
 } from '../domain/catalog-utils';
+import {
+  inferCanonicalAssetCategory,
+  hasBdrEvidence,
+  hasFiiEvidence,
+  hasEtfEvidence,
+} from '../domain/canonical-classifier';
 
 const TRADITIONAL_ASSET_TYPES = ['stock', 'fii', 'etf', 'bdr'];
 
@@ -36,41 +42,16 @@ function inferAssetTypeFromCotahist(
   ticker: string,
   bdiCode?: string | null,
   specification?: string | null,
-  shortName?: string | null
+  shortName?: string | null,
+  isin?: string | null
 ): CatalogAssetCategory {
-  const normTicker = ticker.toUpperCase();
-  const specUpper = (specification || '').toUpperCase();
-  const nameUpper = (shortName || '').toUpperCase();
-
-  if (
-    bdiCode === '12' ||
-    (normTicker.endsWith('11') && (specUpper.includes('FII') || nameUpper.includes('FII') || nameUpper.includes('IMOB')))
-  ) {
-    return 'fii';
-  }
-  if (
-    bdiCode === '14' ||
-    specUpper.includes('ETF') ||
-    nameUpper.includes('ETF') ||
-    nameUpper.includes('ISHARES') ||
-    nameUpper.includes('INDEX')
-  ) {
-    return 'etf';
-  }
-  if (
-    bdiCode === '34' ||
-    bdiCode === '36' ||
-    bdiCode === '38' ||
-    normTicker.endsWith('34') ||
-    normTicker.endsWith('35') ||
-    normTicker.endsWith('39') ||
-    specUpper.includes('BDR') ||
-    specUpper.includes('DRN') ||
-    nameUpper.includes('BDR')
-  ) {
-    return 'bdr';
-  }
-  return 'stock';
+  return inferCanonicalAssetCategory({
+    ticker,
+    bdiCode,
+    specification,
+    shortName,
+    isin,
+  }).category;
 }
 
 /**
@@ -129,6 +110,20 @@ export async function getPublicCatalogList(
 
   for (const a of assetRows) {
     const t = a.ticker.toUpperCase();
+    const nameUpper = a.name.toUpperCase();
+
+    // Se uma categoria foi solicitada, a listagem confia estritamente no asset_type cadastrado
+    if (params.category && a.assetType !== params.category) {
+      continue;
+    }
+
+    // Blindagem de categoria para ações (/acoes): impede que ativos com evidência óbvia de FII ou BDR vazem para ações
+    if (params.category === 'stock') {
+      if (hasBdrEvidence(t, null, null, a.name) || hasFiiEvidence(t, null, null, a.name)) {
+        continue;
+      }
+    }
+
     candidateMap.set(t, {
       id: a.id,
       ticker: t,
@@ -143,15 +138,15 @@ export async function getPublicCatalogList(
   }
 
   // 2. Busca ativos oficiais em b3_historical_quotes compatíveis com a categoria e busca
-  let bdiFilterSql = sql`${b3HistoricalQuotes.bdiCode} IN ('02', '06', '07', '08', '12', '14', '34', '36', '38', '58') AND ${b3HistoricalQuotes.ticker} NOT LIKE '%F'`;
+  let bdiFilterSql = sql`${b3HistoricalQuotes.bdiCode} IN ('02', '06', '07', '08', '12', '14', '34', '35', '36', '38', '58') AND ${b3HistoricalQuotes.ticker} NOT LIKE '%F'`;
   if (params.category === 'stock') {
-    bdiFilterSql = sql`${b3HistoricalQuotes.bdiCode} IN ('02', '06', '07', '08', '58') AND ${b3HistoricalQuotes.ticker} NOT LIKE '%F' AND ${b3HistoricalQuotes.ticker} NOT LIKE '%34' AND ${b3HistoricalQuotes.ticker} NOT LIKE '%35' AND ${b3HistoricalQuotes.ticker} NOT LIKE '%39'`;
+    bdiFilterSql = sql`${b3HistoricalQuotes.bdiCode} IN ('02', '06', '07', '08', '58') AND ${b3HistoricalQuotes.ticker} NOT LIKE '%F' AND ${b3HistoricalQuotes.ticker} NOT LIKE '%34' AND ${b3HistoricalQuotes.ticker} NOT LIKE '%35' AND ${b3HistoricalQuotes.ticker} NOT LIKE '%39' AND NOT (${b3HistoricalQuotes.specification} ILIKE '%DR3%' OR ${b3HistoricalQuotes.specification} ILIKE '%DRN%' OR ${b3HistoricalQuotes.specification} ILIKE '%BDR%' OR ${b3HistoricalQuotes.shortName} ILIKE '%DR3%' OR ${b3HistoricalQuotes.shortName} ILIKE '%BDR%' OR ${b3HistoricalQuotes.shortName} ILIKE 'FII %' OR ${b3HistoricalQuotes.shortName} ILIKE '% FII %' OR ${b3HistoricalQuotes.specification} ILIKE '%FII%' OR ${b3HistoricalQuotes.bdiCode} = '12' OR ${b3HistoricalQuotes.bdiCode} = '14' OR ${b3HistoricalQuotes.specification} ILIKE '%ETF%')`;
   } else if (params.category === 'fii') {
-    bdiFilterSql = sql`${b3HistoricalQuotes.bdiCode} = '12' AND ${b3HistoricalQuotes.ticker} NOT LIKE '%F'`;
+    bdiFilterSql = sql`(${b3HistoricalQuotes.bdiCode} = '12' OR ${b3HistoricalQuotes.shortName} ILIKE 'FII %' OR ${b3HistoricalQuotes.shortName} ILIKE '% FII %' OR ${b3HistoricalQuotes.specification} ILIKE '%FII%') AND ${b3HistoricalQuotes.ticker} NOT LIKE '%F'`;
   } else if (params.category === 'etf') {
-    bdiFilterSql = sql`${b3HistoricalQuotes.bdiCode} = '14' AND ${b3HistoricalQuotes.ticker} NOT LIKE '%F'`;
+    bdiFilterSql = sql`(${b3HistoricalQuotes.bdiCode} = '14' OR ${b3HistoricalQuotes.specification} ILIKE '%ETF%' OR ${b3HistoricalQuotes.shortName} ILIKE '%ISHARES%' OR ${b3HistoricalQuotes.shortName} ILIKE '%INDEX%') AND ${b3HistoricalQuotes.ticker} NOT LIKE '%F'`;
   } else if (params.category === 'bdr') {
-    bdiFilterSql = sql`${b3HistoricalQuotes.bdiCode} IN ('34', '36', '38') AND ${b3HistoricalQuotes.ticker} NOT LIKE '%F'`;
+    bdiFilterSql = sql`(${b3HistoricalQuotes.bdiCode} IN ('34', '36', '38') OR ((${b3HistoricalQuotes.bdiCode} IN ('02', '35') OR ${b3HistoricalQuotes.ticker} LIKE '%33' OR ${b3HistoricalQuotes.ticker} LIKE '%36') AND (${b3HistoricalQuotes.specification} ILIKE '%DR3%' OR ${b3HistoricalQuotes.specification} ILIKE '%DRN%' OR ${b3HistoricalQuotes.specification} ILIKE '%BDR%' OR ${b3HistoricalQuotes.shortName} ILIKE '%DR3%' OR ${b3HistoricalQuotes.shortName} ILIKE '%DRN%' OR ${b3HistoricalQuotes.shortName} ILIKE '%BDR%')) OR ${b3HistoricalQuotes.ticker} LIKE '%34' OR ${b3HistoricalQuotes.ticker} LIKE '%35' OR ${b3HistoricalQuotes.ticker} LIKE '%39') AND ${b3HistoricalQuotes.ticker} NOT LIKE '%F'`;
   }
 
   const b3Conditions = [bdiFilterSql];
@@ -202,6 +197,11 @@ export async function getPublicCatalogList(
       match.specification,
       match.shortName
     );
+
+    if (params.category && params.category !== inferredType) {
+      candidateMap.delete(matchTicker);
+      continue;
+    }
 
     if (!params.category || params.category === inferredType) {
       const existing = candidateMap.get(matchTicker);
@@ -408,19 +408,7 @@ export async function getPublicAssetDetailByTicker(
   }
   const normalizedTicker = parsedTicker.data;
 
-  const conditions = [
-    eq(assets.isCustom, false),
-    isNull(assets.userId),
-    eq(assets.ticker, normalizedTicker),
-    sql`assets.is_visible_catalog = true`,
-  ];
-
-  if (category) {
-    conditions.push(eq(assets.assetType, category));
-  } else {
-    conditions.push(inArray(assets.assetType, TRADITIONAL_ASSET_TYPES));
-  }
-
+  // 1. Busca ativo canônico cadastrado em assets
   const [asset] = await executor
     .select({
       id: assets.id,
@@ -433,8 +421,25 @@ export async function getPublicAssetDetailByTicker(
       status: sql<string | null>`assets.status`,
     })
     .from(assets)
-    .where(and(...conditions))
+    .where(
+      and(
+        eq(assets.isCustom, false),
+        isNull(assets.userId),
+        eq(assets.ticker, normalizedTicker),
+        sql`assets.is_visible_catalog = true`
+      )
+    )
     .limit(1);
+
+  // Se o ativo existe no cadastro canônico, valida estritamente a categoria
+  if (asset) {
+    // A rota deve validar ESTRITAMENTE o assetType persistido
+    // Se a categoria solicitada for diferente do assetType persistido, retorna null (dispara notFound)
+    // Não altera silenciosamente o assetType persistido no banco com heurísticas de nome/ticker!
+    if (category && asset.assetType !== category) {
+      return null;
+    }
+  }
 
   let assetId = asset?.id ?? `b3_${normalizedTicker}`;
   let assetName = asset?.name ?? normalizedTicker;
@@ -465,10 +470,26 @@ export async function getPublicAssetDetailByTicker(
 
   // Fallback ou busca direta em b3_historical_quotes
   if (quotes.length === 0) {
+    let bdiFilter = sql`1=1`;
+    if (category === 'stock') {
+      bdiFilter = sql`${b3HistoricalQuotes.bdiCode} IN ('02', '06', '07', '08', '58') AND ${b3HistoricalQuotes.ticker} NOT LIKE '%F' AND ${b3HistoricalQuotes.ticker} NOT LIKE '%34' AND ${b3HistoricalQuotes.ticker} NOT LIKE '%35' AND ${b3HistoricalQuotes.ticker} NOT LIKE '%39' AND NOT (${b3HistoricalQuotes.specification} ILIKE '%DR3%' OR ${b3HistoricalQuotes.specification} ILIKE '%DRN%' OR ${b3HistoricalQuotes.specification} ILIKE '%BDR%' OR ${b3HistoricalQuotes.shortName} ILIKE '%DR3%' OR ${b3HistoricalQuotes.shortName} ILIKE '%BDR%' OR ${b3HistoricalQuotes.shortName} ILIKE 'FII %' OR ${b3HistoricalQuotes.shortName} ILIKE '% FII %' OR ${b3HistoricalQuotes.specification} ILIKE '%FII%' OR ${b3HistoricalQuotes.bdiCode} = '12' OR ${b3HistoricalQuotes.bdiCode} = '14' OR ${b3HistoricalQuotes.specification} ILIKE '%ETF%')`;
+    } else if (category === 'fii') {
+      bdiFilter = sql`(${b3HistoricalQuotes.bdiCode} = '12' OR ${b3HistoricalQuotes.shortName} ILIKE 'FII %' OR ${b3HistoricalQuotes.shortName} ILIKE '% FII %' OR ${b3HistoricalQuotes.specification} ILIKE '%FII%') AND ${b3HistoricalQuotes.ticker} NOT LIKE '%F'`;
+    } else if (category === 'etf') {
+      bdiFilter = sql`(${b3HistoricalQuotes.bdiCode} = '14' OR ${b3HistoricalQuotes.specification} ILIKE '%ETF%' OR ${b3HistoricalQuotes.shortName} ILIKE '%ISHARES%' OR ${b3HistoricalQuotes.shortName} ILIKE '%INDEX%') AND ${b3HistoricalQuotes.ticker} NOT LIKE '%F'`;
+    } else if (category === 'bdr') {
+      bdiFilter = sql`(${b3HistoricalQuotes.bdiCode} IN ('34', '36', '38') OR ((${b3HistoricalQuotes.bdiCode} IN ('02', '35') OR ${b3HistoricalQuotes.ticker} LIKE '%33' OR ${b3HistoricalQuotes.ticker} LIKE '%36') AND (${b3HistoricalQuotes.specification} ILIKE '%DR3%' OR ${b3HistoricalQuotes.specification} ILIKE '%DRN%' OR ${b3HistoricalQuotes.specification} ILIKE '%BDR%' OR ${b3HistoricalQuotes.shortName} ILIKE '%DR3%' OR ${b3HistoricalQuotes.shortName} ILIKE '%DRN%' OR ${b3HistoricalQuotes.shortName} ILIKE '%BDR%')) OR ${b3HistoricalQuotes.ticker} LIKE '%34' OR ${b3HistoricalQuotes.ticker} LIKE '%35' OR ${b3HistoricalQuotes.ticker} LIKE '%39') AND ${b3HistoricalQuotes.ticker} NOT LIKE '%F'`;
+    }
+
+    const b3Conditions = [eq(b3HistoricalQuotes.ticker, normalizedTicker)];
+    if (category) {
+      b3Conditions.push(bdiFilter);
+    }
+
     const b3Rows = await executor
       .select()
       .from(b3HistoricalQuotes)
-      .where(eq(b3HistoricalQuotes.ticker, normalizedTicker))
+      .where(and(...b3Conditions))
       .orderBy(
         desc(b3HistoricalQuotes.tradeDate),
         desc(b3HistoricalQuotes.tradeCount),
@@ -478,17 +499,25 @@ export async function getPublicAssetDetailByTicker(
 
     if (b3Rows.length > 0) {
       const firstRow = b3Rows[0];
+      const inferredType = inferAssetTypeFromCotahist(
+        normalizedTicker,
+        firstRow.bdiCode,
+        firstRow.specification,
+        firstRow.shortName,
+        firstRow.isin
+      );
+
+      // Rejeita se o tipo inferido oficial não corresponder à categoria da rota
+      if (category && inferredType !== category) {
+        return null;
+      }
+
       if (!asset) {
         assetName =
           `${firstRow.shortName}${firstRow.specification ? ' - ' + firstRow.specification : ''}`.trim() ||
           normalizedTicker;
         assetCurrency = firstRow.currency || 'BRL';
-        assetType = inferAssetTypeFromCotahist(
-          normalizedTicker,
-          firstRow.bdiCode,
-          firstRow.specification,
-          firstRow.shortName
-        );
+        assetType = inferredType;
       }
 
       const seenDates = new Set<string>();
@@ -509,6 +538,11 @@ export async function getPublicAssetDetailByTicker(
 
   // Se não foi encontrado em assets nem em b3_historical_quotes, retorna null (ativo inexistente)
   if (!asset && quotes.length === 0) {
+    return null;
+  }
+
+  // Validação final estrita de categoria: nenhuma circunstância permite retorno de ativo com categoria divergente
+  if (category && assetType !== category) {
     return null;
   }
 

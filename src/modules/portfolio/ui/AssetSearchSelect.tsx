@@ -9,6 +9,7 @@ interface AssetSearchSelectProps {
   onSelectAsset: (asset: Asset | null) => void;
   onRequestCreateCustomAsset?: (query: string) => void;
   isTradeableOnly?: boolean;
+  assetType?: string;
   error?: string;
 }
 
@@ -17,6 +18,7 @@ export function AssetSearchSelect({
   onSelectAsset,
   onRequestCreateCustomAsset,
   isTradeableOnly,
+  assetType,
   error,
 }: AssetSearchSelectProps) {
   const [query, setQuery] = useState('');
@@ -32,7 +34,7 @@ export function AssetSearchSelect({
     setLoading(true);
 
     try {
-      const res = await searchAssetsAction(searchQuery, undefined, 10, isTradeableOnly);
+      const res = await searchAssetsAction(searchQuery, assetType, 10, isTradeableOnly);
       // Descarta resposta se uma busca mais recente já foi disparada
       if (currentRequestId === requestIdRef.current) {
         if (res.success && res.data) {
@@ -50,7 +52,7 @@ export function AssetSearchSelect({
         setLoading(false);
       }
     }
-  }, []);
+  }, [assetType, isTradeableOnly]);
 
   // Debounced search effect
   useEffect(() => {

@@ -127,6 +127,7 @@ export const b3HistoricalQuotes = pgTable(
     index('idx_b3_quotes_batch_id').on(table.batchId),
     index('idx_b3_quotes_asset_id').on(table.assetId),
     index('idx_b3_quotes_isin').on(table.isin),
+    index('idx_b3_quotes_bdi_trade_date').on(table.bdiCode, table.tradeDate.desc()),
     unique('uq_b3_historical_quotes_record_hash').on(table.recordHash),
     check('chk_b3_quotes_open_price', sql`${table.openPrice} >= 0`),
     check('chk_b3_quotes_high_price', sql`${table.highPrice} >= 0`),

@@ -36,7 +36,7 @@ export async function generateMetadata({ params }: AcaoDetailPageProps): Promise
   const { ticker } = await params;
   const asset = await getPublicAssetDetailByTicker(ticker, 'stock');
 
-  if (!asset) {
+  if (!asset || asset.assetType !== 'stock') {
     return {
       title: 'Ativo Não Encontrado | CarteiraExpert',
     };
@@ -61,7 +61,7 @@ export default async function AcaoDetailPage({ params, searchParams }: AcaoDetai
 
   const asset = await getPublicAssetDetailByTicker(ticker, 'stock');
 
-  if (!asset) {
+  if (!asset || asset.assetType !== 'stock') {
     notFound();
   }
 
