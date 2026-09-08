@@ -442,4 +442,222 @@ describe('AssetFundamentalsCard — Testes Unitários de UI (jsdom)', () => {
     expect(text).not.toContain('Retificado');
     expect(text).not.toContain('Reapresentado');
   });
+
+  it('renderiza indicadores expandidos: ROIC, EV, EV/EBITDA, Dívida Bruta/PL e Dívida Líquida/PL', async () => {
+    const mockExpanded: AssetFundamentalsViewData = {
+      statement: {
+        referencePeriod: '2025-4Q',
+        periodType: 'annual',
+        statementType: 'CONSOLIDATED',
+        referenceDate: '2025-12-31',
+        filingDate: '2026-02-15',
+        source: 'cvm',
+        sourceReference: 'DFP-2025',
+        version: 1,
+        isRestated: false,
+        currency: 'BRL',
+        netRevenue: '1000000000.0000',
+        ebitda: '300000000.0000',
+        netIncome: '150000000.0000',
+        totalEquity: '800000000.0000',
+        totalAssets: '2000000000.0000',
+        grossDebt: '400000000.0000',
+        cashEquivalents: '100000000.0000',
+        sharesCount: '50000000.0000',
+        dividendsDeclared: '50000000.0000',
+        notes: null,
+      },
+      indicators: {
+        netDebt: '300000000.0000',
+        enterpriseValue: '1800000000.0000',
+        netMargin: '0.1500',
+        ebitdaMargin: '0.3000',
+        roe: '0.1875',
+        roa: '0.0750',
+        roic: '0.1800',
+        lpa: '3.0000',
+        vpa: '16.0000',
+        netDebtToEbitda: '1.00',
+        grossDebtToEquity: '0.50',
+        netDebtToEquity: '0.38',
+        peRatio: '10.00',
+        pbRatio: '1.88',
+        evToEbitda: '6.00',
+        dividendYield: '0.0333',
+        dataQualityStatus: 'VALID',
+        traceability: {
+          roic: {
+            source: 'CVM DFP 2025',
+            referencePeriod: '2025-4Q',
+            currency: 'BRL',
+            referenceDate: '2025-12-31',
+            methodology: 'NOPAT / Capital Investido',
+            formula: 'NOPAT / (Patrimônio Líquido + Dívida Bruta - Caixa)',
+            premises: {},
+            methodologyVersion: '2.0.0',
+            limitations: [
+              'Aproximação operacional via EBITDA (EBIT contábil não desagregado na fonte)',
+            ],
+          },
+        },
+        quoteAudit: {
+          quotePriceUsed: '30.0000',
+          quoteDateUsed: '2026-08-28T18:00:00.000Z',
+          quoteSource: 'cotahist',
+          quoteDelayStatus: 'eod',
+          isQuoteStale: false,
+          currency: 'BRL',
+        },
+        currencyMismatch: false,
+      },
+    };
+
+    await act(async () => {
+      root?.render(<AssetFundamentalsCard fundamentals={mockExpanded} />);
+    });
+
+    const text = container?.textContent ?? '';
+    expect(text).toContain('ROIC');
+    expect(text).toContain('18,00%');
+    expect(text).toContain('Enterprise Value (EV)');
+    expect(text).toContain('R$ 1.800.000.000,00');
+    expect(text).toContain('EV / EBITDA');
+    expect(text).toContain('6,00');
+    expect(text).toContain('Dív. Bruta / PL');
+    expect(text).toContain('0,50');
+    expect(text).toContain('Dív. Líquida / PL');
+    expect(text).toContain('0,38');
+
+    // Nota de aproximação do ROIC via EBITDA
+    expect(text).toContain('Aproximação operacional via EBITDA (EBIT contábil não desagregado na fonte)');
+
+    // Badge de DataQualityStatus
+    expect(text).toContain('Dados Válidos');
+  });
+
+  it('exibe badge "Caixa Líquido" quando a Dívida Líquida / PL for negativa', async () => {
+    const mockNetCash: AssetFundamentalsViewData = {
+      statement: {
+        referencePeriod: '2025-4Q',
+        periodType: 'annual',
+        statementType: 'CONSOLIDATED',
+        referenceDate: '2025-12-31',
+        filingDate: '2026-02-15',
+        source: 'cvm',
+        sourceReference: 'DFP-2025',
+        version: 1,
+        isRestated: false,
+        currency: 'BRL',
+        netRevenue: '1000000000.0000',
+        ebitda: '300000000.0000',
+        netIncome: '150000000.0000',
+        totalEquity: '800000000.0000',
+        totalAssets: '2000000000.0000',
+        grossDebt: '50000000.0000',
+        cashEquivalents: '150000000.0000',
+        sharesCount: '50000000.0000',
+        dividendsDeclared: null,
+        notes: null,
+      },
+      indicators: {
+        netDebt: '-100000000.0000',
+        netMargin: '0.1500',
+        ebitdaMargin: '0.3000',
+        roe: '0.1875',
+        roa: '0.0750',
+        lpa: '3.0000',
+        vpa: '16.0000',
+        netDebtToEbitda: '-0.33',
+        netDebtToEquity: '-0.13',
+        peRatio: null,
+        pbRatio: null,
+        dividendYield: null,
+        dataQualityStatus: 'VALID',
+        quoteAudit: null,
+        currencyMismatch: false,
+      },
+    };
+
+    await act(async () => {
+      root?.render(<AssetFundamentalsCard fundamentals={mockNetCash} />);
+    });
+
+    const text = container?.textContent ?? '';
+    expect(text).toContain('Caixa Líquido');
+  });
+
+  it('abre o modal de rastreabilidade contábil ao clicar no botão de informação', async () => {
+    const mockWithTraceability: AssetFundamentalsViewData = {
+      statement: {
+        referencePeriod: '2025-4Q',
+        periodType: 'annual',
+        statementType: 'CONSOLIDATED',
+        referenceDate: '2025-12-31',
+        filingDate: '2026-02-15',
+        source: 'cvm',
+        sourceReference: 'DFP-2025',
+        version: 1,
+        isRestated: false,
+        currency: 'BRL',
+        netRevenue: '1000000000.0000',
+        ebitda: '300000000.0000',
+        netIncome: '150000000.0000',
+        totalEquity: '800000000.0000',
+        totalAssets: '2000000000.0000',
+        grossDebt: '400000000.0000',
+        cashEquivalents: '100000000.0000',
+        sharesCount: '50000000.0000',
+        dividendsDeclared: '50000000.0000',
+        notes: null,
+      },
+      indicators: {
+        netDebt: '300000000.0000',
+        netMargin: '0.1500',
+        ebitdaMargin: '0.3000',
+        roe: '0.1875',
+        roa: '0.0750',
+        roic: '0.1800',
+        lpa: '3.0000',
+        vpa: '16.0000',
+        netDebtToEbitda: '1.00',
+        grossDebtToEquity: '0.50',
+        netDebtToEquity: '0.38',
+        peRatio: '10.00',
+        pbRatio: '1.88',
+        dividendYield: '0.0333',
+        dataQualityStatus: 'VALID',
+        traceability: {
+          roe: {
+            source: 'CVM DFP 2025',
+            referencePeriod: '2025-4Q',
+            currency: 'BRL',
+            referenceDate: '2025-12-31',
+            methodology: 'ROE = Lucro Líquido / Patrimônio Líquido',
+            formula: 'NetIncome / TotalEquity',
+            premises: {},
+            methodologyVersion: '2.0.0',
+            limitations: ['Considera patrimônio contábil de fechamento'],
+          },
+        },
+        quoteAudit: null,
+        currencyMismatch: false,
+      },
+    };
+
+    await act(async () => {
+      root?.render(<AssetFundamentalsCard fundamentals={mockWithTraceability} />);
+    });
+
+    const infoBtn = container?.querySelector('button[aria-label="Ver memória de cálculo do ROE"]') as HTMLButtonElement | null;
+    expect(infoBtn).not.toBeNull();
+
+    await act(async () => {
+      infoBtn?.click();
+    });
+
+    const bodyText = document.body.textContent ?? '';
+    expect(bodyText).toContain('ROE (Return on Equity)');
+    expect(bodyText).toContain('NetIncome / TotalEquity');
+    expect(bodyText).toContain('Considera patrimônio contábil de fechamento');
+  });
 });

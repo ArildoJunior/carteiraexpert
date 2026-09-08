@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { Decimal } from '@/lib/decimal';
 import type {
+  DataQualityStatus,
   SerializedTheoreticalValuationResultSet,
   ValuationCalculationStatus,
   ValuationFundamentalContext,
@@ -88,6 +89,36 @@ function getStatusBadge(status: ValuationCalculationStatus) {
   }
 }
 
+function getDataQualityBadge(status?: DataQualityStatus) {
+  if (!status) return null;
+  switch (status) {
+    case 'VALID':
+      return (
+        <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+          Dados Válidos
+        </span>
+      );
+    case 'STALE':
+      return (
+        <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+          Cotação Defasada
+        </span>
+      );
+    case 'INCOMPLETE':
+      return (
+        <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+          Dados Incompletos
+        </span>
+      );
+    case 'INCOMPATIBLE':
+      return (
+        <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+          Incompatibilidade Cambial
+        </span>
+      );
+  }
+}
+
 export function TheoreticalValuationCard({
   valuationData,
   isLoading = false,
@@ -102,6 +133,9 @@ export function TheoreticalValuationCard({
   const [dcfGrowthRateInput, setDcfGrowthRateInput] = useState<string>('8.0');
   const [dcfTerminalGrowthInput, setDcfTerminalGrowthInput] = useState<string>('3.0');
   const [dcfYearsInput, setDcfYearsInput] = useState<number>(5);
+  const [multiplesPeInput, setMultiplesPeInput] = useState<string>('15.0');
+  const [multiplesPbInput, setMultiplesPbInput] = useState<string>('1.5');
+  const [multiplesEvToEbitdaInput, setMultiplesEvToEbitdaInput] = useState<string>('8.0');
 
   // Se o usuário estiver simulando premissas customizadas, recalcula localmente de forma determinística
   const activeData: SerializedTheoreticalValuationResultSet | null = useMemo(() => {
@@ -115,14 +149,18 @@ export function TheoreticalValuationCard({
       const rawShares = valuationData.graham.factualInputs.sharesCount;
       const rawDivs = valuationData.bazin.factualInputs.dividendsDeclared;
 
+      const rawEbitda = valuationData.multiples?.factualInputs?.ebitda;
+      const rawGrossDebt = valuationData.multiples?.factualInputs?.grossDebt;
+      const rawCash = valuationData.multiples?.factualInputs?.cashEquivalents;
+
       const fundamentalContext: ValuationFundamentalContext = {
         netRevenue: null,
-        ebitda: null,
+        ebitda: rawEbitda ? new Decimal(rawEbitda) : null,
         netIncome: rawNetIncome ? new Decimal(rawNetIncome) : null,
         totalEquity: rawEquity ? new Decimal(rawEquity) : null,
         totalAssets: null,
-        grossDebt: null,
-        cashEquivalents: null,
+        grossDebt: rawGrossDebt ? new Decimal(rawGrossDebt) : null,
+        cashEquivalents: rawCash ? new Decimal(rawCash) : null,
         sharesCount: rawShares ? new Decimal(rawShares) : null,
         dividendsDeclared: rawDivs ? new Decimal(rawDivs) : null,
         currency: valuationData.currency,
@@ -155,6 +193,12 @@ export function TheoreticalValuationCard({
           terminalGrowthRate: new Decimal(dcfTerminalGrowthInput || '3.0').dividedBy(100),
           projectionYears: dcfYearsInput,
         },
+        multiples: {
+          targetPe: multiplesPeInput ? new Decimal(multiplesPeInput) : null,
+          targetPb: multiplesPbInput ? new Decimal(multiplesPbInput) : null,
+          targetEvToEbitda: multiplesEvToEbitdaInput ? new Decimal(multiplesEvToEbitdaInput) : null,
+          selectedMultipleMethod: 'AVERAGE' as const,
+        },
       };
 
       const recalculated = calculateTheoreticalValuations(
@@ -178,6 +222,9 @@ export function TheoreticalValuationCard({
     dcfGrowthRateInput,
     dcfTerminalGrowthInput,
     dcfYearsInput,
+    multiplesPeInput,
+    multiplesPbInput,
+    multiplesEvToEbitdaInput,
   ]);
 
   if (isLoading) {
@@ -190,8 +237,8 @@ export function TheoreticalValuationCard({
           </div>
           <div className="h-8 w-28 bg-surface-elevated rounded-md" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {Array.from({ length: 3 }).map((_, i) => (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
             <div key={`skel-val-${i}`} className="h-48 bg-surface-elevated rounded-xl" />
           ))}
         </div>
@@ -209,13 +256,14 @@ export function TheoreticalValuationCard({
           Demonstrações financeiras necessárias para cálculo dos modelos teóricos ainda não disponíveis para este ativo.
         </p>
         <span className="inline-block px-2.5 py-0.5 rounded text-[10px] font-medium bg-surface-elevated border border-border-theme text-text-muted">
-          Décio Bazin • Benjamin Graham • DCF Simplificado
+          Décio Bazin • Benjamin Graham • DCF Simplificado • Múltiplos
         </span>
       </div>
     );
   }
 
-  const { bazin, graham, dcf, currency, quoteAudit, currencyMismatch } = activeData;
+  const { bazin, graham, dcf, multiples, consensus, currency, quoteAudit, currencyMismatch } = activeData;
+  const isCurrencyBlocked = currencyMismatch || activeData.dataQualityStatus === 'INCOMPATIBLE' || consensus?.dataQualityStatus === 'INCOMPATIBLE';
 
   const handleResetDefaults = () => {
     setBazinDyInput('6.0');
@@ -224,8 +272,29 @@ export function TheoreticalValuationCard({
     setDcfGrowthRateInput('8.0');
     setDcfTerminalGrowthInput('3.0');
     setDcfYearsInput(5);
+    setMultiplesPeInput('15.0');
+    setMultiplesPbInput('1.5');
+    setMultiplesEvToEbitdaInput('8.0');
     setShowSimulator(false);
   };
+
+  // Cálculo da amplitude min/max e dispersão dos modelos do consenso
+  const validModelPrices = (consensus?.modelWeights || [])
+    .filter((w) => w.status === 'VALID' && w.targetPrice && Number(w.targetPrice) > 0)
+    .map((w) => new Decimal(w.targetPrice));
+
+  let minPrice: Decimal | null = null;
+  let maxPrice: Decimal | null = null;
+  let dispersionPercent: Decimal | null = null;
+
+  if (validModelPrices.length > 0) {
+    minPrice = validModelPrices.reduce((min, p) => (p.lessThan(min) ? p : min), validModelPrices[0]);
+    maxPrice = validModelPrices.reduce((max, p) => (p.greaterThan(max) ? p : max), validModelPrices[0]);
+    if (consensus?.weightedTargetPrice && Number(consensus.weightedTargetPrice) > 0) {
+      const targetDec = new Decimal(consensus.weightedTargetPrice);
+      dispersionPercent = maxPrice.minus(minPrice).dividedBy(targetDec).times(100);
+    }
+  }
 
   return (
     <div className="rounded-xl border border-border-theme bg-surface p-6 shadow-xs space-y-6">
@@ -242,6 +311,7 @@ export function TheoreticalValuationCard({
             <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-surface-elevated border border-border-theme text-text-secondary">
               {activeData.statementType === 'CONSOLIDATED' ? 'Consolidado' : 'Individual'}
             </span>
+            {getDataQualityBadge(activeData.dataQualityStatus)}
           </div>
           <p className="text-xs text-text-muted">
             Estimativas matemáticas baseadas em demonstrativos oficiais e premissas de precificação teórica.
@@ -405,12 +475,154 @@ export function TheoreticalValuationCard({
               />
               <p className="text-[10px] text-text-muted">Padrão: 5 anos de projeção</p>
             </div>
+
+            {/* Premissa Múltiplos: P/L Alvo */}
+            <div className="space-y-1.5">
+              <label htmlFor="sim-mult-pe" className="block text-text-secondary font-medium">
+                Múltiplos: P/L Alvo
+              </label>
+              <input
+                id="sim-mult-pe"
+                type="number"
+                step="0.5"
+                min="1"
+                max="50"
+                value={multiplesPeInput}
+                onChange={(e) => setMultiplesPeInput(e.target.value)}
+                className="w-full px-3 py-1.5 rounded-md bg-surface border border-border-theme text-text-primary text-xs focus:ring-1 focus:ring-brand focus:border-brand"
+              />
+              <p className="text-[10px] text-text-muted">Padrão: 15,0x</p>
+            </div>
+
+            {/* Premissa Múltiplos: P/VP Alvo */}
+            <div className="space-y-1.5">
+              <label htmlFor="sim-mult-pb" className="block text-text-secondary font-medium">
+                Múltiplos: P/VP Alvo
+              </label>
+              <input
+                id="sim-mult-pb"
+                type="number"
+                step="0.1"
+                min="0.1"
+                max="20"
+                value={multiplesPbInput}
+                onChange={(e) => setMultiplesPbInput(e.target.value)}
+                className="w-full px-3 py-1.5 rounded-md bg-surface border border-border-theme text-text-primary text-xs focus:ring-1 focus:ring-brand focus:border-brand"
+              />
+              <p className="text-[10px] text-text-muted">Padrão: 1,5x</p>
+            </div>
+
+            {/* Premissa Múltiplos: EV/EBITDA Alvo */}
+            <div className="space-y-1.5">
+              <label htmlFor="sim-mult-ev" className="block text-text-secondary font-medium">
+                Múltiplos: EV/EBITDA Alvo
+              </label>
+              <input
+                id="sim-mult-ev"
+                type="number"
+                step="0.5"
+                min="1"
+                max="40"
+                value={multiplesEvToEbitdaInput}
+                onChange={(e) => setMultiplesEvToEbitdaInput(e.target.value)}
+                className="w-full px-3 py-1.5 rounded-md bg-surface border border-border-theme text-text-primary text-xs focus:ring-1 focus:ring-brand focus:border-brand"
+              />
+              <p className="text-[10px] text-text-muted">Padrão: 8,0x</p>
+            </div>
           </div>
         </div>
       )}
 
-      {/* 3. Grid dos 3 Modelos Teóricos */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* 3. Card de Destaque do Consenso Teórico */}
+      {consensus && (
+        <div className="rounded-xl bg-surface-elevated border-2 border-brand/30 p-5 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-bold uppercase tracking-wider text-brand">
+                Consenso Teórico dos Modelos
+              </span>
+              {getStatusBadge(consensus.status)}
+              {getDataQualityBadge(consensus.dataQualityStatus || activeData.dataQualityStatus)}
+            </div>
+            {consensus.modelsIncluded && (
+              <div className="flex items-center gap-1 text-[11px] text-text-muted">
+                <span>Modelos considerados:</span>
+                <span className="font-semibold text-text-primary">
+                  {consensus.modelsIncluded.length}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-center">
+            {/* Preço-Alvo Ponderado */}
+            <div>
+              <div className="text-xs text-text-muted font-medium">Preço-Alvo Ponderado</div>
+              <div className="text-3xl font-black text-text-primary tracking-tight">
+                {formatCurrency(consensus.weightedTargetPrice, currency)}
+              </div>
+            </div>
+
+            {/* Margem de Segurança Ponderada */}
+            <div>
+              <div className="text-xs text-text-muted font-medium">Margem de Segurança</div>
+              <div
+                className={`text-2xl font-extrabold ${
+                  consensus.marginOfSafetyPercent && Number(consensus.marginOfSafetyPercent) >= 0
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-rose-600 dark:text-rose-400'
+                }`}
+              >
+                {formatPercent(consensus.marginOfSafetyPercent)}
+              </div>
+            </div>
+
+            {/* Amplitude Min / Max */}
+            <div>
+              <div className="text-xs text-text-muted font-medium">Amplitude dos Modelos</div>
+              <div className="text-sm font-bold text-text-primary">
+                {minPrice && maxPrice
+                  ? `${formatCurrency(minPrice.toFixed(2), currency)} – ${formatCurrency(maxPrice.toFixed(2), currency)}`
+                  : '—'}
+              </div>
+              <div className="text-[10px] text-text-muted">Mínimo e máximo observados</div>
+            </div>
+
+            {/* Dispersão */}
+            <div>
+              <div className="text-xs text-text-muted font-medium">Dispersão entre Modelos</div>
+              <div className="text-sm font-bold text-text-primary">
+                {dispersionPercent ? `${dispersionPercent.toFixed(1).replace('.', ',')}%` : '—'}
+              </div>
+              <div className="text-[10px] text-text-muted">Variação relativa da amplitude</div>
+            </div>
+          </div>
+
+          {/* Modelos e Pesos */}
+          {consensus.modelWeights && consensus.modelWeights.length > 0 && (
+            <div className="pt-3 border-t border-border-theme flex flex-wrap items-center gap-2 text-xs">
+              <span className="text-[11px] text-text-muted font-medium">Ponderação:</span>
+              {consensus.modelWeights.map((mw) => (
+                <span
+                  key={mw.model}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] border ${
+                    mw.status === 'VALID'
+                      ? 'bg-surface border-border-theme text-text-primary'
+                      : 'bg-surface/50 border-border-theme text-text-muted line-through opacity-60'
+                  }`}
+                >
+                  <span className="font-semibold">{mw.modelName}:</span>
+                  <span>{formatCurrency(mw.targetPrice, currency)}</span>
+                  <span className="text-text-muted">({formatRate(mw.weight)})</span>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 4. Grid dos Modelos Teóricos (Bazin, Graham, DCF, Múltiplos) */}
+      <div className={`grid grid-cols-1 md:grid-cols-2 ${multiples ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>
         {/* Card 1: Preço Teto de Bazin */}
         <div className="rounded-xl bg-surface-elevated border border-border-theme p-5 flex flex-col justify-between space-y-4">
           <div className="space-y-2">
@@ -581,9 +793,74 @@ export function TheoreticalValuationCard({
             </div>
           </div>
         </div>
+
+        {/* Card 4: Múltiplos de Mercado */}
+        {multiples && (
+          <div className="rounded-xl bg-surface-elevated border border-border-theme p-5 flex flex-col justify-between space-y-4">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-text-secondary">
+                  Múltiplos
+                </span>
+                {getStatusBadge(multiples.status)}
+              </div>
+
+              <h4 className="text-sm font-semibold text-text-primary">
+                Múltiplos de Mercado
+              </h4>
+
+              {multiples.status === 'VALID' ? (
+                <div className="pt-2">
+                  <div className="text-2xl font-extrabold text-text-primary">
+                    {formatCurrency(multiples.intrinsicValue, currency)}
+                  </div>
+                  {multiples.marginOfSafetyPercent !== null && (
+                    <div className="flex items-center gap-1.5 mt-1.5 text-xs">
+                      <span className="text-text-muted">Margem de segurança:</span>
+                      <span
+                        className={`font-bold ${
+                          Number(multiples.marginOfSafetyPercent) >= 0
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : 'text-rose-600 dark:text-rose-400'
+                        }`}
+                      >
+                        {formatPercent(multiples.marginOfSafetyPercent)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="pt-2 text-xs text-text-muted bg-surface/60 p-2.5 rounded-lg border border-border-theme">
+                  {multiples.statusReason || 'Não aplicável para este ativo.'}
+                </div>
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-border-theme text-[11px] space-y-1.5">
+              <div className="flex justify-between text-text-muted">
+                <span>P/L Teórico:</span>
+                <span className="font-semibold text-text-primary">
+                  {formatCurrency(multiples.intermediates?.fairPricePe, currency)}
+                </span>
+              </div>
+              <div className="flex justify-between text-text-muted">
+                <span>P/VP Teórico:</span>
+                <span className="font-semibold text-text-primary">
+                  {formatCurrency(multiples.intermediates?.fairPricePb, currency)}
+                </span>
+              </div>
+              <div className="flex justify-between text-text-muted">
+                <span>EV/EBITDA Teórico:</span>
+                <span className="font-semibold text-text-primary">
+                  {formatCurrency(multiples.intermediates?.fairPriceEvToEbitda, currency)}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* 4. Auditoria de Cotação de Referência */}
+      {/* 5. Auditoria de Cotação de Referência */}
       {quoteAudit && (
         <div className="p-3 rounded-lg bg-surface-elevated/40 border border-border-theme text-[11px] text-text-muted flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -599,13 +876,21 @@ export function TheoreticalValuationCard({
         </div>
       )}
 
-      {currencyMismatch && (
-        <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-600 dark:text-amber-400">
-          Aviso: A moeda da cotação difere da moeda contábil do demonstrativo. O cálculo de margem de segurança foi suprimido para evitar distorções cambiais.
+      {/* 6. Alerta de Incompatibilidade Cambial */}
+      {isCurrencyBlocked && (
+        <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs text-rose-600 dark:text-rose-400 space-y-1">
+          <div className="font-bold flex items-center gap-1.5">
+            <span>⚠️</span>
+            <span>Bloqueio por inconsistência cambial</span>
+          </div>
+          <p>
+            A moeda da cotação de mercado difere da moeda contábil do demonstrativo oficial.
+            O cálculo de margem de segurança e o consenso teórico foram suprimidos para evitar distorções cambiais.
+          </p>
         </div>
       )}
 
-      {/* 5. Aviso Regulatório Obrigatório de Neutralidade */}
+      {/* 7. Aviso Regulatório Obrigatório de Neutralidade */}
       <div className="text-[11px] text-text-muted bg-surface-elevated/30 p-3.5 rounded-lg border border-border-theme leading-relaxed">
         <strong className="text-text-secondary">Finalidade Informativa e Educacional (CVM):</strong>{' '}
         {activeData.globalDisclaimer}
