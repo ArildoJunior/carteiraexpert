@@ -24,6 +24,7 @@ export const rejectionReasonSchema = z.enum([
   'MISSING_MANDATORY_FIELDS',
   'UNSUPPORTED_MARKET_TYPE',
   'INACTIVE_EXPIRED',
+  'SUBSCRIPTION_RIGHT_OR_RECEIPT',
 ]);
 
 export const catalogConflictTypeSchema = z.enum([
@@ -34,7 +35,7 @@ export const catalogConflictTypeSchema = z.enum([
   'CVM_CODE_MISMATCH',
 ]);
 
-export const canonicalAssetCategorySchema = z.enum(['stock', 'fii', 'etf', 'bdr']);
+export const canonicalAssetCategorySchema = z.enum(['stock', 'fii', 'etf', 'bdr', 'fip']);
 
 /**
  * Validador estrito para códigos ISIN internacionais (12 caracteres alfa-numéricos).

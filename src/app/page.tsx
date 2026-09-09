@@ -41,6 +41,13 @@ export default async function HomePage() {
       badgeClass: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
     },
     {
+      title: 'Fundos de Participações',
+      tag: 'FIPs',
+      description: 'Acompanhe cotações, variações e dados de fundos de investimento em participações negociados na B3.',
+      href: '/fips',
+      badgeClass: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+    },
+    {
       title: 'BDRs Globais',
       tag: 'BDRs',
       description: 'Certificados de empresas internacionais cotados em reais no mercado brasileiro.',

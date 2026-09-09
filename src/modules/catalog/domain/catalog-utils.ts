@@ -206,6 +206,8 @@ export function getCategoryLabel(category: string): string {
       return 'ETFs';
     case 'bdr':
       return 'BDRs';
+    case 'fip':
+      return 'Fundos de Participações';
     default:
       return category.toUpperCase();
   }
@@ -221,6 +223,8 @@ export function getCategoryPluralName(category: CatalogAssetCategory): string {
       return 'Fundos de Índice (ETFs)';
     case 'bdr':
       return 'Brazilian Depositary Receipts (BDRs)';
+    case 'fip':
+      return 'Fundos de Participações (FIPs)';
   }
 }
 
@@ -234,6 +238,8 @@ export function getCategoryRoute(category: string): string {
       return '/etfs';
     case 'bdr':
       return '/bdrs';
+    case 'fip':
+      return '/fips';
     default:
       return '/ativos';
   }
@@ -250,6 +256,8 @@ export function getAssetDetailRoute(assetType: string, ticker: string): string {
       return `/etfs/${normTicker}`;
     case 'bdr':
       return `/bdrs/${normTicker}`;
+    case 'fip':
+      return `/fips/${normTicker}`;
     default:
       return `/ativos?query=${normTicker}`;
   }

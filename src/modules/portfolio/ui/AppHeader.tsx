@@ -26,6 +26,8 @@ function getContextualTitle(pathname: string): { title: string; category?: strin
   if (pathname.startsWith('/fiis/')) return { title: 'Fundos Imobiliários', category: 'Catálogo de Ativos' };
   if (pathname === '/etfs') return { title: 'Fundos de Índice (ETFs)', category: 'Mercado' };
   if (pathname.startsWith('/etfs/')) return { title: 'Fundos de Índice', category: 'Catálogo de Ativos' };
+  if (pathname === '/fips') return { title: 'Fundos de Participações (FIPs)', category: 'Mercado' };
+  if (pathname.startsWith('/fips/')) return { title: 'Fundos de Participações', category: 'Catálogo de Ativos' };
   if (pathname === '/bdrs') return { title: 'Certificados BDRs', category: 'Mercado' };
   if (pathname.startsWith('/bdrs/')) return { title: 'Certificados BDRs', category: 'Catálogo de Ativos' };
   return { title: 'CarteiraExpert', category: 'Plataforma' };

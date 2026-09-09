@@ -2,7 +2,7 @@
  * Tipagens canônicas do Catálogo Público de Ativos (Fase 06.5).
  */
 
-export type CatalogAssetCategory = 'stock' | 'fii' | 'etf' | 'bdr';
+export type CatalogAssetCategory = 'stock' | 'fii' | 'etf' | 'bdr' | 'fip';
 
 export type DelayStatus = 'realtime' | 'delayed_15m' | 'eod' | 'manual' | 'unknown';
 

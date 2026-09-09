@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const catalogCategorySchema = z.enum(['stock', 'fii', 'etf', 'bdr']);
+export const catalogCategorySchema = z.enum(['stock', 'fii', 'etf', 'bdr', 'fip']);
 
 export const catalogSortBySchema = z.enum(['ticker', 'name', 'price', 'variation']);
 export const catalogSortOrderSchema = z.enum(['asc', 'desc']);

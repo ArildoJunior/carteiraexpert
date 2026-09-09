@@ -63,7 +63,7 @@ export async function searchAssets(
   }
 
   if (params.isTradeableOnly) {
-    conditions.push(sql`assets.is_tradeable = true`);
+    conditions.push(sql`(assets.is_tradeable = true OR assets.is_custom = true)`);
   }
 
   return await executor

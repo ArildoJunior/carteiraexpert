@@ -20,6 +20,7 @@ const PUBLIC_STATIC_PATHS = new Set([
   '/fiis',
   '/etfs',
   '/bdrs',
+  '/fips',
   '/simulador',
   '/sitemap.xml',
   '/robots.txt',
@@ -34,7 +35,8 @@ function isPublicPath(pathname: string): boolean {
     pathname.startsWith('/acoes/') ||
     pathname.startsWith('/fiis/') ||
     pathname.startsWith('/etfs/') ||
-    pathname.startsWith('/bdrs/')
+    pathname.startsWith('/bdrs/') ||
+    pathname.startsWith('/fips/')
   ) {
     return true;
   }

@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: '*',
-      allow: ['/', '/ativos', '/acoes', '/fiis', '/etfs', '/bdrs'],
+      allow: ['/', '/ativos', '/acoes', '/fiis', '/etfs', '/bdrs', '/fips'],
       disallow: ['/dashboard', '/portfolios', '/history', '/plans', '/api/', '/terms-acceptance'],
     },
     sitemap: `${baseUrl}/sitemap.xml`,
