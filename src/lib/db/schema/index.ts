@@ -16,3 +16,4 @@ export * from './custody';
 export * from './options';
 export * from './tax';
 export * from './editorial';
+export * from './fii-market-data';
