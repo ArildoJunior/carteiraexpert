@@ -67,6 +67,7 @@ export function AssetListingView({
     { label: 'Ações', href: '/acoes', key: 'stock' },
     { label: 'FIIs', href: '/fiis', key: 'fii' },
     { label: 'ETFs', href: '/etfs', key: 'etf' },
+    { label: 'FIPs', href: '/fips', key: 'fip' },
     { label: 'BDRs', href: '/bdrs', key: 'bdr' },
   ];
 

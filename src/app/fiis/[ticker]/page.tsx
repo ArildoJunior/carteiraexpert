@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { getCurrentUser } from '@/modules/identity/server/current-user';
 import { listPortfolios } from '@/modules/portfolio/server/portfolio.service';
 import {
-  getPublicAssetDetailByTicker,
+  resolveCanonicalAsset,
   getPublicAssetPriceHistory,
 } from '@/modules/catalog/server/catalog.service';
 import {
@@ -27,14 +27,22 @@ interface FiiDetailPageProps {
 
 export async function generateMetadata({ params }: FiiDetailPageProps): Promise<Metadata> {
   const { ticker } = await params;
-  const asset = await getPublicAssetDetailByTicker(ticker, 'fii');
 
-  if (!asset || asset.assetType !== 'fii') {
+  // Resolução canônica centralizada e cacheada por requisição
+  const resolved = await resolveCanonicalAsset(ticker);
+
+  // Se o ativo for canonicamente um FIP, redireciona permanentemente (HTTP 308) para /fips/[ticker]
+  if (resolved?.canonicalCategory === 'fip') {
+    permanentRedirect(`/fips/${encodeURIComponent(resolved.asset.ticker)}`);
+  }
+
+  if (!resolved || resolved.canonicalCategory !== 'fii') {
     return {
       title: 'FII Não Encontrado | CarteiraExpert',
     };
   }
 
+  const asset = resolved.asset;
   const priceText = asset.latestPrice ? ` — R$ ${Number(asset.latestPrice).toFixed(2)}` : '';
 
   return {
@@ -52,11 +60,19 @@ export default async function FiiDetailPage({ params, searchParams }: FiiDetailP
   const sParams = (await searchParams) || {};
   const user = await getCurrentUser();
 
-  const asset = await getPublicAssetDetailByTicker(ticker, 'fii');
+  // Resolução canônica centralizada e cacheada por requisição
+  const resolved = await resolveCanonicalAsset(ticker);
 
-  if (!asset || asset.assetType !== 'fii') {
+  // Se o ativo for canonicamente um FIP, redireciona permanentemente (HTTP 308) para /fips/[ticker]
+  if (resolved?.canonicalCategory === 'fip') {
+    permanentRedirect(`/fips/${encodeURIComponent(resolved.asset.ticker)}`);
+  }
+
+  if (!resolved || resolved.canonicalCategory !== 'fii') {
     notFound();
   }
+
+  const asset = resolved.asset;
 
   const period: CatalogHistoryPeriod = sParams.period && ['1M', '3M', '6M', '1Y', 'ALL'].includes(sParams.period)
     ? sParams.period

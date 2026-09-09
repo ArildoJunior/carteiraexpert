@@ -25,6 +25,7 @@ export function CatalogNavDropdown({
     currentPath.startsWith('/acoes') ||
     currentPath.startsWith('/fiis') ||
     currentPath.startsWith('/etfs') ||
+    currentPath.startsWith('/fips') ||
     currentPath.startsWith('/bdrs');
 
   const catalogItems = [
@@ -59,6 +60,14 @@ export function CatalogNavDropdown({
       badge: 'ETF',
       badgeClass: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
       description: 'Fundos de índices nacionais e internacionais',
+    },
+    {
+      label: 'FIPs',
+      href: '/fips',
+      idSuffix: 'fips',
+      badge: 'FIP',
+      badgeClass: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+      description: 'Fundos de investimento em participações',
     },
     {
       label: 'BDRs',

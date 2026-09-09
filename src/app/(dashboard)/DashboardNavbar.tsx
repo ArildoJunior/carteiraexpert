@@ -34,6 +34,7 @@ export function DashboardNavbar({ user }: DashboardNavbarProps) {
     { label: 'Ações Brasileiras', href: '/acoes', id: 'dashboard-mobile-link-acoes', badge: 'B3' },
     { label: 'Fundos Imobiliários', href: '/fiis', id: 'dashboard-mobile-link-fiis', badge: 'FII' },
     { label: 'Fundos de Índice', href: '/etfs', id: 'dashboard-mobile-link-etfs', badge: 'ETF' },
+    { label: 'Fundos de Participações', href: '/fips', id: 'dashboard-mobile-link-fips', badge: 'FIP' },
     { label: 'BDRs', href: '/bdrs', id: 'dashboard-mobile-link-bdrs', badge: 'BDR' },
     { label: 'Simulador de Juros', href: '/simulador', id: 'dashboard-mobile-link-simulador', badge: 'PROJEÇÃO' },
     { label: 'Carteira Sugerida', href: '/carteira-sugerida', id: 'dashboard-mobile-link-carteira-sugerida', badge: 'CSP' },

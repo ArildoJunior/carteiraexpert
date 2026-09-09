@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { notFound, permanentRedirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { getCurrentUser } from '@/modules/identity/server/current-user';
 import { listPortfolios } from '@/modules/portfolio/server/portfolio.service';
 import {
@@ -15,27 +15,20 @@ import type { CatalogHistoryPeriod } from '@/modules/catalog/domain/catalog.sche
 
 export const dynamic = 'force-dynamic';
 
-interface EtfDetailPageProps {
+interface FipDetailPageProps {
   params: Promise<{ ticker: string }>;
   searchParams?: Promise<{
     period?: CatalogHistoryPeriod;
   }>;
 }
 
-export async function generateMetadata({ params }: EtfDetailPageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: FipDetailPageProps): Promise<Metadata> {
   const { ticker } = await params;
-
-  // Resolução canônica centralizada e cacheada por requisição
   const resolved = await resolveCanonicalAsset(ticker);
 
-  // Se o ativo for canonicamente um FIP, redireciona permanentemente (HTTP 308) para /fips/[ticker]
-  if (resolved?.canonicalCategory === 'fip') {
-    permanentRedirect(`/fips/${encodeURIComponent(resolved.asset.ticker)}`);
-  }
-
-  if (!resolved || resolved.canonicalCategory !== 'etf') {
+  if (!resolved || resolved.canonicalCategory !== 'fip') {
     return {
-      title: 'ETF Não Encontrado | CarteiraExpert',
+      title: 'FIP Não Encontrado | CarteiraExpert',
     };
   }
 
@@ -44,7 +37,7 @@ export async function generateMetadata({ params }: EtfDetailPageProps): Promise<
 
   return {
     title: `${asset.ticker}${priceText} — Cotação e Histórico de ${asset.name} | CarteiraExpert`,
-    description: `Acompanhe a cotação, variação no pregão e gráfico histórico do fundo de índice ${asset.ticker} (${asset.name}) na B3.`,
+    description: `Acompanhe a cotação da cota, variação no pregão e gráfico histórico do fundo de investimento em participações ${asset.ticker} (${asset.name}) na B3.`,
     openGraph: {
       title: `${asset.ticker} — Cotação e Histórico | CarteiraExpert`,
       description: `Cotação e histórico de ${asset.name} (${asset.ticker}) na B3.`,
@@ -52,20 +45,14 @@ export async function generateMetadata({ params }: EtfDetailPageProps): Promise<
   };
 }
 
-export default async function EtfDetailPage({ params, searchParams }: EtfDetailPageProps) {
+export default async function FipDetailPage({ params, searchParams }: FipDetailPageProps) {
   const { ticker } = await params;
   const sParams = (await searchParams) || {};
   const user = await getCurrentUser();
 
-  // Resolução canônica centralizada e cacheada por requisição
   const resolved = await resolveCanonicalAsset(ticker);
 
-  // Se o ativo for canonicamente um FIP, redireciona permanentemente (HTTP 308) para /fips/[ticker]
-  if (resolved?.canonicalCategory === 'fip') {
-    permanentRedirect(`/fips/${encodeURIComponent(resolved.asset.ticker)}`);
-  }
-
-  if (!resolved || resolved.canonicalCategory !== 'etf') {
+  if (!resolved || resolved.canonicalCategory !== 'fip') {
     notFound();
   }
 
@@ -93,7 +80,7 @@ export default async function EtfDetailPage({ params, searchParams }: EtfDetailP
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-text-primary">
-      <PublicNavbar currentUser={user} activePath="/etfs" />
+      <PublicNavbar currentUser={user} activePath="/fips" />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
         <AssetDetailView
           asset={asset}
@@ -102,7 +89,7 @@ export default async function EtfDetailPage({ params, searchParams }: EtfDetailP
           fundamentalsData={fundamentalsData}
           userPortfolios={userPortfolios}
           isAuthenticated={!!user}
-          currentUrl={`/etfs/${asset.ticker}`}
+          currentUrl={`/fips/${asset.ticker}`}
         />
       </main>
       <PublicFooter />

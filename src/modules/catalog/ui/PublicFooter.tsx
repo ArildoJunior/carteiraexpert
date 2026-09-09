@@ -55,6 +55,15 @@ export function PublicFooter() {
               </li>
               <li>
                 <Link
+                  id="footer-link-fips"
+                  href="/fips"
+                  className="hover:text-text-primary transition-colors"
+                >
+                  Fundos de Participações (FIPs)
+                </Link>
+              </li>
+              <li>
+                <Link
                   id="footer-link-bdrs"
                   href="/bdrs"
                   className="hover:text-text-primary transition-colors"

@@ -100,6 +100,111 @@ export function hasBdrEvidence(
 }
 
 /**
+ * Detecta evidência oficial suficiente para caracterizar um ativo como FIP
+ * (Fundo de Investimento em Participações).
+ *
+ * Prevalência estrita sobre regras genéricas de BDI 14 (outros fundos/ETFs)
+ * e BDI 58 (outros papéis/recuperação judicial).
+ *
+ * NOTA ARQUITETURAL SOBRE O ISIN:
+ * O padrão brasileiro de codificação ISIN (ABNT NBR 14757 / ANBIMA) atribui o tipo genérico
+ * "CTF" a qualquer cota de fundo de investimento fechado negociado em bolsa (FIPs, FIIs,
+ * ETFs, FIAGROs, FIAs, etc.), ex: BRESUDCTF000, BRBDIVCTF004, BRKNIPCTF001, BRBOVACTF001.
+ * Não existe subcódigo ou identificador exclusivo para FIPs no código ISIN.
+ * Portanto, a classificação não utiliza inferência por ISIN e baseia-se exclusivamente em
+ * evidências oficiais de short_name, name (razão social), specification e BDI.
+ */
+export function hasFipEvidence(
+  ticker: string,
+  bdiCode?: string | null,
+  specification?: string | null,
+  shortName?: string | null,
+  name?: string | null
+): boolean {
+  const normTicker = (ticker || '').trim().toUpperCase();
+  const specUpper = (specification || '').trim().toUpperCase();
+  const sNameUpper = (shortName || '').trim().toUpperCase();
+  const nameUpper = (name || '').trim().toUpperCase();
+  const bdi = (bdiCode || '').trim();
+
+  // 1. Direitos e recibos de subscrição nunca são cotas de FIP do catálogo principal
+  if (
+    bdi === '10' ||
+    bdi === '22' ||
+    specUpper.includes('DIR') ||
+    specUpper.includes('REC') ||
+    specUpper.includes('BNS')
+  ) {
+    return false;
+  }
+
+  // 2. Conflito explícito com FIA (Fundo de Investimento em Ações)
+  // Ex: FIPC11 (FIA IP.COM - CI)
+  if (
+    sNameUpper.startsWith('FIA ') ||
+    sNameUpper.includes(' FIA ') ||
+    nameUpper.startsWith('FIA ') ||
+    nameUpper.includes(' FIA ') ||
+    nameUpper.includes('FDO INV ACOES') ||
+    nameUpper.includes('FDO DE INV EM ACOES')
+  ) {
+    return false;
+  }
+
+  // 3. Conflito explícito com FII (Fundo Imobiliário)
+  if (
+    bdi === '12' ||
+    specUpper.includes('FII') ||
+    sNameUpper.startsWith('FII ') ||
+    sNameUpper.includes(' FII ') ||
+    nameUpper.startsWith('FII ') ||
+    nameUpper.includes(' FII ') ||
+    nameUpper.includes('FDO INV IMOB')
+  ) {
+    return false;
+  }
+
+  // 4. Conflito explícito com ETF (Fundo de Índice)
+  if (
+    specUpper.includes('ETF') ||
+    sNameUpper.includes('ISHARES') ||
+    sNameUpper.includes('INDEX') ||
+    nameUpper.includes('ISHARES') ||
+    nameUpper.includes('INDEX') ||
+    nameUpper.includes('FUNDO DE INDICE')
+  ) {
+    return false;
+  }
+
+  // 5. Evidência direta no shortName (Razão Curta B3)
+  // Quase todos os FIPs negociados na B3 possuem short_name iniciando com "FIP " ou contendo "FIP-IE" / "FIP IE"
+  if (
+    sNameUpper.startsWith('FIP ') ||
+    sNameUpper.includes(' FIP ') ||
+    sNameUpper.includes('FIP-IE') ||
+    sNameUpper.includes('FIP IE')
+  ) {
+    return true;
+  }
+
+  // 6. Evidência direta na Razão Social / Nome completo
+  if (
+    nameUpper.startsWith('FIP ') ||
+    nameUpper.includes(' FIP ') ||
+    nameUpper.includes('FIP-IE') ||
+    nameUpper.includes('FIP IE') ||
+    nameUpper.includes('FDO INV PART') ||
+    nameUpper.includes('FDO DE INV EM PART') ||
+    nameUpper.includes('FDO.INV.PART.') ||
+    nameUpper.includes('FDO INV PARTICIPACOES')
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Detecta evidência oficial suficiente para caracterizar um ativo como FII (Fundo de Investimento Imobiliário).
  * Evita rigorosamente tratar Units de ações (BPAC11, KLBN11, etc.) como FIIs.
  */
@@ -108,11 +213,19 @@ export function hasFiiEvidence(
   bdiCode?: string | null,
   specification?: string | null,
   shortName?: string | null,
-  cvmHint?: CvmContextHint
+  cvmHint?: CvmContextHint,
+  name?: string | null
 ): boolean {
+  // Precedência de FIP sobre regras de FII
+  if (hasFipEvidence(ticker, bdiCode, specification, shortName, name)) {
+    return false;
+  }
+
   const normTicker = (ticker || '').trim().toUpperCase();
   const specUpper = (specification || '').trim().toUpperCase();
-  const nameUpper = (shortName || '').trim().toUpperCase();
+  const shortUpper = (shortName || '').trim().toUpperCase();
+  const fullUpper = (name || '').trim().toUpperCase();
+  const nameUpper = shortUpper || fullUpper;
   const bdi = (bdiCode || '').trim();
 
   // 1. Registro explícito na CVM como FII
@@ -132,10 +245,14 @@ export function hasFiiEvidence(
 
   // 4. Denominação oficial contendo identificador de fundo imobiliário
   if (
-    nameUpper.startsWith('FII ') ||
-    nameUpper.includes(' FII ') ||
-    nameUpper.includes('FDO INV IMOB') ||
-    nameUpper.includes('FDO INV IMOBILIARIO')
+    shortUpper.startsWith('FII ') ||
+    shortUpper.includes(' FII ') ||
+    shortUpper.includes('FDO INV IMOB') ||
+    shortUpper.includes('FDO INV IMOBILIARIO') ||
+    fullUpper.startsWith('FII ') ||
+    fullUpper.includes(' FII ') ||
+    fullUpper.includes('FDO INV IMOB') ||
+    fullUpper.includes('FDO INV IMOBILIARIO')
   ) {
     return true;
   }
@@ -146,20 +263,20 @@ export function hasFiiEvidence(
   }
 
   // 6. Série de balcão (11B) acompanhada de CI, BDI 12 ou nome FII
-  if (normTicker.endsWith('11B') && (specUpper.includes('CI') || bdi === '12' || nameUpper.includes('FII') || nameUpper.includes('IMOB'))) {
+  if (normTicker.endsWith('11B') && (specUpper.includes('CI') || bdi === '12' || nameUpper.includes('FII') || nameUpper.includes('IMOB') || fullUpper.includes('FII') || fullUpper.includes('IMOB'))) {
     return true;
   }
 
   // 7. Direitos e recibos de FII (sufixos 12 a 16) com evidência de fundo imobiliário
   if (
     (normTicker.endsWith('12') || normTicker.endsWith('13') || normTicker.endsWith('14') || normTicker.endsWith('15') || normTicker.endsWith('16')) &&
-    (bdi === '12' || nameUpper.includes('FII') || specUpper.includes('FII') || nameUpper.includes('IMOB'))
+    (bdi === '12' || nameUpper.includes('FII') || specUpper.includes('FII') || nameUpper.includes('IMOB') || fullUpper.includes('FII') || fullUpper.includes('IMOB'))
   ) {
     return true;
   }
 
   // 8. Ticker final 11 com cota (CI) E evidência de nome FII/IMOB
-  if (normTicker.endsWith('11') && specUpper.includes('CI') && (nameUpper.includes('FII') || nameUpper.includes('IMOB'))) {
+  if (normTicker.endsWith('11') && specUpper.includes('CI') && (nameUpper.includes('FII') || nameUpper.includes('IMOB') || fullUpper.includes('FII') || fullUpper.includes('IMOB'))) {
     return true;
   }
 
@@ -174,11 +291,31 @@ export function hasEtfEvidence(
   ticker: string,
   bdiCode?: string | null,
   specification?: string | null,
-  shortName?: string | null
+  shortName?: string | null,
+  name?: string | null
 ): boolean {
+  // Precedência de FIP sobre regra genérica de BDI 14
+  if (hasFipEvidence(ticker, bdiCode, specification, shortName, name)) {
+    return false;
+  }
+
   const specUpper = (specification || '').trim().toUpperCase();
   const nameUpper = (shortName || '').trim().toUpperCase();
+  const fullUpper = (name || '').trim().toUpperCase();
   const bdi = (bdiCode || '').trim();
+
+  // Conflito explícito com FIA (Fundo de Investimento em Ações)
+  // Ex: FIPC11 (FIA IP.COM - CI com BDI 14)
+  if (
+    nameUpper.startsWith('FIA ') ||
+    nameUpper.includes(' FIA ') ||
+    fullUpper.startsWith('FIA ') ||
+    fullUpper.includes(' FIA ') ||
+    fullUpper.includes('FDO INV ACOES') ||
+    fullUpper.includes('FDO DE INV EM ACOES')
+  ) {
+    return false;
+  }
 
   if (bdi === '14') return true;
   if (specUpper.includes('ETF')) return true;
@@ -211,12 +348,14 @@ export function inferCanonicalAssetCategory(input: {
   shortName?: string | null;
   isin?: string | null;
   cvmHint?: CvmContextHint;
+  name?: string | null;
 }): InferredCategoryResult {
   const ticker = (input.ticker || '').trim().toUpperCase();
   const bdiCode = (input.bdiCode || '').trim();
   const specification = (input.specification || '').trim();
   const shortName = (input.shortName || '').trim();
   const isin = (input.isin || '').trim();
+  const name = (input.name || '').trim();
 
   // 1. Checagem de BDR (inclui BDRs DR3 com BDI 02/35 ou sufixos 33/36)
   if (hasBdrEvidence(ticker, bdiCode, specification, shortName, isin)) {
@@ -228,8 +367,18 @@ export function inferCanonicalAssetCategory(input: {
     };
   }
 
-  // 2. Checagem de ETF
-  if (hasEtfEvidence(ticker, bdiCode, specification, shortName)) {
+  // 2. Checagem de FIP (Precedência estrita sobre regras genéricas de BDI 14 e BDI 58)
+  if (hasFipEvidence(ticker, bdiCode, specification, shortName, name)) {
+    return {
+      category: 'fip',
+      confidence: 'HIGH',
+      justification: 'Classificado como FIP com base em evidência explícita de Fundo de Investimento em Participações (FIP/FIP-IE).',
+      conflictType: null,
+    };
+  }
+
+  // 3. Checagem de ETF
+  if (hasEtfEvidence(ticker, bdiCode, specification, shortName, name)) {
     return {
       category: 'etf',
       confidence: 'HIGH',
@@ -238,8 +387,8 @@ export function inferCanonicalAssetCategory(input: {
     };
   }
 
-  // 3. Checagem de FII
-  if (hasFiiEvidence(ticker, bdiCode, specification, shortName, input.cvmHint)) {
+  // 4. Checagem de FII
+  if (hasFiiEvidence(ticker, bdiCode, specification, shortName, input.cvmHint, name)) {
     return {
       category: 'fii',
       confidence: 'HIGH',
@@ -401,8 +550,50 @@ export function classifyCanonicalCandidate(
     };
   }
 
-  // 6. Classificação de Fundos de Índice (ETFs)
-  if (hasEtfEvidence(ticker, bdiCode, specification, shortName)) {
+  // 6. Tratamento de Ambiguidade de FIP (ex: FIPC11 - Ticker com prefixo FIP mas denominação oficial FIA)
+  if (
+    (ticker.startsWith('FIP') || specUpper.includes('FIP')) &&
+    (nameUpper.startsWith('FIA ') || nameUpper.includes(' FIA ') || canonicalName.toUpperCase().startsWith('FIA ') || canonicalName.toUpperCase().includes(' FIA '))
+  ) {
+    return {
+      decision: 'PENDING_REVIEW',
+      ticker,
+      assetType: null,
+      shareClass: null,
+      market: 'B3',
+      currency: 'BRL',
+      canonicalName,
+      isin,
+      confidence: 'LOW',
+      rejectionReason: null,
+      conflictType: 'CLASS_AMBIGUITY',
+      justification: `Ticker com prefixo FIP, porém denominação oficial indica FIA (Fundo de Investimento em Ações): "${canonicalName}". Direcionado para curadoria manual.`,
+      evaluatedAt,
+    };
+  }
+
+  // 7. Classificação de FIPs (Fundos de Investimento em Participações)
+  // Precedência estrita sobre regras genéricas de BDI 14 (ETF) e BDI 58 / Ticker 11 (FII/Unit)
+  if (hasFipEvidence(ticker, bdiCode, specification, shortName, canonicalName)) {
+    return {
+      decision: 'ACCEPT',
+      ticker,
+      assetType: 'fip',
+      shareClass: 'FIP',
+      market: 'B3',
+      currency: 'BRL',
+      canonicalName,
+      isin,
+      confidence: 'HIGH',
+      rejectionReason: null,
+      conflictType: null,
+      justification: 'Classificado como FIP com base em evidência oficial explícita de Fundo de Investimento em Participações.',
+      evaluatedAt,
+    };
+  }
+
+  // 8. Classificação de Fundos de Índice (ETFs)
+  if (hasEtfEvidence(ticker, bdiCode, specification, shortName, canonicalName)) {
     return {
       decision: 'ACCEPT',
       ticker,
@@ -420,7 +611,7 @@ export function classifyCanonicalCandidate(
     };
   }
 
-  // 7. Filtro Rigoroso de Direitos, Recibos de Subscrição e Bônus
+  // 9. Filtro Rigoroso de Direitos, Recibos de Subscrição e Bônus
   if (
     bdiCode === '10' ||
     bdiCode === '22' ||
@@ -450,10 +641,10 @@ export function classifyCanonicalCandidate(
     };
   }
 
-  // 8. Classificação de Fundos Imobiliários (FIIs) vs. Units de Ações (Final 11 / 11B / BDI 12)
+  // 10. Classificação de Fundos Imobiliários (FIIs) vs. Units de Ações (Final 11 / 11B / BDI 12)
   if (bdiCode === '12' || ticker.endsWith('11B') || ticker.endsWith('11')) {
-    // 8.1. Caso evidente de FII
-    if (hasFiiEvidence(ticker, bdiCode, specification, shortName, cvmHint)) {
+    // 10.1. Caso evidente de FII
+    if (hasFiiEvidence(ticker, bdiCode, specification, shortName, cvmHint, canonicalName)) {
       return {
         decision: 'ACCEPT',
         ticker,

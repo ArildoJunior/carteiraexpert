@@ -39,6 +39,7 @@ export const APP_NAVIGATION_GROUPS: NavGroup[] = [
       { label: 'Ações', href: '/acoes', id: 'nav-link-acoes', badge: 'B3' },
       { label: 'FIIs', href: '/fiis', id: 'nav-link-fiis', badge: 'FII' },
       { label: 'ETFs', href: '/etfs', id: 'nav-link-etfs', badge: 'ETF' },
+      { label: 'FIPs', href: '/fips', id: 'nav-link-fips', badge: 'FIP' },
       { label: 'BDRs', href: '/bdrs', id: 'nav-link-bdrs', badge: 'BDR' },
     ],
   },
