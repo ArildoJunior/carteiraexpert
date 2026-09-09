@@ -2,7 +2,7 @@
  * Script de Aplicação Transacional do Catálogo Canônico (Etapa J — APPLY).
  *
  * Princípios de Segurança e Governança:
- * 1. Escopo Restrito: trade_date >= '2024-01-01', market_type = 10, BDIs ('02', '12', '14', '34', '36', '38');
+ * 1. Escopo Restrito: trade_date >= '2024-01-01', market_type = 10, BDIs ('02', '06', '07', '08', '12', '14', '34', '35', '36', '38', '58');
  * 2. Transação Atômica com pg_advisory_xact_lock;
  * 3. Preservação Absoluta dos 7 Ativos Curados e Proteção Inegociável do BTC;
  * 4. Materialização Exclusiva de Candidatos com Decisão ACCEPT;
@@ -65,7 +65,7 @@ async function executeApply() {
       financial_volume::text as financial_volume
     FROM b3_historical_quotes
     WHERE market_type = 10
-      AND bdi_code IN ('02', '06', '07', '08', '12', '14', '34', '36', '38', '58')
+      AND bdi_code IN ('02', '06', '07', '08', '12', '14', '34', '35', '36', '38', '58')
     ORDER BY ticker, trade_date DESC;
   `;
 
@@ -132,7 +132,7 @@ async function executeApply() {
   console.log(`Worker ID:                   ${plan.workerId}`);
   console.log(`Batch Hash:                  ${plan.batchHash}`);
   console.log(`Escopo Temporal:             Histórico Completo COTAHIST`);
-  console.log(`Mercado / BDIs:              market_type = 10 | BDIs '02', '08', '12', '14', '34', '36', '38', '58'`);
+  console.log(`Mercado / BDIs:              market_type = 10 | BDIs '02', '06', '07', '08', '12', '14', '34', '35', '36', '38', '58'`);
   console.log(`Total Candidatos Elegíveis:  ${plan.metrics.totalCandidates}`);
   console.log(`Previsão de INSERT:          ${plan.metrics.proposedInserts}`);
   console.log(`Previsão de UPDATE:          ${plan.metrics.proposedUpdates}`);
