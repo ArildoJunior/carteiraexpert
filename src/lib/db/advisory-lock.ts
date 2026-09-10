@@ -26,6 +26,8 @@ export const ADVISORY_LOCK_KEYS = {
   B3_COTAHIST_INGESTION: 42101,
   /** Lock específico para ingestão contábil CVM DFP */
   CVM_DFP_INGESTION: 42102,
+  /** Lock específico para ingestão cadastral e contábil de FIIs da CVM */
+  CVM_FII_INGESTION: 42103,
 } as const;
 
 export type AdvisoryLockKey = typeof ADVISORY_LOCK_KEYS[keyof typeof ADVISORY_LOCK_KEYS] | number;

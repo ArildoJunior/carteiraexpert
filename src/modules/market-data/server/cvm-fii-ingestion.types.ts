@@ -115,3 +115,102 @@ export interface FiiIngestionPreparationReport {
   eligibleRegistryRecords: PreparedFiiRegistryRecord[];
   eligibleMonthlyRecords: PreparedFiiMonthlyRecord[];
 }
+
+export type CvmFiiIngestionStatus =
+  | 'SUCCESS'
+  | 'LOCKED'
+  | 'ROLLED_BACK_DRY_RUN'
+  | 'ERROR';
+
+/**
+ * Opções de execução da persistência transacional de FIIs.
+ */
+export interface CvmFiiIngestionOptions {
+  /** Pacote bruto CVM com os CSVs */
+  packageInput?: FiiIngestionPackageInput;
+  /** Relatório já preparado em memória (facilita testes e desacoplamento) */
+  preparedReport?: FiiIngestionPreparationReport;
+  /** Se true, executa todo o fluxo com rollback forçado ao final (sem escrita real) */
+  dryRun?: boolean;
+  /** String de conexão alternativa para o PostgreSQL (ex: testes de integração) */
+  connectionString?: string;
+  /** ID do usuário operador para auditoria */
+  userId?: string;
+  /** Flag explícita para autorizar ambiente de produção */
+  allowProduction?: boolean;
+  /** Timeout do lock e da transação (padrão: 60.000 ms) */
+  timeoutMs?: number;
+  /** Tamanho do lote de inserção SQL (padrão: 250) */
+  batchChunkSize?: number;
+}
+
+/**
+ * Métricas detalhadas da persistência no banco.
+ */
+export interface CvmFiiIngestionMetrics {
+  registry: {
+    totalEvaluated: number;
+    insertedCount: number;
+    updatedCount: number;
+    unchangedCount: number;
+  };
+  fundamentals: {
+    totalEvaluated: number;
+    insertedCount: number;
+    skippedDuplicatesCount: number;
+  };
+  bindings: {
+    totalProposals: number;
+    insertedCount: number;
+    existingPreservedCount: number;
+    approvedCount: 0; // Garantido por invariante = 0
+    pendingReviewCount: number;
+    ambiguousCount: number;
+  };
+}
+
+/**
+ * Resultado completo retornado pelo serviço transacional de ingestão FII.
+ */
+export interface CvmFiiIngestionResult {
+  status: CvmFiiIngestionStatus;
+  dryRun: boolean;
+  sourceReference: string;
+  startedAt: Date;
+  completedAt: Date;
+  durationMs: number;
+  metrics: CvmFiiIngestionMetrics;
+  lockedReason?: string;
+  errorMessage?: string;
+  preparationSummary?: FiiIngestionPreparationReport['summary'];
+}
+
+/**
+ * Erro disparado quando qualquer proposta de vínculo tenta produzir status APPROVED de forma automática.
+ */
+export class CvmFiiAutoApprovalViolationError extends Error {
+  constructor(message = 'Violação de governança: tentativa de promover vínculo a APPROVED automaticamente.') {
+    super(message);
+    this.name = 'CvmFiiAutoApprovalViolationError';
+  }
+}
+
+/**
+ * Erro disparado quando uma invariante de integridade de negócio é violada antes do commit.
+ */
+export class CvmFiiInvariantViolationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CvmFiiInvariantViolationError';
+  }
+}
+
+/**
+ * Erro disparado quando o Advisory Lock não pôde ser adquirido.
+ */
+export class CvmFiiLockAcquisitionError extends Error {
+  constructor(message = 'Não foi possível adquirir o advisory lock exclusivo para ingestão de FIIs.') {
+    super(message);
+    this.name = 'CvmFiiLockAcquisitionError';
+  }
+}
