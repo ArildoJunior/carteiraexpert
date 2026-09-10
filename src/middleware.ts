@@ -22,6 +22,7 @@ const PUBLIC_STATIC_PATHS = new Set([
   '/bdrs',
   '/fips',
   '/simulador',
+  '/carteira-sugerida',
   '/sitemap.xml',
   '/robots.txt',
   '/api/health',

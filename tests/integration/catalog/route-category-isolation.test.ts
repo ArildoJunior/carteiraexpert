@@ -26,6 +26,34 @@ describe('Fase 1: Isolamento de Rotas, Busca, Listagem, Fallback e Classificaç�
   let testBatchId: string;
   const createdAssetIds: string[] = [];
   const createdQuoteIds: string[] = [];
+  const createdMarketQuoteIds: string[] = [];
+  interface OriginalAssetState {
+    id: string;
+    ticker: string;
+    name: string;
+    assetType: string;
+    status: string | null;
+    isTradeable: boolean | null;
+    isVisibleCatalog: boolean | null;
+    isCustom: boolean;
+    userId: string | null;
+    provenance: string | null;
+  }
+
+  type AssetDbRecord = {
+    id: string;
+    ticker: string;
+    name: string;
+    asset_type: string;
+    status: string | null;
+    is_tradeable: boolean | null;
+    is_visible_catalog: boolean | null;
+    is_custom: boolean;
+    user_id: string | null;
+    provenance: string | null;
+  };
+
+  const originalAssetsState: OriginalAssetState[] = [];
 
   const fallbackTickers = {
     bdr02: 'FBDR02',
@@ -71,11 +99,10 @@ describe('Fase 1: Isolamento de Rotas, Busca, Listagem, Fallback e Classificaç�
     ];
 
     for (const item of testAssetsData) {
-      const [existing] = await db
-        .select()
-        .from(assets)
-        .where(eq(assets.ticker, item.ticker))
-        .limit(1);
+      const existingRows = await db.execute<AssetDbRecord>(
+        sql`SELECT id, ticker, name, asset_type, status, is_tradeable, is_visible_catalog, is_custom, user_id, provenance FROM assets WHERE ticker = ${item.ticker} LIMIT 1`
+      );
+      const existing = existingRows[0] as AssetDbRecord | undefined;
 
       let assetId: string;
       if (!existing) {
@@ -97,6 +124,22 @@ describe('Fase 1: Isolamento de Rotas, Busca, Listagem, Fallback e Classificaç�
         );
       } else {
         assetId = existing.id;
+        originalAssetsState.push({
+          id: existing.id,
+          ticker: existing.ticker,
+          name: existing.name,
+          assetType: existing.asset_type,
+          status: existing.status,
+          isTradeable: existing.is_tradeable,
+          isVisibleCatalog: existing.is_visible_catalog,
+          isCustom: existing.is_custom,
+          userId: existing.user_id,
+          provenance: existing.provenance,
+        });
+        // Garante explicitamente a visibilidade e categoria necessárias ao cenário mesmo se preexistente
+        await db.execute(
+          sql`UPDATE assets SET is_visible_catalog = true, is_tradeable = ${item.isTradeable ?? true}, status = ${item.status ?? 'active'}, asset_type = ${item.assetType}, is_custom = false, user_id = NULL WHERE id = ${assetId}`
+        );
       }
 
       // Adiciona cotação recente em market_quotes se não possuir
@@ -107,8 +150,10 @@ describe('Fase 1: Isolamento de Rotas, Busca, Listagem, Fallback e Classificaç�
         .limit(1);
 
       if (!existingQuote) {
+        const quoteId = crypto.randomUUID();
+        createdMarketQuoteIds.push(quoteId);
         await db.insert(marketQuotes).values({
-          id: crypto.randomUUID(),
+          id: quoteId,
           assetId,
           price: '25.50000000',
           currency: 'BRL',
@@ -244,18 +289,115 @@ describe('Fase 1: Isolamento de Rotas, Busca, Listagem, Fallback e Classificaç�
   });
 
   afterAll(async () => {
-    if (createdQuoteIds.length > 0) {
-      await db.delete(b3HistoricalQuotes).where(inArray(b3HistoricalQuotes.id, createdQuoteIds));
+    const cleanupErrors: string[] = [];
+
+    // 1. Exclui cotações históricas inseridas pelo teste
+    try {
+      if (createdQuoteIds.length > 0) {
+        await db.delete(b3HistoricalQuotes).where(inArray(b3HistoricalQuotes.id, createdQuoteIds));
+      }
+    } catch (err) {
+      cleanupErrors.push(`Erro ao excluir b3HistoricalQuotes: ${err instanceof Error ? err.message : String(err)}`);
     }
-    if (testBatchId) {
-      await db.delete(b3CotahistBatches).where(eq(b3CotahistBatches.id, testBatchId));
+
+    // 2. Exclui batch de teste
+    try {
+      if (testBatchId) {
+        await db.delete(b3CotahistBatches).where(eq(b3CotahistBatches.id, testBatchId));
+      }
+    } catch (err) {
+      cleanupErrors.push(`Erro ao excluir b3CotahistBatches: ${err instanceof Error ? err.message : String(err)}`);
     }
-    if (createdAssetIds.length > 0) {
-      await db.delete(marketQuotes).where(inArray(marketQuotes.assetId, createdAssetIds));
-      await db.delete(assets).where(inArray(assets.id, createdAssetIds));
+
+    // 3. Exclui qualquer cotação criada com createdBy = testUserId (mesmo em ativos preexistentes)
+    try {
+      if (testUserId) {
+        await db.delete(marketQuotes).where(eq(marketQuotes.createdBy, testUserId));
+      }
+    } catch (err) {
+      cleanupErrors.push(`Erro ao excluir marketQuotes por createdBy: ${err instanceof Error ? err.message : String(err)}`);
     }
-    if (testUserId) {
-      await db.delete(users).where(eq(users.id, testUserId));
+
+    // 4. Exclui cotações específicas criadas pelo teste
+    try {
+      if (createdMarketQuoteIds.length > 0) {
+        await db.delete(marketQuotes).where(inArray(marketQuotes.id, createdMarketQuoteIds));
+      }
+    } catch (err) {
+      cleanupErrors.push(`Erro ao excluir marketQuotes por ID: ${err instanceof Error ? err.message : String(err)}`);
+    }
+
+    // 5. Exclui cotações residuais vinculadas a ativos criados pelo teste e os ativos criados
+    try {
+      if (createdAssetIds.length > 0) {
+        await db.delete(marketQuotes).where(inArray(marketQuotes.assetId, createdAssetIds));
+        await db.delete(assets).where(inArray(assets.id, createdAssetIds));
+      }
+    } catch (err) {
+      cleanupErrors.push(`Erro ao excluir assets/marketQuotes criados pelo teste: ${err instanceof Error ? err.message : String(err)}`);
+    }
+
+    // 6. Restaura atributos originais dos ativos preexistentes modificados pelo teste
+    try {
+      for (const orig of originalAssetsState) {
+        await db.execute(
+          sql`UPDATE assets SET
+            asset_type = ${orig.assetType},
+            status = ${orig.status},
+            is_tradeable = ${orig.isTradeable},
+            is_visible_catalog = ${orig.isVisibleCatalog},
+            is_custom = ${orig.isCustom},
+            user_id = ${orig.userId},
+            provenance = ${orig.provenance}
+          WHERE id = ${orig.id}`
+        );
+      }
+    } catch (err) {
+      cleanupErrors.push(`Erro ao executar restauração dos ativos preexistentes: ${err instanceof Error ? err.message : String(err)}`);
+    }
+
+    // 7. Validação explícita da restauração dos ativos preexistentes
+    try {
+      for (const orig of originalAssetsState) {
+        const verifiedRows = await db.execute<AssetDbRecord>(
+          sql`SELECT id, ticker, name, asset_type, status, is_tradeable, is_visible_catalog, is_custom, user_id, provenance FROM assets WHERE id = ${orig.id} LIMIT 1`
+        );
+        const verified = verifiedRows[0] as AssetDbRecord | undefined;
+        if (!verified) {
+          cleanupErrors.push(`Ativo preexistente ${orig.ticker} (${orig.id}) não foi encontrado após restauração.`);
+          continue;
+        }
+
+        if (
+          verified.asset_type !== orig.assetType ||
+          verified.status !== orig.status ||
+          verified.is_tradeable !== orig.isTradeable ||
+          verified.is_visible_catalog !== orig.isVisibleCatalog ||
+          verified.is_custom !== orig.isCustom ||
+          verified.user_id !== orig.userId ||
+          verified.provenance !== orig.provenance
+        ) {
+          cleanupErrors.push(
+            `Inconsistência na restauração de ${orig.ticker}: esperado { assetType: '${orig.assetType}', status: '${orig.status}', isTradeable: ${orig.isTradeable}, isVisibleCatalog: ${orig.isVisibleCatalog}, isCustom: ${orig.isCustom}, userId: ${orig.userId}, provenance: '${orig.provenance}' }, obtido { assetType: '${verified.asset_type}', status: '${verified.status}', isTradeable: ${verified.is_tradeable}, isVisibleCatalog: ${verified.is_visible_catalog}, isCustom: ${verified.is_custom}, userId: ${verified.user_id}, provenance: '${verified.provenance}' }`
+          );
+        }
+      }
+    } catch (err) {
+      cleanupErrors.push(`Erro ao verificar integridade da restauração: ${err instanceof Error ? err.message : String(err)}`);
+    }
+
+    // 8. Exclui o usuário de teste após a remoção de todas as cotações que o referenciavam
+    try {
+      if (testUserId) {
+        await db.delete(users).where(eq(users.id, testUserId));
+      }
+    } catch (err) {
+      cleanupErrors.push(`Erro ao excluir usuário de teste: ${err instanceof Error ? err.message : String(err)}`);
+    }
+
+    // Reporta falhas acumuladas de limpeza sem engolir exceções
+    if (cleanupErrors.length > 0) {
+      throw new Error(`Falhas acumuladas durante o teardown do teste (afterAll):\n${cleanupErrors.join('\n')}`);
     }
   });
 
