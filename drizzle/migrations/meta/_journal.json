@@ -183,6 +183,13 @@
       "when": 1788550000000,
       "tag": "0025_add_fii_fundamentals_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1788560000000,
+      "tag": "0026_refactor_fii_cvm_governance",
+      "breakpoints": true
     }
   ]
 }

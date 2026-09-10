@@ -1,5 +1,8 @@
 import type { Decimal } from '@/lib/decimal';
 import type {
+  FiiBindingConfidence,
+  FiiBindingMethod,
+  FiiBindingStatus,
   FiiCadastralResolutionReport,
 } from '../domain/cvm-fii-cadastral-resolver.types';
 import type {
@@ -23,25 +26,29 @@ export interface FiiIngestionPackageInput {
 }
 
 /**
- * Registro cadastral preparado e validado para persistência futura em `cvm_fii_registry`.
- * Possui vínculo unívoco com `assetId` verificado.
+ * Registro de entidade CVM preparado para persistência futura em `cvm_fii_registry`.
+ * 100% dos fundos da CVM são preservados, identificados unicamente por CNPJ,
+ * sem obrigatoriedade de existência de assetId.
  */
 export interface PreparedFiiRegistryRecord {
-  assetId: string;
+  fiiRegistryId?: string;
   cnpj: string; // 14 dígitos numéricos normalizados
   legalName: string;
-  ticker: string;
-  isin: string | null;
+  tradeName?: string | null;
+  ticker?: string | null;
+  isin?: string | null;
   source: 'cvm';
   sourceUpdatedAt: Date | null;
 }
 
 /**
- * Registro contábil mensal preparado e validado para persistência futura em `fii_monthly_fundamentals`.
- * Possui `assetId` associado pelo motor de resolução cadastral.
+ * Registro contábil mensal preparado para persistência futura em `fii_monthly_fundamentals`.
+ * Identificado unicamente pela entidade CVM (fiiRegistryCnpj / fiiRegistryId), competência e versão.
+ * Impede sobreposição ou mistura de dados entre fundos distintos.
  */
 export interface PreparedFiiMonthlyRecord {
-  assetId: string;
+  fiiRegistryId?: string;
+  fiiRegistryCnpj: string; // Chave de identidade da entidade CVM
   referenceDate: string; // 'YYYY-MM-DD'
   filingDate: Date | null;
   version: number;
@@ -61,6 +68,24 @@ export interface PreparedFiiMonthlyRecord {
 }
 
 /**
+ * Proposta de vínculo cadastral preparada para persistência em `cvm_fii_bindings`.
+ * Permite no máximo um vínculo APPROVED por ativo B3, preservando registros PENDING_REVIEW e AMBIGUOUS.
+ */
+export interface PreparedFiiBindingRecord {
+  id?: string;
+  fiiRegistryId?: string;
+  fiiRegistryCnpj: string;
+  assetId: string;
+  ticker: string;
+  bindingStatus: FiiBindingStatus;
+  bindingMethod: FiiBindingMethod;
+  confidenceLevel: FiiBindingConfidence;
+  justification: string;
+  source: 'cvm';
+  sourceUpdatedAt?: Date | null;
+}
+
+/**
  * Relatório estruturado de preparação de lote de ingestão de FIIs.
  */
 export interface FiiIngestionPreparationReport {
@@ -68,13 +93,25 @@ export interface FiiIngestionPreparationReport {
   executionMode: FiiIngestionExecutionMode;
   parserMetrics: CvmFiiParserMetrics;
   cadastralReport: FiiCadastralResolutionReport;
-  eligibleRegistryRecords: PreparedFiiRegistryRecord[];
-  eligibleMonthlyRecords: PreparedFiiMonthlyRecord[];
+  preparedRegistryRecords: PreparedFiiRegistryRecord[];
+  preparedMonthlyRecords: PreparedFiiMonthlyRecord[];
+  preparedBindingRecords: PreparedFiiBindingRecord[];
   unmatchedMonthlyRecords: ParsedFiiMonthlyRecord[];
   summary: {
     totalMonthlyRecordsParsed: number;
-    eligibleMonthlyRecordsCount: number;
-    unmatchedMonthlyRecordsCount: number;
+    totalRegistryRecordsPrepared: number;
+    totalMonthlyRecordsPrepared: number;
+    totalBindingProposals: number;
+    approvedBindingsCount: number;
+    pendingReviewBindingsCount: number;
+    ambiguousBindingsCount: number;
+    unmatchedFundsCount: number;
     uniqueAssetsMatched: number;
+    eligibleMonthlyRecordsCount?: number;
+    unmatchedMonthlyRecordsCount?: number;
   };
+
+  // Aliases de conveniência para retrocompatibilidade
+  eligibleRegistryRecords: PreparedFiiRegistryRecord[];
+  eligibleMonthlyRecords: PreparedFiiMonthlyRecord[];
 }

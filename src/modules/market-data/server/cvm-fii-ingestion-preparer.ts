@@ -7,6 +7,7 @@ import type {
   FiiIngestionExecutionMode,
   FiiIngestionPackageInput,
   FiiIngestionPreparationReport,
+  PreparedFiiBindingRecord,
   PreparedFiiMonthlyRecord,
   PreparedFiiRegistryRecord,
 } from './cvm-fii-ingestion.types';
@@ -34,11 +35,13 @@ export interface PrepareFiiMonthlyPackageOptions {
 
 /**
  * Prepara e orquestra deterministicamente o lote de informes mensais de FII da CVM:
- * 1. Decodifica os CSVs (suporte a Latin-1 / UTF-8).
+ * 1. Decodifica os CSVs (suporte a Latin-1 / UTF-8 com remoção de BOM).
  * 2. Executa o parser oficial do domínio (cvm-fii-parser).
- * 3. Resolve cadastralmente os CNPJs para os ativos locais correspondentes (assets.id / assets.ticker).
- * 4. Separa os registros contábeis elegíveis dos não correspondidos.
- * 5. Não realiza qualquer escrita ou conexão com o banco de dados (puramente computacional).
+ * 3. Separa três coleções puras e desacopladas:
+ *    - Entidades CVM (cvm_fii_registry): 100% dos fundos preservados por CNPJ, sem dependência de assetId.
+ *    - Fundamentos Mensais (fii_monthly_fundamentals): identificados por entidade CVM (fiiRegistryCnpj), competência e versão.
+ *    - Propostas de Vínculo B3 (cvm_fii_bindings): propostas auditáveis com status APPROVED, PENDING_REVIEW ou AMBIGUOUS.
+ * 4. Não realiza qualquer escrita ou conexão com o banco de dados (puramente computacional e em memória).
  */
 export async function prepareFiiMonthlyPackage(
   options: PrepareFiiMonthlyPackageOptions
@@ -72,74 +75,99 @@ export async function prepareFiiMonthlyPackage(
     })
   );
 
-  // 4. Execução do Motor de Resolução Cadastral
+  // 4. Execução do Motor de Resolução Cadastral com Detecção de Colisão
   const cadastralReport = resolverEngine.resolveBatch(resolutionInputs);
 
-  // 5. Mapeamento dos Registros Cadastrais Elegíveis (para cvm_fii_registry)
-  const registryByCnpj = new Map(parsedPackage.registryRecords.map((r) => [r.cnpj, r]));
-  const eligibleRegistryRecords: PreparedFiiRegistryRecord[] = [];
+  // 5. Coleção 1: Entidades Regulatórias CVM (cvm_fii_registry)
+  // Preserva 100% dos fundos CVM identificados por CNPJ, com ou sem ativo B3
+  const preparedRegistryRecords: PreparedFiiRegistryRecord[] = parsedPackage.registryRecords.map(
+    (reg) => ({
+      cnpj: reg.cnpj,
+      legalName: reg.legalName,
+      tradeName: null,
+      ticker: reg.ticker ?? null,
+      isin: reg.isin ?? null,
+      source: 'cvm',
+      sourceUpdatedAt: reg.sourceUpdatedAt ?? null,
+    })
+  );
 
-  for (const matched of cadastralReport.results) {
-    if (matched.status === 'MATCHED' && matched.matchedAssetId && matched.matchedTicker) {
-      const originalRegistry = registryByCnpj.get(matched.cnpj);
-      eligibleRegistryRecords.push({
-        assetId: matched.matchedAssetId,
-        cnpj: matched.cnpj,
-        legalName: matched.legalName,
-        ticker: matched.matchedTicker,
-        isin: matched.isin,
-        source: 'cvm',
-        sourceUpdatedAt: originalRegistry?.sourceUpdatedAt ?? null,
-      });
-    }
-  }
+  // 6. Coleção 2: Fundamentos Mensais CVM (fii_monthly_fundamentals)
+  // Identificados unicamente pelo CNPJ do fundo CVM (fiiRegistryCnpj), competência e versão.
+  // Nenhum dado contábil é sobrescrito ou misturado entre veículos distintos.
+  const preparedMonthlyRecords: PreparedFiiMonthlyRecord[] = parsedPackage.monthlyRecords.map(
+    (monthly) => ({
+      fiiRegistryCnpj: monthly.cnpj,
+      referenceDate: monthly.referenceDate,
+      filingDate: monthly.filingDate,
+      version: monthly.version,
+      source: monthly.source,
+      sourceReference: monthly.sourceReference,
+      netAssetValue: monthly.netAssetValue,
+      quotaEquityValue: monthly.quotaEquityValue,
+      issuedQuotas: monthly.issuedQuotas,
+      totalAssets: monthly.totalAssets,
+      totalLiabilities: monthly.totalLiabilities,
+      cashEquivalents: monthly.cashEquivalents,
+      dividendDeclaredPerQuota: monthly.dividendDeclaredPerQuota,
+      investorsCount: monthly.investorsCount,
+      individualInvestorsCount: monthly.individualInvestorsCount,
+    })
+  );
 
-  // 6. Mapeamento dos Registros Contábeis Elegíveis e Não Correspondidos
-  const eligibleMonthlyRecords: PreparedFiiMonthlyRecord[] = [];
+  // 7. Coleção 3: Propostas de Vínculo com Ativos B3 (cvm_fii_bindings)
+  // Inclui APPROVED (máx 1 por ativo), PENDING_REVIEW e AMBIGUOUS para auditoria
+  const preparedBindingRecords: PreparedFiiBindingRecord[] = cadastralReport.bindingProposals.map(
+    (prop) => ({
+      fiiRegistryCnpj: prop.fiiRegistryCnpj,
+      assetId: prop.assetId,
+      ticker: prop.matchedTicker,
+      bindingStatus: prop.bindingStatus,
+      bindingMethod: prop.bindingMethod,
+      confidenceLevel: prop.confidenceLevel,
+      justification: prop.justification,
+      source: 'cvm',
+    })
+  );
+
+  // Identifica demonstrações de fundos não associados a nenhum ativo B3 (para métricas e relatórios)
   const unmatchedMonthlyRecords: ParsedFiiMonthlyRecord[] = [];
-  const uniqueAssetsMatched = new Set<string>();
+  const matchedAssetsSet = new Set<string>();
 
   for (const monthly of parsedPackage.monthlyRecords) {
     const matched = cadastralReport.matchedMap.get(monthly.cnpj);
-
-    if (matched && matched.status === 'MATCHED' && matched.matchedAssetId) {
-      uniqueAssetsMatched.add(matched.matchedAssetId);
-      eligibleMonthlyRecords.push({
-        assetId: matched.matchedAssetId,
-        referenceDate: monthly.referenceDate,
-        filingDate: monthly.filingDate,
-        version: monthly.version,
-        source: monthly.source,
-        sourceReference: monthly.sourceReference,
-        netAssetValue: monthly.netAssetValue,
-        quotaEquityValue: monthly.quotaEquityValue,
-        issuedQuotas: monthly.issuedQuotas,
-        totalAssets: monthly.totalAssets,
-        totalLiabilities: monthly.totalLiabilities,
-        cashEquivalents: monthly.cashEquivalents,
-        dividendDeclaredPerQuota: monthly.dividendDeclaredPerQuota,
-        investorsCount: monthly.investorsCount,
-        individualInvestorsCount: monthly.individualInvestorsCount,
-      });
-    } else {
+    if (!matched || matched.status !== 'MATCHED' || !matched.matchedAssetId) {
       unmatchedMonthlyRecords.push(monthly);
+    } else {
+      matchedAssetsSet.add(matched.matchedAssetId);
     }
   }
 
-  // 7. Consolidação do Relatório Final de Preparação
+  // 8. Consolidação do Relatório Final de Preparação
   return {
     sourceReference: input.sourceReference,
     executionMode,
     parserMetrics: parsedPackage.metrics,
     cadastralReport,
-    eligibleRegistryRecords,
-    eligibleMonthlyRecords,
+    preparedRegistryRecords,
+    preparedMonthlyRecords,
+    preparedBindingRecords,
     unmatchedMonthlyRecords,
     summary: {
       totalMonthlyRecordsParsed: parsedPackage.monthlyRecords.length,
-      eligibleMonthlyRecordsCount: eligibleMonthlyRecords.length,
+      totalRegistryRecordsPrepared: preparedRegistryRecords.length,
+      totalMonthlyRecordsPrepared: preparedMonthlyRecords.length,
+      totalBindingProposals: preparedBindingRecords.length,
+      approvedBindingsCount: cadastralReport.approvedBindingsCount,
+      pendingReviewBindingsCount: cadastralReport.pendingReviewBindingsCount,
+      ambiguousBindingsCount: cadastralReport.ambiguousBindingsCount,
+      unmatchedFundsCount: cadastralReport.unmatchedCount,
+      uniqueAssetsMatched: matchedAssetsSet.size,
+      eligibleMonthlyRecordsCount: preparedMonthlyRecords.length - unmatchedMonthlyRecords.length,
       unmatchedMonthlyRecordsCount: unmatchedMonthlyRecords.length,
-      uniqueAssetsMatched: uniqueAssetsMatched.size,
     },
+    // Retrocompatibilidade
+    eligibleRegistryRecords: preparedRegistryRecords,
+    eligibleMonthlyRecords: preparedMonthlyRecords,
   };
 }
