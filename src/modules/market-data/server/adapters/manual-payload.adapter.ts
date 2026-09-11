@@ -7,7 +7,7 @@ import type {
 
 function isSameUtcDate(itemDate: Date | string, targetDate: Date): boolean {
   const d = typeof itemDate === 'string' ? new Date(itemDate) : itemDate;
-  if (isNaN(d.getTime())) return false;
+  if (Number.isNaN(d.getTime())) { return false; }
   return (
     d.getUTCFullYear() === targetDate.getUTCFullYear() &&
     d.getUTCMonth() === targetDate.getUTCMonth() &&

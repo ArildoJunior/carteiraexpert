@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { CspRegulatoryDisclaimer } from './CspRegulatoryDisclaimer';
 import { CspParameterForm } from './CspParameterForm';
 import { CspCapacityWarning } from './CspCapacityWarning';

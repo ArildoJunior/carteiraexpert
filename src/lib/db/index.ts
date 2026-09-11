@@ -16,7 +16,7 @@ export interface TransactionStarter {
 }
 
 export interface SchemaQueryExecutor {
-  execute<TRow extends Record<string, unknown> = Record<string, unknown>>(
+  execute<_TRow extends Record<string, unknown> = Record<string, unknown>>(
     query: SQLWrapper | string
   ): PromiseLike<unknown>;
 }

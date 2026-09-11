@@ -14,18 +14,18 @@ import {
  * ATENÇÃO: Nunca deve ser utilizado como prova única ou definitiva de classe acionária.
  */
 export function inferAuxiliaryShareClassFromTicker(ticker: string): CvmShareClass | null {
-  if (!ticker || typeof ticker !== 'string') return null;
+  if (!ticker || typeof ticker !== 'string') { return null; }
   const cleanTicker = ticker.trim().toUpperCase();
 
   const match = cleanTicker.match(/^([A-Z]{4})(3|4|5|6|11)/i);
-  if (!match) return null;
+  if (!match) { return null; }
 
   const suffix = match[2];
-  if (suffix === '3') return 'ON';
-  if (suffix === '4') return 'PN';
-  if (suffix === '5') return 'PNA';
-  if (suffix === '6') return 'PNB';
-  if (suffix === '11') return 'UNT';
+  if (suffix === '3') { return 'ON'; }
+  if (suffix === '4') { return 'PN'; }
+  if (suffix === '5') { return 'PNA'; }
+  if (suffix === '6') { return 'PNB'; }
+  if (suffix === '11') { return 'UNT'; }
 
   return null;
 }

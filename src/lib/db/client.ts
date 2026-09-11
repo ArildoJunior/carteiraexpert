@@ -63,7 +63,7 @@ if (!isTestEnv) {
       DATABASE_URL: rawUrl,
     });
     databaseUrl = parsed.DATABASE_URL;
-  } catch (error) {
+  } catch {
     // Lança erro genérico seguro
     throw new Error('DATABASE_URL inválida ou ausente. A inicialização do banco falhou de forma segura.');
   }
@@ -73,7 +73,7 @@ let db: ReturnType<typeof drizzle<typeof schema>>;
 
 if (isTestEnv && !process.env.DATABASE_URL_TEST) {
   // Retorna mock dummy para evitar inicialização de conexão real em testes unitários
-  db = {} as any;
+  db = {} as unknown as ReturnType<typeof drizzle<typeof schema>>;
 } else {
   // Em testes de integração, usa DATABASE_URL_TEST; em produção/desenvolvimento, usa DATABASE_URL
   const connectionString = isTestEnv

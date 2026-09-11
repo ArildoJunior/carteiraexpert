@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { TaxDisclaimerBanner } from './TaxDisclaimerBanner';
 import { TaxPreferencesModal } from './TaxPreferencesModal';
 import { TaxAnnualReportView } from './TaxAnnualReportView';

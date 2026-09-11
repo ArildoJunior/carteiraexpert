@@ -6,18 +6,14 @@ import {
   createPortfolio,
   updatePortfolio,
   deletePortfolio,
-  listPortfolios,
-  getPortfolioById,
 } from './portfolio.service';
 import {
   createCustomAsset,
   searchAssets,
-  getAssetById,
 } from './asset.service';
 import {
   createPortfolioEvent,
   cancelPortfolioEvent,
-  listPortfolioEventsByPortfolio,
 } from './portfolio-event.service';
 import {
   createCorporateActionEventAction as corporateActionCreateAction,
@@ -44,7 +40,6 @@ import type {
 import { evolutionPeriodSchema } from '../domain/portfolio-evolution.schema';
 import {
   saveChartPreferenceSchema,
-  type SaveChartPreferenceInput,
 } from '../domain/chart-preferences.schema';
 import type {
   SerializedUserChartPreference,
@@ -113,9 +108,9 @@ function safeRevalidatePath(path: string): void {
  * para uma string ISO 8601 estrita com timezone UTC explícito (ex: 2026-08-15T12:00:00.000Z).
  */
 function normalizeFormDate(dateStr: string | null | undefined): string | null {
-  if (!dateStr || typeof dateStr !== 'string') return null;
+  if (!dateStr || typeof dateStr !== 'string') { return null; }
   const trimmed = dateStr.trim();
-  if (!trimmed) return null;
+  if (!trimmed) { return null; }
 
   // Se já for ISO completo com timezone
   if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(trimmed)) {

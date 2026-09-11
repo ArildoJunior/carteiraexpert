@@ -1,7 +1,5 @@
 'use client';
 
-import React from 'react';
-
 export interface CspCapacityWarningProps {
   maxAchievableCapacity?: number | null;
   className?: string;

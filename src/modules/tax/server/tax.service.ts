@@ -18,7 +18,6 @@ import type { SafeUser } from '@/modules/identity/domain/user.types';
 import { Decimal } from '@/lib/decimal';
 import type {
   UserTaxPreferences,
-  TaxCalculationRun,
   TaxLossCredit,
   TaxTimelineEvent,
   TaxAnnualReport,
@@ -30,7 +29,6 @@ import {
 } from '../domain/tax-engine';
 import {
   TaxCalculationRunningError,
-  TaxUnauthorizedError,
 } from '../domain/errors';
 import { PortfolioNotFoundError } from '@/modules/portfolio/domain/errors';
 
@@ -239,7 +237,7 @@ export async function executeTaxCalculation(
   },
   database: Database = db
 ): Promise<TaxAnnualReport> {
-  const { year, portfolioId, forceRecalculate } = params;
+  const { year, portfolioId } = params;
 
   // 1. Concurrency guard: impede execuções simultâneas em RUNNING para o mesmo usuário
   const activeRuns = await database

@@ -15,7 +15,6 @@ import type {
   ClassificationConfidence,
   CatalogConflictType,
 } from './canonical-catalog.types';
-import { isinSchema } from './canonical-catalog.schema';
 
 const ISIN_REGEX = /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/;
 
@@ -115,13 +114,12 @@ export function hasBdrEvidence(
  * evidências oficiais de short_name, name (razão social), specification e BDI.
  */
 export function hasFipEvidence(
-  ticker: string,
+  _ticker: string,
   bdiCode?: string | null,
   specification?: string | null,
   shortName?: string | null,
   name?: string | null
 ): boolean {
-  const normTicker = (ticker || '').trim().toUpperCase();
   const specUpper = (specification || '').trim().toUpperCase();
   const sNameUpper = (shortName || '').trim().toUpperCase();
   const nameUpper = (name || '').trim().toUpperCase();
@@ -317,8 +315,8 @@ export function hasEtfEvidence(
     return false;
   }
 
-  if (bdi === '14') return true;
-  if (specUpper.includes('ETF')) return true;
+  if (bdi === '14') { return true; }
+  if (specUpper.includes('ETF')) { return true; }
   if (
     nameUpper.includes('ISHARES') ||
     nameUpper.includes('INDEX') ||

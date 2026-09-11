@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { AppSidebar } from './AppSidebar';
 import type { SafeUser } from '@/modules/identity/domain/user.types';
 
@@ -20,7 +20,7 @@ export function MobileDrawer({ isOpen, onClose, user }: MobileDrawerProps) {
   onCloseRef.current = onClose;
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) { return; }
 
     // 1. Salva o elemento previamente focado para restaurar ao fechar
     previousActiveElementRef.current = document.activeElement as HTMLElement | null;
@@ -49,7 +49,7 @@ export function MobileDrawer({ isOpen, onClose, user }: MobileDrawerProps) {
 
       if (event.key === 'Tab' && drawerRef.current) {
         const focusableElements = drawerRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-        if (focusableElements.length === 0) return;
+        if (focusableElements.length === 0) { return; }
 
         const firstElement = focusableElements[0];
         const lastElement = focusableElements[focusableElements.length - 1];
@@ -89,7 +89,7 @@ export function MobileDrawer({ isOpen, onClose, user }: MobileDrawerProps) {
     };
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  if (!isOpen) { return null; }
 
   return (
     <div

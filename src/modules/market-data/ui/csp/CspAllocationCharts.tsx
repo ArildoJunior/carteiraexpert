@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import {
   ResponsiveContainer,
   PieChart,
@@ -49,7 +49,7 @@ function DonutTooltip({
   active?: boolean;
   payload?: TooltipPayloadItem[];
 }) {
-  if (!active || !payload || payload.length === 0) return null;
+  if (!active || !payload || payload.length === 0) { return null; }
   const item = payload[0].payload;
 
   return (
@@ -84,7 +84,7 @@ function BarTooltip({
   active?: boolean;
   payload?: TooltipPayloadItem[];
 }) {
-  if (!active || !payload || payload.length === 0) return null;
+  if (!active || !payload || payload.length === 0) { return null; }
   const item = payload[0].payload;
 
   return (

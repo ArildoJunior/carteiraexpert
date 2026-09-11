@@ -186,7 +186,7 @@ export async function buildCspAssetInput(
     return null;
   }
 
-  if (!valuation.consensus || !valuation.consensus.weightedTargetPrice) {
+  if (!valuation.consensus?.weightedTargetPrice) {
     return null;
   }
 

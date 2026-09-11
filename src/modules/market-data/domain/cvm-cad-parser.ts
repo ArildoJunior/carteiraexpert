@@ -46,9 +46,9 @@ export function validateAndNormalizeCvmCode(raw: string | null | undefined): str
  * Converte string YYYY-MM-DD em Date UTC à meia-noite.
  */
 export function parseCvmDate(raw: string | null | undefined): Date | null {
-  if (!raw) return null;
+  if (!raw) { return null; }
   const trimmed = raw.trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) { return null; }
   const [year, month, day] = trimmed.split('-').map(Number);
   const date = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
   return Number.isNaN(date.getTime()) ? null : date;
@@ -87,7 +87,7 @@ export async function parseCvmCadStream(
   for await (const rawLine of lineStream) {
     metrics.totalLinesRead++;
     const line = rawLine.replace(/[\r\n]/g, '').trim();
-    if (!line) continue;
+    if (!line) { continue; }
 
     const parts = line.split(';').map((p) => p.trim());
 
@@ -168,9 +168,9 @@ export async function parseCvmCadStream(
       // Se a companhia ainda não foi contabilizada no mapa, atualiza métricas de setor
       if (!companies.has(cnpj)) {
         metrics.companiesProcessed++;
-        if (status === 'ATIVO') metrics.activeCompanies++;
-        else if (status === 'CANCELADA') metrics.canceledCompanies++;
-        else metrics.suspendedCompanies++;
+        if (status === 'ATIVO') { metrics.activeCompanies++; }
+        else if (status === 'CANCELADA') { metrics.canceledCompanies++; }
+        else { metrics.suspendedCompanies++; }
 
         if (sectorRule.decision === 'PROCESSABLE') {
           metrics.eligibleSectorsCount++;
@@ -181,7 +181,7 @@ export async function parseCvmCadStream(
 
       // Em caso de duplicidade de registro (ex: companhia com registros em bolsa e balcão), preserva o mais abrangente
       companies.set(cnpj, company);
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (err instanceof CvmInvalidIdentifierError || err instanceof CvmCorruptedDataError) {
         metrics.corruptedLinesCount++;
       } else {

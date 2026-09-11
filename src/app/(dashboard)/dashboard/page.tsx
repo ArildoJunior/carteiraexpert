@@ -36,11 +36,11 @@ interface DashboardPageProps {
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) { redirect('/login'); }
 
   const { portfolioId } = (await searchParams) || {};
 
-  let data;
+  let data: Awaited<ReturnType<typeof getSerializedUserDashboardData>>;
   try {
     data = await getSerializedUserDashboardData(user, { portfolioId });
   } catch (err) {

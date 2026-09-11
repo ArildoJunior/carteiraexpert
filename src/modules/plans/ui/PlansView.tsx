@@ -26,9 +26,9 @@ interface PlansViewProps {
 }
 
 function formatDate(date: Date | string | null | undefined): string {
-  if (!date) return '—';
+  if (!date) { return '—'; }
   const d = typeof date === 'string' ? new Date(date) : date;
-  if (Number.isNaN(d.getTime())) return '—';
+  if (Number.isNaN(d.getTime())) { return '—'; }
   return new Intl.DateTimeFormat('pt-BR', {
     day: '2-digit',
     month: '2-digit',
@@ -38,7 +38,7 @@ function formatDate(date: Date | string | null | undefined): string {
 }
 
 export function PlansView({
-  plans,
+  plans: _plans,
   quotaSummary,
   billingSummary,
   groupOverview,
@@ -111,7 +111,7 @@ export function PlansView({
   // Ações de gerenciamento de grupo
   const handleCreateGroup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!groupNameInput.trim()) return;
+    if (!groupNameInput.trim()) { return; }
     setIsLoading(true);
     setErrorMessage(null);
     setSuccessMessage(null);
@@ -130,7 +130,7 @@ export function PlansView({
 
   const handleInviteMember = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inviteEmailInput.trim()) return;
+    if (!inviteEmailInput.trim()) { return; }
     setIsLoading(true);
     setErrorMessage(null);
     setSuccessMessage(null);
@@ -170,7 +170,7 @@ export function PlansView({
   };
 
   const handleRevokeInvite = async (invitationId: string) => {
-    if (!confirm('Deseja realmente revogar este convite?')) return;
+    if (!confirm('Deseja realmente revogar este convite?')) { return; }
     setIsLoading(true);
     setErrorMessage(null);
 

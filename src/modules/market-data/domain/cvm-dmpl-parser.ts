@@ -72,9 +72,9 @@ export async function* parseCvmDmplStream(
   } | null = null;
 
   for await (const rawLine of lineStream) {
-    if (metrics) metrics.totalLinesRead++;
+    if (metrics) { metrics.totalLinesRead++; }
     const line = rawLine.replace(/[\r\n]/g, '').trim();
-    if (!line) continue;
+    if (!line) { continue; }
 
     const parts = line.split(';').map((p) => p.trim());
 
@@ -127,13 +127,13 @@ export async function* parseCvmDmplStream(
     // 2. Filtro estrito de ORDEM_EXERC = 'ÚLTIMO'
     const orderExerc = parts[headerIndices.orderIdx]?.toUpperCase();
     if (orderExerc !== 'ÚLTIMO') {
-      if (metrics) metrics.skippedPenultimoLines++;
+      if (metrics) { metrics.skippedPenultimoLines++; }
       continue;
     }
 
     // 3. Filtro e Seleção Determinística da COLUNA_DF
     const column = parts[headerIndices.colunaDfIdx];
-    if (!column) continue;
+    if (!column) { continue; }
 
     const normColumn = column
       .toLowerCase()
@@ -171,14 +171,14 @@ export async function* parseCvmDmplStream(
       const cvmCode = validateAndNormalizeCvmCode(parts[headerIndices.cvmCodeIdx]);
       const referenceDate = parts[headerIndices.refDateIdx];
       if (!isValidCalendarDate(referenceDate)) {
-        if (metrics) metrics.corruptedLinesCount++;
+        if (metrics) { metrics.corruptedLinesCount++; }
         continue;
       }
 
       const versionRaw = parts[headerIndices.versionIdx];
       const version = parseStrictPositiveInteger(versionRaw);
       if (version === null) {
-        if (metrics) metrics.corruptedLinesCount++;
+        if (metrics) { metrics.corruptedLinesCount++; }
         continue;
       }
 
@@ -191,7 +191,7 @@ export async function* parseCvmDmplStream(
       const valRaw = parts[headerIndices.accValIdx];
 
       if (!valRaw || !/^-?\d+(\.\d+)?$/.test(valRaw)) {
-        if (metrics) metrics.corruptedLinesCount++;
+        if (metrics) { metrics.corruptedLinesCount++; }
         continue;
       }
 
@@ -204,11 +204,11 @@ export async function* parseCvmDmplStream(
       } else if (scale === 'UNIDADE') {
         accountValue = rawDecimal;
       } else {
-        if (metrics) metrics.invalidScaleLines++;
+        if (metrics) { metrics.invalidScaleLines++; }
         continue;
       }
 
-      if (metrics) metrics.relevantLinesProcessed++;
+      if (metrics) { metrics.relevantLinesProcessed++; }
 
       yield {
         cnpj,
@@ -223,7 +223,7 @@ export async function* parseCvmDmplStream(
         accountValue,
       };
     } catch {
-      if (metrics) metrics.corruptedLinesCount++;
+      if (metrics) { metrics.corruptedLinesCount++; }
     }
   }
 }

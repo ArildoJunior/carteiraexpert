@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 export default async function PortfoliosPage() {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) { redirect('/login'); }
 
   const [portfolios, quotaSummary, billingSummary] = await Promise.all([
     listPortfolios(user),

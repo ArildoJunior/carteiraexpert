@@ -123,7 +123,7 @@ export function RegisterForm() {
           </div>
           <div className="ml-3 text-sm">
             <label htmlFor="register-terms" className="font-medium text-text-secondary">
-              Li e concordo com os <a href="/terms" target="_blank" className="text-action-primary hover:underline">Termos de Uso</a>
+              Li e concordo com os <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-action-primary hover:underline">Termos de Uso</a>
             </label>
             {state.fieldErrors?.termsOfService && (
               <p id="register-terms-error" className="text-negative-text text-xs mt-1">{state.fieldErrors.termsOfService[0]}</p>
@@ -143,7 +143,7 @@ export function RegisterForm() {
           </div>
           <div className="ml-3 text-sm">
             <label htmlFor="register-privacy" className="font-medium text-text-secondary">
-              Li e concordo com a <a href="/privacy" target="_blank" className="text-action-primary hover:underline">Política de Privacidade</a>
+              Li e concordo com a <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-action-primary hover:underline">Política de Privacidade</a>
             </label>
             {state.fieldErrors?.privacyPolicy && (
               <p id="register-privacy-error" className="text-negative-text text-xs mt-1">{state.fieldErrors.privacyPolicy[0]}</p>

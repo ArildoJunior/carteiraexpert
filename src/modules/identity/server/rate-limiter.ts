@@ -53,7 +53,7 @@ export async function isBlocked(key: string): Promise<IsBlockedResult> {
     .where(eq(authRateLimits.key, key))
     .limit(1);
 
-  if (!record) return { isBlocked: false, blockedUntil: null };
+  if (!record) { return { isBlocked: false, blockedUntil: null }; }
   if (!record.blockedUntil || record.blockedUntil <= now) {
     return { isBlocked: false, blockedUntil: null };
   }
@@ -101,7 +101,7 @@ export async function recordFailure(key: string): Promise<RecordFailureResult> {
 
   const rows = Array.isArray(result) ? result : (result as { rows?: Array<{ attempts: number; blocked_until: string | null }> }).rows ?? [];
   const row = rows[0];
-  if (!row) return { attempts: 0, blockedUntil: null };
+  if (!row) { return { attempts: 0, blockedUntil: null }; }
   return {
     attempts: Number(row.attempts),
     blockedUntil: row.blocked_until ? new Date(row.blocked_until) : null,

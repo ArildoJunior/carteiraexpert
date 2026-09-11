@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import { eq, and, desc } from 'drizzle-orm';
 import { db, type Database, type DatabaseTransaction, type DbExecutor } from '../../../lib/db';
 import { users } from '../../../lib/db/schema/identity';
-import { commercialPlans, userPlans } from '../../../lib/db/schema/plans';
+import { userPlans } from '../../../lib/db/schema/plans';
 import { billingSubscriptions, paymentEvents } from '../../../lib/db/schema/billing';
 import { billingGroups } from '../../../lib/db/schema/groups';
 import { insertAuditLog } from '../../../lib/db/audit';
@@ -14,7 +14,6 @@ import type {
   PaymentEvent,
   UserBillingSummary,
   CreateBillingSubscriptionInput,
-  UpdateBillingSubscriptionInput,
   CancelBillingSubscriptionInput,
   ProcessPaymentEventInput,
   BillingSubscriptionStatus,
@@ -23,13 +22,11 @@ import type {
 } from '../domain/billing.types';
 import {
   createBillingSubscriptionSchema,
-  updateBillingSubscriptionSchema,
   cancelBillingSubscriptionSchema,
   processPaymentEventSchema,
 } from '../domain/billing.schema';
 import {
   BillingSubscriptionNotFoundError,
-  DuplicatePaymentEventError,
   PaymentEventProcessingError,
 } from '../domain/errors';
 import type { CommercialPlanId, UserPlanStatus } from '../../plans/domain/plan.types';
@@ -95,25 +92,25 @@ export async function getUserActiveBillingSubscription(
     .where(eq(billingSubscriptions.userId, userId))
     .orderBy(desc(billingSubscriptions.createdAt));
 
-  if (subscriptions.length === 0) return null;
+  if (subscriptions.length === 0) { return null; }
 
   // Prioriza Pro ativo/trialing
   const proSub = subscriptions.find(
     (s) => s.planId === 'pro' && (s.status === 'active' || s.status === 'trialing')
   );
-  if (proSub) return mapBillingSubscriptionRow(proSub);
+  if (proSub) { return mapBillingSubscriptionRow(proSub); }
 
   // Prioriza Shared ativo/trialing
   const sharedSub = subscriptions.find(
     (s) => s.planId === 'shared' && (s.status === 'active' || s.status === 'trialing')
   );
-  if (sharedSub) return mapBillingSubscriptionRow(sharedSub);
+  if (sharedSub) { return mapBillingSubscriptionRow(sharedSub); }
 
   // Outra ativa/trialing
   const otherActive = subscriptions.find(
     (s) => s.status === 'active' || s.status === 'trialing'
   );
-  if (otherActive) return mapBillingSubscriptionRow(otherActive);
+  if (otherActive) { return mapBillingSubscriptionRow(otherActive); }
 
   // Fallback: mais recente
   return mapBillingSubscriptionRow(subscriptions[0]);

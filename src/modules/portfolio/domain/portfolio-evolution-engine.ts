@@ -32,7 +32,7 @@ export function formatEvolutionMoney(
   value: Decimal | string | null,
   currency = 'BRL'
 ): string {
-  if (value === null || value === undefined) return '—';
+  if (value === null || value === undefined) { return '—'; }
   try {
     const dec = value instanceof Decimal ? value : new Decimal(value || '0');
     const [intPart, fracPart = '00'] = dec.toFixed(2).split('.');
@@ -49,7 +49,7 @@ export function formatEvolutionMoney(
 export function formatEvolutionPercent(
   percent: Decimal | string | null
 ): string {
-  if (percent === null || percent === undefined) return '—';
+  if (percent === null || percent === undefined) { return '—'; }
   try {
     const dec =
       percent instanceof Decimal ? percent : new Decimal(percent || '0');
@@ -149,7 +149,7 @@ export function calculatePortfolioEvolutionTimeline(
   // 2. Validação estrita de referenceDate (Rejeição de datas futuras em dias civis UTC)
   const today = new Date();
   const refDate = input.referenceDate ? new Date(input.referenceDate) : today;
-  if (isNaN(refDate.getTime())) {
+  if (Number.isNaN(refDate.getTime())) {
     throw new Error('Data de referência inválida.');
   }
 
@@ -511,12 +511,12 @@ export function calculatePortfolioEvolutionTimeline(
 
       // Classificação mutuamente exclusiva das posições (quoted vs stale vs unquoted)
       if (isBaseCurrency) {
-        if (quoteStatus === 'VALID') {
+        if (quoteStatus === 'VALID' && compQuote) {
           quotedPositionsCount++;
           if (posCostInBase !== null) {
             quotedInvestedCost = quotedInvestedCost.plus(posCostInBase);
           }
-          marketValue = marketValue.plus(pos.quantity.times(compQuote!.price));
+          marketValue = marketValue.plus(pos.quantity.times(compQuote.price));
         } else if (quoteStatus === 'STALE') {
           stalePositionsCount++;
           staleQuotePositionsCount++;
@@ -528,12 +528,12 @@ export function calculatePortfolioEvolutionTimeline(
         }
       } else {
         // Ativo em moeda estrangeira: requer cotação E taxa cambial válidas
-        if (quoteStatus === 'VALID' && fxStatus === 'VALID' && fxRateValue !== null) {
+        if (quoteStatus === 'VALID' && compQuote && fxStatus === 'VALID' && fxRateValue !== null) {
           quotedPositionsCount++;
           if (posCostInBase !== null) {
             quotedInvestedCost = quotedInvestedCost.plus(posCostInBase);
           }
-          const rawMktVal = pos.quantity.times(compQuote!.price);
+          const rawMktVal = pos.quantity.times(compQuote.price);
           marketValue = marketValue.plus(rawMktVal.times(fxRateValue));
         } else if (quoteStatus === 'STALE' || fxStatus === 'STALE') {
           stalePositionsCount++;

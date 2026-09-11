@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import { CSP_DISCLAIMER } from '@/modules/market-data/domain/csp-engine';
 
 export interface CspRegulatoryDisclaimerProps {
@@ -14,7 +13,7 @@ export function CspRegulatoryDisclaimer({
 }: CspRegulatoryDisclaimerProps) {
   if (variant === 'footer') {
     return (
-      <footer
+      <aside
         className={`rounded-xl border border-border-theme bg-surface-elevated/40 p-4 text-xs text-text-muted leading-relaxed ${className}`}
         aria-label="Aviso Regulatório da Carteira Sugerida"
       >
@@ -27,7 +26,7 @@ export function CspRegulatoryDisclaimer({
             <p>{CSP_DISCLAIMER}</p>
           </div>
         </div>
-      </footer>
+      </aside>
     );
   }
 

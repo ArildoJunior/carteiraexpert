@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { resolveUnmappedBatchItemAssetAction } from '../server/import.actions';
 import { AssetSearchSelect } from '@/modules/portfolio/ui/AssetSearchSelect';
 import type { Asset } from '@/modules/portfolio/domain/asset.types';
@@ -26,10 +26,10 @@ export function ResolveAssetModal({
   const [customCurrency, setCustomCurrency] = useState<'BRL' | 'USD' | 'EUR'>('BRL');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  if (!item) return null;
+  if (!item) { return null; }
 
   async function handleResolve() {
-    if (!item) return;
+    if (!item) { return; }
     const targetItem = item;
     setErrorMessage(null);
 
@@ -56,8 +56,8 @@ export function ResolveAssetModal({
 
         onResolved?.(targetItem.id, selectedAsset.id);
         onClose();
-      } catch (err: any) {
-        setErrorMessage(err?.message || 'Erro ao associar ativo.');
+      } catch (err: unknown) {
+        setErrorMessage(err instanceof Error ? err.message : 'Erro ao associar ativo.');
       } finally {
         setIsPending(false);
       }
@@ -87,8 +87,8 @@ export function ResolveAssetModal({
 
         onResolved?.(targetItem.id, 'resolved-custom');
         onClose();
-      } catch (err: any) {
-        setErrorMessage(err?.message || 'Erro ao criar ativo customizado.');
+      } catch (err: unknown) {
+        setErrorMessage(err instanceof Error ? err.message : 'Erro ao criar ativo customizado.');
       } finally {
         setIsPending(false);
       }
@@ -123,7 +123,7 @@ export function ResolveAssetModal({
             aria-label="Fechar modal"
             className="p-1 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
@@ -212,7 +212,7 @@ export function ResolveAssetModal({
               <select
                 id="custom-asset-currency"
                 value={customCurrency}
-                onChange={(e) => setCustomCurrency(e.target.value as any)}
+                onChange={(e) => setCustomCurrency(e.target.value as 'BRL' | 'USD' | 'EUR')}
                 className="w-full bg-background border border-border-theme rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-action-primary"
               >
                 <option value="BRL">BRL (R$)</option>

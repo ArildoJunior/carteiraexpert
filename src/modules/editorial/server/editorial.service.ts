@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { eq, and, desc, isNull, sql } from 'drizzle-orm';
+import { eq, and, desc, isNull } from 'drizzle-orm';
 import { db } from '../../../lib/db';
 import {
   editorialDocuments,

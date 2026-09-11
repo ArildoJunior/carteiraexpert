@@ -58,7 +58,7 @@ const ISO_WITH_EXPLICIT_TZ_REGEX =
  * Sanitiza URLs, cabeçalhos e mensagens de erro para garantir que tokens e chaves não sejam expostos em logs.
  */
 function sanitizeErrorMessage(message: string, token?: string): string {
-  if (!token || token.trim().length === 0) return message;
+  if (!token || token.trim().length === 0) { return message; }
   return message.split(token).join('***');
 }
 
@@ -74,7 +74,7 @@ function parseBrapiMarketDate(rawTime: unknown): Date | null {
 
   if (typeof rawTime === 'string') {
     const trimmed = rawTime.trim();
-    if (!trimmed) return null;
+    if (!trimmed) { return null; }
 
     // Rejeita datas sem timezone explícito (evita interpretação ambígua com fuso local)
     if (!ISO_WITH_EXPLICIT_TZ_REGEX.test(trimmed)) {
@@ -82,18 +82,18 @@ function parseBrapiMarketDate(rawTime: unknown): Date | null {
     }
 
     const parsed = new Date(trimmed);
-    if (!isNaN(parsed.getTime())) return parsed;
+    if (!Number.isNaN(parsed.getTime())) { return parsed; }
     return null;
   }
 
   if (typeof rawTime === 'number') {
-    if (!Number.isFinite(rawTime) || isNaN(rawTime) || rawTime <= 0) {
+    if (!Number.isFinite(rawTime) || Number.isNaN(rawTime) || rawTime <= 0) {
       return null;
     }
     // Se o timestamp estiver em segundos (10 dígitos), converte para milissegundos
     const ms = rawTime < 1e11 ? rawTime * 1000 : rawTime;
     const parsed = new Date(ms);
-    if (!isNaN(parsed.getTime())) return parsed;
+    if (!Number.isNaN(parsed.getTime())) { return parsed; }
     return null;
   }
 
@@ -124,7 +124,7 @@ function validateBrapiPrice(rawPrice: unknown): Decimal | null {
   }
 
   if (typeof rawPrice === 'number') {
-    if (!Number.isFinite(rawPrice) || isNaN(rawPrice) || rawPrice < 0) {
+    if (!Number.isFinite(rawPrice) || Number.isNaN(rawPrice) || rawPrice < 0) {
       return null;
     }
   }
@@ -202,7 +202,7 @@ export class BrapiMarketDataProviderAdapter implements MarketDataProviderAdapter
 
     // Validação estrita de targetDate: o adaptador aceita apenas cotações correntes do dia atual em UTC
     if (targetDate) {
-      if (isNaN(targetDate.getTime())) {
+      if (Number.isNaN(targetDate.getTime())) {
         throw new BrapiProviderError(
           'O adaptador BRAPI aceita somente cotações correntes do dia atual em UTC. Para outras datas, utilize a ingestão manual.'
         );
@@ -250,13 +250,13 @@ export class BrapiMarketDataProviderAdapter implements MarketDataProviderAdapter
         },
         signal: controller.signal,
       });
-    } catch (err: any) {
-      if (err.name === 'AbortError' || controller.signal.aborted) {
+    } catch (err: unknown) {
+      if ((err as Error)?.name === 'AbortError' || controller.signal.aborted) {
         throw new BrapiProviderError(
           `Timeout de ${this.timeoutMs}ms excedido ao consultar cotações na BRAPI.`
         );
       }
-      const safeMsg = sanitizeErrorMessage(err.message || 'Erro de conexão', validToken);
+      const safeMsg = sanitizeErrorMessage((err as Error)?.message || 'Erro de conexão', validToken);
       throw new BrapiProviderError(`Falha de rede ao consultar BRAPI: ${safeMsg}`);
     } finally {
       clearTimeout(timeoutHandle);
@@ -308,7 +308,7 @@ export class BrapiMarketDataProviderAdapter implements MarketDataProviderAdapter
     const normalizedQuotes: ProviderQuoteItem[] = [];
 
     for (const rawItem of rawResults) {
-      if (!rawItem || typeof rawItem !== 'object') continue;
+      if (!rawItem || typeof rawItem !== 'object') { continue; }
 
       const item = rawItem as Record<string, unknown>;
 

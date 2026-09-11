@@ -1,10 +1,7 @@
-import React from 'react';
-
 export function OptionsDisclaimerBanner({ compact = false }: { compact?: boolean }) {
   if (compact) {
     return (
-      <div
-        role="region"
+      <section
         aria-label="Aviso Regulatório de Opções"
         className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-text-secondary flex items-center gap-2"
       >
@@ -12,14 +9,13 @@ export function OptionsDisclaimerBanner({ compact = false }: { compact?: boolean
         <span>
           <strong className="text-text-primary">Módulo Informativo:</strong> Este ambiente não recomenda estratégias, não executa ordens, não realiza rolagens automáticas e calcula gregas teóricas via modelo de Black-Scholes.
         </span>
-      </div>
+      </section>
     );
   }
 
   return (
     <aside
       id="options-regulatory-disclaimer"
-      role="region"
       aria-label="Aviso Regulatório e Legal de Opções"
       className="rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-surface to-amber-500/5 p-4 sm:p-5 shadow-sm space-y-2"
     >

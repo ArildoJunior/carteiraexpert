@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: FipDetailPageProps): Promise<
   const { ticker } = await params;
   const resolved = await resolveCanonicalAsset(ticker);
 
-  if (!resolved || resolved.canonicalCategory !== 'fip') {
+  if (resolved?.canonicalCategory !== 'fip') {
     return {
       title: 'FIP Não Encontrado | CarteiraExpert',
     };
@@ -52,7 +52,7 @@ export default async function FipDetailPage({ params, searchParams }: FipDetailP
 
   const resolved = await resolveCanonicalAsset(ticker);
 
-  if (!resolved || resolved.canonicalCategory !== 'fip') {
+  if (resolved?.canonicalCategory !== 'fip') {
     notFound();
   }
 

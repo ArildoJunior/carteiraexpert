@@ -3,7 +3,7 @@ import { Decimal } from '@/lib/decimal';
 
 function tryDecimal(val: unknown): Decimal | null {
   try {
-    if (typeof val !== 'string' && typeof val !== 'number') return null;
+    if (typeof val !== 'string' && typeof val !== 'number') { return null; }
     const d = new Decimal(val);
     return !d.isNaN() && d.isFinite() ? d : null;
   } catch {
@@ -26,7 +26,7 @@ export const projectionPremisesInputSchema = z
       .refine(
         (val) => {
           const d = tryDecimal(val);
-          return d !== null && d.greaterThanOrEqualTo(0);
+          return Boolean(d?.greaterThanOrEqualTo(0));
         },
         { message: 'O capital inicial não pode ser negativo' }
       ),
@@ -35,7 +35,7 @@ export const projectionPremisesInputSchema = z
       .refine(
         (val) => {
           const d = tryDecimal(val);
-          return d !== null && d.greaterThanOrEqualTo(0);
+          return Boolean(d?.greaterThanOrEqualTo(0));
         },
         { message: 'O aporte mensal não pode ser negativo' }
       ),
@@ -44,7 +44,7 @@ export const projectionPremisesInputSchema = z
       .refine(
         (val) => {
           const d = tryDecimal(val);
-          return d !== null && d.greaterThanOrEqualTo(-0.5) && d.lessThanOrEqualTo(2.0);
+          return Boolean(d?.greaterThanOrEqualTo(-0.5) && d?.lessThanOrEqualTo(2.0));
         },
         { message: 'A taxa de rendimento anual deve estar entre -50% e +200% ao ano' }
       ),
@@ -53,7 +53,7 @@ export const projectionPremisesInputSchema = z
       .refine(
         (val) => {
           const d = tryDecimal(val);
-          return d !== null && d.greaterThanOrEqualTo(0) && d.lessThanOrEqualTo(1.0);
+          return Boolean(d?.greaterThanOrEqualTo(0) && d?.lessThanOrEqualTo(1.0));
         },
         { message: 'A taxa de inflação anual não pode ser negativa e deve ser de no máximo 100%' }
       ),
@@ -62,7 +62,7 @@ export const projectionPremisesInputSchema = z
       .refine(
         (val) => {
           const d = tryDecimal(val);
-          return d !== null && d.greaterThanOrEqualTo(0) && d.lessThanOrEqualTo(0.5);
+          return Boolean(d?.greaterThanOrEqualTo(0) && d?.lessThanOrEqualTo(0.5));
         },
         { message: 'O Dividend Yield anual deve estar entre 0% e 50% ao ano' }
       ),
@@ -80,7 +80,7 @@ export const projectionPremisesInputSchema = z
     (data) => {
       const initial = tryDecimal(data.initialCapital);
       const monthly = tryDecimal(data.monthlyContribution);
-      if (!initial || !monthly) return true;
+      if (!initial || !monthly) { return true; }
       return initial.greaterThan(0) || monthly.greaterThan(0);
     },
     {

@@ -63,8 +63,8 @@ export const processPaymentEventSchema = z.object({
     .nullable()
     .optional()
     .transform((val) => {
-      if (val === null || val === undefined) return null;
-      if (val instanceof Decimal) return val;
+      if (val === null || val === undefined) { return null; }
+      if (val instanceof Decimal) { return val; }
       return new Decimal(val);
     }),
   currency: z.string().length(3).default('BRL'),

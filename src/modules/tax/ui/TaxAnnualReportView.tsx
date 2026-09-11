@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type {
   SerializedTaxAnnualReport,
   SerializedUserTaxPreferences,
@@ -40,29 +40,29 @@ export function TaxAnnualReportView({ report, preferences }: TaxAnnualReportView
 
     if (activeTab === 'APURACAO_MENSAL') {
       csvContent += 'Mes,Vendas_Totais,Isencao_20k,Ganho_Isento,Ganho_Tributavel,Prejuizo_Tributavel,IR_Estimado\n';
-      report.months.forEach((m) => {
+      for (const m of report.months) {
         csvContent += `${m.month},${m.totalSalesOverall},${m.isStockExempt ? 'SIM' : 'NAO'},${m.exemptGainStock},${m.taxableGainStock},${m.taxableLossStock},${m.totalEstimatedTax}\n`;
-      });
+      }
     } else if (activeTab === 'BENS_E_DIREITOS') {
       csvContent += 'Ativo,Tipo,Quantidade_31_12,Custo_Medio,Custo_Total_31_12,Discriminacao\n';
-      report.bensEDireitosSheet.forEach((b) => {
+      for (const b of report.bensEDireitosSheet) {
         csvContent += `"${b.assetSymbol}","${b.assetType}",${b.quantityAtYearEnd},${b.averageCostAtYearEnd},${b.totalCostAtYearEnd},"${b.discrimination.replace(/"/g, '""')}"\n`;
-      });
+      }
     } else if (activeTab === 'RENDIMENTOS_ISENTOS') {
       csvContent += 'Ativo,Tipo,Data,Valor_Bruto,IRRF,Valor_Liquido\n';
-      report.rendimentosIsentosSheet.forEach((r) => {
+      for (const r of report.rendimentosIsentosSheet) {
         csvContent += `"${r.assetSymbol}","${r.type}","${r.date}",${r.grossAmount},${r.irrfAmount},${r.netAmount}\n`;
-      });
+      }
     } else if (activeTab === 'TRIBUTACAO_EXCLUSIVA') {
       csvContent += 'Ativo,Tipo,Data,Valor_Bruto,IRRF_Retido,Valor_Liquido\n';
-      report.tributacaoExclusivaSheet.forEach((r) => {
+      for (const r of report.tributacaoExclusivaSheet) {
         csvContent += `"${r.assetSymbol}","${r.type}","${r.date}",${r.grossAmount},${r.irrfAmount},${r.netAmount}\n`;
-      });
+      }
     } else {
       csvContent += 'Ano_Origem,Mes_Origem,Ativo,Prejuizo_Original,Saldo_Remanescente,Validade\n';
-      report.remainingLossCredits.forEach((c) => {
+      for (const c of report.remainingLossCredits) {
         csvContent += `${c.year},${c.monthOrigin},"${c.assetSymbol}",${c.originalLossAmount},${c.remainingAmount},"${c.expiresOn}"\n`;
-      });
+      }
     }
 
     const encodedUri = encodeURI(csvContent);
@@ -345,8 +345,8 @@ export function TaxAnnualReportView({ report, preferences }: TaxAnnualReportView
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
-                  {report.rendimentosIsentosSheet.map((r, i) => (
-                    <tr key={`${r.assetSymbol}-${r.date}-${i}`} className="hover:bg-surface-elevated/40">
+                  {report.rendimentosIsentosSheet.map((r) => (
+                    <tr key={`${r.assetSymbol}-${r.date}-${r.type}-${r.netAmount}`} className="hover:bg-surface-elevated/40">
                       <td className="py-2.5 px-3 text-text-muted">{r.date}</td>
                       <td className="py-2.5 px-3 font-semibold text-text-primary">{r.assetSymbol}</td>
                       <td className="py-2.5 px-3 text-text-secondary">
@@ -392,8 +392,8 @@ export function TaxAnnualReportView({ report, preferences }: TaxAnnualReportView
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
-                  {report.tributacaoExclusivaSheet.map((j, i) => (
-                    <tr key={`${j.assetSymbol}-${j.date}-${i}`} className="hover:bg-surface-elevated/40">
+                  {report.tributacaoExclusivaSheet.map((j) => (
+                    <tr key={`${j.assetSymbol}-${j.date}-${j.grossAmount}-${j.netAmount}`} className="hover:bg-surface-elevated/40">
                       <td className="py-2.5 px-3 text-text-muted">{j.date}</td>
                       <td className="py-2.5 px-3 font-semibold text-text-primary">{j.assetSymbol}</td>
                       <td className="py-2.5 px-3 text-right font-mono text-text-primary">

@@ -27,7 +27,7 @@ export const metadata: Metadata = {
 
 export default async function OptionsPage() {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) { redirect('/login'); }
 
   // Consulta paralela dos dados iniciais
   const [userOptions, alerts, userPortfolios, visibleAssets] = await Promise.all([

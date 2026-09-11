@@ -25,11 +25,13 @@ export function CancelEventModal({
   const [state, setState] = useState<ActionResult>({ success: false });
 
   useEffect(() => {
-    setReason('');
-    setState({ success: false });
+    if (isOpen && eventToCancel) {
+      setReason('');
+      setState({ success: false });
+    }
   }, [eventToCancel, isOpen]);
 
-  if (!isOpen || !eventToCancel) return null;
+  if (!isOpen || !eventToCancel) { return null; }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

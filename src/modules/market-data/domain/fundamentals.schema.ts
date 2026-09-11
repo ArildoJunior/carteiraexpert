@@ -8,7 +8,7 @@ const optionalDecimalString = z
   .trim()
   .refine(
     (val) => {
-      if (!val) return true;
+      if (!val) { return true; }
       return /^-?\d+(\.\d+)?$/.test(val);
     },
     { message: 'Valor numérico decimal inválido' }
@@ -21,8 +21,8 @@ const nonNegativeDecimalString = z
   .trim()
   .refine(
     (val) => {
-      if (!val) return true;
-      if (!/^-?\d+(\.\d+)?$/.test(val)) return false;
+      if (!val) { return true; }
+      if (!/^-?\d+(\.\d+)?$/.test(val)) { return false; }
       return Number(val) >= 0;
     },
     { message: 'Valor deve ser maior ou igual a zero' }
@@ -35,8 +35,8 @@ const strictlyPositiveDecimalString = z
   .trim()
   .refine(
     (val) => {
-      if (!val) return true;
-      if (!/^-?\d+(\.\d+)?$/.test(val)) return false;
+      if (!val) { return true; }
+      if (!/^-?\d+(\.\d+)?$/.test(val)) { return false; }
       return Number(val) > 0;
     },
     { message: 'Quantidade de ações deve ser estritamente maior que zero' }

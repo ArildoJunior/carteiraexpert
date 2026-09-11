@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 
 export interface TraceabilityInputItem {
   label: string;
@@ -28,7 +28,7 @@ export function IndicatorTraceabilityModal({
   methodology,
 }: IndicatorTraceabilityModalProps) {
   useEffect(() => {
-    if (!open) return;
+    if (!open) { return; }
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -48,7 +48,7 @@ export function IndicatorTraceabilityModal({
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open) { return null; }
 
   return (
     <div
@@ -111,9 +111,9 @@ export function IndicatorTraceabilityModal({
               Parâmetros Factuais Utilizados
             </span>
             <div className="space-y-1.5 text-xs">
-              {inputs.map((inp, idx) => (
+              {inputs.map((inp) => (
                 <div
-                  key={idx}
+                  key={inp.label}
                   className="flex items-center justify-between py-1 border-b border-border-theme/60"
                 >
                   <span className="text-text-muted">{inp.label}:</span>
@@ -140,8 +140,8 @@ export function IndicatorTraceabilityModal({
               Limitações e Notas Metodológicas
             </span>
             <ul className="list-disc list-inside space-y-1 text-text-muted text-[11px] leading-relaxed">
-              {notes.map((n, i) => (
-                <li key={i}>{n}</li>
+              {notes.map((n) => (
+                <li key={n}>{n}</li>
               ))}
             </ul>
           </div>

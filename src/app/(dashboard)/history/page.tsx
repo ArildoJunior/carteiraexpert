@@ -64,7 +64,7 @@ function formatQuantity(quantity: string | Decimal): string {
 
 export default async function HistoryPage({ searchParams }: HistoryPageProps) {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) { redirect('/login'); }
 
   const params = await searchParams;
   const activeTab = params.tab === 'cotahist' ? 'cotahist' : 'operations';
@@ -183,14 +183,14 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
   // Função auxiliar para construir links de paginação preservando filtros
   function buildPageUrl(targetPage: number): string {
     const q = new URLSearchParams();
-    if (params.portfolioId) q.set('portfolioId', params.portfolioId);
-    if (params.custodyAccountId) q.set('custodyAccountId', params.custodyAccountId);
-    if (params.type) q.set('type', params.type);
-    if (params.ticker) q.set('ticker', params.ticker);
-    if (params.startDate) q.set('startDate', params.startDate);
-    if (params.endDate) q.set('endDate', params.endDate);
-    if (targetPage > 1) q.set('page', String(targetPage));
-    if (limit !== 20) q.set('limit', String(limit));
+    if (params.portfolioId) { q.set('portfolioId', params.portfolioId); }
+    if (params.custodyAccountId) { q.set('custodyAccountId', params.custodyAccountId); }
+    if (params.type) { q.set('type', params.type); }
+    if (params.ticker) { q.set('ticker', params.ticker); }
+    if (params.startDate) { q.set('startDate', params.startDate); }
+    if (params.endDate) { q.set('endDate', params.endDate); }
+    if (targetPage > 1) { q.set('page', String(targetPage)); }
+    if (limit !== 20) { q.set('limit', String(limit)); }
     const qs = q.toString();
     return qs ? `/history?${qs}` : '/history';
   }

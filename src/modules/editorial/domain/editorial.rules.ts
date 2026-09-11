@@ -23,7 +23,7 @@ export function canTransitionEditorialStatus(
   currentStatus: EditorialStatus,
   targetStatus: EditorialStatus
 ): boolean {
-  if (currentStatus === targetStatus) return true;
+  if (currentStatus === targetStatus) { return true; }
   const allowed = VALID_TRANSITIONS[currentStatus] || [];
   return allowed.includes(targetStatus);
 }

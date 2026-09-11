@@ -106,7 +106,7 @@ export function TransactionModal({
     };
   }, [selectedAsset, transactionType, direction, portfolioId]);
 
-  if (!isOpen) return null;
+  if (!isOpen) { return null; }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -147,7 +147,7 @@ export function TransactionModal({
 
   // Verifica se a quantidade disponível é estritamente positiva usando Decimal puro
   const isAvailablePositive = (() => {
-    if (!availableQty) return false;
+    if (!availableQty) { return false; }
     try {
       return new Decimal(availableQty).greaterThan(0);
     } catch {
@@ -198,9 +198,9 @@ export function TransactionModal({
 
             {/* Seletor Tipo: Compra / Venda / Ajuste Manual */}
             <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1.5">
+              <span className="block text-sm font-medium text-text-secondary mb-1.5">
                 Tipo de Operação <span className="text-negative-text">*</span>
-              </label>
+              </span>
               <div className="grid grid-cols-3 gap-2">
                 <button
                   id="transaction-type-buy"
@@ -244,9 +244,9 @@ export function TransactionModal({
             {/* Seletor de Direção: Exibido APENAS para MANUAL_ADJUSTMENT */}
             {transactionType === 'MANUAL_ADJUSTMENT' && (
               <div id="transaction-direction-container">
-                <label className="block text-sm font-medium text-text-secondary mb-1.5">
+                <span className="block text-sm font-medium text-text-secondary mb-1.5">
                   Direção do Ajuste <span className="text-negative-text">*</span>
-                </label>
+                </span>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     id="transaction-direction-in"

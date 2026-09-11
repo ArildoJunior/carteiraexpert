@@ -48,7 +48,7 @@ interface CustomTooltipProps {
 }
 
 function ChartCustomTooltip({ active, payload }: CustomTooltipProps) {
-  if (!active || !payload || payload.length === 0) return null;
+  if (!active || !payload || payload.length === 0) { return null; }
 
   const data = payload[0].payload;
 
@@ -215,7 +215,7 @@ export function DashboardAllocationCharts({
             totalUnquotedCount++;
             if (isBrl) {
               totalUnquotedCost = totalUnquotedCost.plus(posCost);
-            } else if (fxRate && fxRate.greaterThan(0)) {
+            } else if (fxRate?.greaterThan(0)) {
               totalUnquotedCost = totalUnquotedCost.plus(posCost.times(fxRate));
             }
           }
@@ -226,17 +226,18 @@ export function DashboardAllocationCharts({
               if (posCost.greaterThan(0)) {
                 portfolioValue = portfolioValue.plus(posCost);
               }
-            } else if (fxRate && fxRate.greaterThan(0)) {
+            } else if (fxRate?.greaterThan(0)) {
               portfolioValue = portfolioValue.plus(posCost.times(fxRate));
             }
           } else {
             // Em modo valor de mercado, somente ativos com cotação válida entram no total
             if (isQuoted) {
-              const effectiveMv = isBrl
-                ? new Decimal(pos.marketValue!)
-                : new Decimal(pos.marketValueBrl!);
-              if (effectiveMv.greaterThan(0)) {
-                portfolioValue = portfolioValue.plus(effectiveMv);
+              const rawMv = isBrl ? pos.marketValue : pos.marketValueBrl;
+              if (rawMv) {
+                const effectiveMv = new Decimal(rawMv);
+                if (effectiveMv.greaterThan(0)) {
+                  portfolioValue = portfolioValue.plus(effectiveMv);
+                }
               }
             }
           }
@@ -267,7 +268,7 @@ export function DashboardAllocationCharts({
         .filter((g) => g.rawValue.greaterThan(0))
         .sort((a, b) => {
           const diff = b.rawValue.minus(a.rawValue);
-          if (!diff.isZero()) return diff.toNumber();
+          if (!diff.isZero()) { return diff.toNumber(); }
           return a.label.localeCompare(b.label);
         });
 
@@ -323,7 +324,7 @@ export function DashboardAllocationCharts({
 
   // Conversão para number exclusivamente na fronteira visual do Recharts
   const visualSlices = useMemo(() => {
-    if (!chartData) return [];
+    if (!chartData) { return []; }
     return chartData.slices.map((slice) => ({
       ...slice,
       numericValue: Number(slice.rawValue),
@@ -595,23 +596,17 @@ export function DashboardAllocationCharts({
               const isHovered = activeIndex === index;
 
               return (
-                <div
+                <button
+                  type="button"
                   key={slice.id}
                   id={`dashboard-chart-legend-${slice.label}`}
-                  role="button"
-                  tabIndex={0}
                   aria-label={`${slice.label}: valor ${slice.formattedValue}, participação ${slice.formattedPercent}`}
                   onMouseEnter={() => setActiveIndex(index)}
                   onMouseLeave={() => setActiveIndex(null)}
                   onFocus={() => setActiveIndex(index)}
                   onBlur={() => setActiveIndex(null)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setActiveIndex(activeIndex === index ? null : index);
-                    }
-                  }}
-                  className={`flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary ${
+                  onClick={() => setActiveIndex(activeIndex === index ? null : index)}
+                  className={`w-full text-left flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary ${
                     isHovered
                       ? 'bg-surface-elevated border-action-primary/50 shadow-sm translate-x-1'
                       : 'bg-background/70 border-border-theme hover:bg-surface-elevated'
@@ -642,7 +637,7 @@ export function DashboardAllocationCharts({
                       {slice.formattedPercent}
                     </p>
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>

@@ -64,11 +64,11 @@ export function sortEventsChronologically<T extends { tradeDate: Date; createdAt
   return [...events].sort((a, b) => {
     const timeA = new Date(a.tradeDate).getTime();
     const timeB = new Date(b.tradeDate).getTime();
-    if (timeA !== timeB) return timeA - timeB;
+    if (timeA !== timeB) { return timeA - timeB; }
 
     const createdA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
     const createdB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-    if (createdA !== createdB) return createdA - createdB;
+    if (createdA !== createdB) { return createdA - createdB; }
 
     return a.id.localeCompare(b.id);
   });
@@ -377,7 +377,7 @@ export function validateTimelineConsistency(
   prospectiveEvent?: TimelineEvent,
   eventIdToOmit?: string
 ): void {
-  let combinedEvents = existingActiveEvents.filter(
+  const combinedEvents = existingActiveEvents.filter(
     (e) => !e.deletedAt && (!eventIdToOmit || e.id !== eventIdToOmit)
   );
 
@@ -407,15 +407,14 @@ export function validateTimelineConsistency(
               tradeDate: eventDate,
             }
           );
-        } else {
-          throw new RetroactiveInconsistencyError(
-            `A operação não pode ser concluída pois geraria inconsistência na data ${eventDate.toISOString().slice(0, 10)}.`,
-            {
-              assetId: event.assetId,
-              conflictingDate: eventDate,
-            }
-          );
         }
+        throw new RetroactiveInconsistencyError(
+          `A operação não pode ser concluída pois geraria inconsistência na data ${eventDate.toISOString().slice(0, 10)}.`,
+          {
+            assetId: event.assetId,
+            conflictingDate: eventDate,
+          }
+        );
       }
       runningQuantity = runningQuantity.minus(qty);
     } else if (event.type === 'SPLIT') {
@@ -434,15 +433,14 @@ export function validateTimelineConsistency(
               tradeDate: eventDate,
             }
           );
-        } else {
-          throw new RetroactiveInconsistencyError(
-            `O desdobramento não pode ser aplicado pois a posição na data ${eventDate.toISOString().slice(0, 10)} é nula ou insuficiente.`,
-            {
-              assetId: event.assetId,
-              conflictingDate: eventDate,
-            }
-          );
         }
+        throw new RetroactiveInconsistencyError(
+          `O desdobramento não pode ser aplicado pois a posição na data ${eventDate.toISOString().slice(0, 10)} é nula ou insuficiente.`,
+          {
+            assetId: event.assetId,
+            conflictingDate: eventDate,
+          }
+        );
       }
       runningQuantity = runningQuantity.times(factor);
     } else if (event.type === 'GROUPING') {
@@ -461,15 +459,14 @@ export function validateTimelineConsistency(
               tradeDate: eventDate,
             }
           );
-        } else {
-          throw new RetroactiveInconsistencyError(
-            `O grupamento não pode ser aplicado pois a posição na data ${eventDate.toISOString().slice(0, 10)} é nula ou insuficiente.`,
-            {
-              assetId: event.assetId,
-              conflictingDate: eventDate,
-            }
-          );
         }
+        throw new RetroactiveInconsistencyError(
+          `O grupamento não pode ser aplicado pois a posição na data ${eventDate.toISOString().slice(0, 10)} é nula ou insuficiente.`,
+          {
+            assetId: event.assetId,
+            conflictingDate: eventDate,
+          }
+        );
       }
       runningQuantity = runningQuantity.dividedBy(factor);
     } else if (event.type === 'BONUS_SHARE') {
@@ -484,15 +481,14 @@ export function validateTimelineConsistency(
               tradeDate: eventDate,
             }
           );
-        } else {
-          throw new RetroactiveInconsistencyError(
-            `A bonificação não pode ser aplicada pois a posição na data ${eventDate.toISOString().slice(0, 10)} é nula ou insuficiente.`,
-            {
-              assetId: event.assetId,
-              conflictingDate: eventDate,
-            }
-          );
         }
+        throw new RetroactiveInconsistencyError(
+          `A bonificação não pode ser aplicada pois a posição na data ${eventDate.toISOString().slice(0, 10)} é nula ou insuficiente.`,
+          {
+            assetId: event.assetId,
+            conflictingDate: eventDate,
+          }
+        );
       }
       runningQuantity = runningQuantity.plus(qty);
     } else if (event.type === 'DIVIDEND') {
@@ -507,15 +503,14 @@ export function validateTimelineConsistency(
               tradeDate: eventDate,
             }
           );
-        } else {
-          throw new RetroactiveInconsistencyError(
-            `O dividendo não pode ser aplicado pois a posição na data ${eventDate.toISOString().slice(0, 10)} é inferior à quantidade elegível informada.`,
-            {
-              assetId: event.assetId,
-              conflictingDate: eventDate,
-            }
-          );
         }
+        throw new RetroactiveInconsistencyError(
+          `O dividendo não pode ser aplicado pois a posição na data ${eventDate.toISOString().slice(0, 10)} é inferior à quantidade elegível informada.`,
+          {
+            assetId: event.assetId,
+            conflictingDate: eventDate,
+          }
+        );
       }
     } else if (event.type === 'JCP') {
       if (runningQuantity.lessThanOrEqualTo(0) || qty.greaterThan(runningQuantity)) {
@@ -529,15 +524,14 @@ export function validateTimelineConsistency(
               tradeDate: eventDate,
             }
           );
-        } else {
-          throw new RetroactiveInconsistencyError(
-            `O JCP não pode ser aplicado pois a posição na data ${eventDate.toISOString().slice(0, 10)} é inferior à quantidade elegível informada.`,
-            {
-              assetId: event.assetId,
-              conflictingDate: eventDate,
-            }
-          );
         }
+        throw new RetroactiveInconsistencyError(
+          `O JCP não pode ser aplicado pois a posição na data ${eventDate.toISOString().slice(0, 10)} é inferior à quantidade elegível informada.`,
+          {
+            assetId: event.assetId,
+            conflictingDate: eventDate,
+          }
+        );
       }
     } else if (event.type === 'MANUAL_ADJUSTMENT') {
       const direction = (event.direction || '').toUpperCase().trim();
@@ -555,15 +549,14 @@ export function validateTimelineConsistency(
                 tradeDate: eventDate,
               }
             );
-          } else {
-            throw new RetroactiveInconsistencyError(
-              `O ajuste manual de saída não pode ser concluído pois geraria inconsistência na data ${eventDate.toISOString().slice(0, 10)}.`,
-              {
-                assetId: event.assetId,
-                conflictingDate: eventDate,
-              }
-            );
           }
+          throw new RetroactiveInconsistencyError(
+            `O ajuste manual de saída não pode ser concluído pois geraria inconsistência na data ${eventDate.toISOString().slice(0, 10)}.`,
+            {
+              assetId: event.assetId,
+              conflictingDate: eventDate,
+            }
+          );
         }
         runningQuantity = runningQuantity.minus(qty);
       } else {
@@ -631,7 +624,7 @@ export function calculatePortfolioPositionsSummary(
             // Para ativos BRL, usa o PnL original. Para estrangeiros, converte para BRL via fxRateUsed.
             if (isBrl) {
               totalUnrealizedPnL = totalUnrealizedPnL.plus(position.unrealizedPnL);
-            } else if (position.fxRateUsed && position.fxRateUsed.greaterThan(0)) {
+            } else if (position.fxRateUsed?.greaterThan(0)) {
               const unrealizedPnLBrl = position.unrealizedPnL.times(position.fxRateUsed);
               totalUnrealizedPnL = totalUnrealizedPnL.plus(unrealizedPnLBrl);
             }
@@ -814,7 +807,10 @@ export function calculateUserDashboardSummary(
       });
     }
 
-    const group = currencyMap.get(cur)!;
+    const group = currencyMap.get(cur);
+    if (!group) {
+      continue;
+    }
     group.totalInvestedCost = group.totalInvestedCost.plus(item.summary.totalInvestedCost);
     group.totalFees = group.totalFees.plus(item.summary.totalFees);
     group.totalRealizedPnL = group.totalRealizedPnL.plus(item.summary.totalRealizedPnL);
@@ -849,8 +845,8 @@ export function calculateUserDashboardSummary(
       portfoliosCount: data.portfoliosCount,
     }))
     .sort((a, b) => {
-      if (a.currency === 'BRL') return -1;
-      if (b.currency === 'BRL') return 1;
+      if (a.currency === 'BRL') { return -1; }
+      if (b.currency === 'BRL') { return 1; }
       return a.currency.localeCompare(b.currency);
     });
 

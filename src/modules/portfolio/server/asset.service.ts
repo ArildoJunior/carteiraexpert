@@ -45,12 +45,13 @@ export async function searchAssets(
 
   if (trimmedQuery.length > 0) {
     const escaped = escapeLike(trimmedQuery);
-    conditions.push(
-      or(
-        ilike(assets.ticker, `${escaped}%`),
-        ilike(assets.name, `%${escaped}%`)
-      )!
+    const queryCond = or(
+      ilike(assets.ticker, `${escaped}%`),
+      ilike(assets.name, `%${escaped}%`)
     );
+    if (queryCond) {
+      conditions.push(queryCond);
+    }
   }
 
   if (params.assetType) {
@@ -140,13 +141,19 @@ export async function createCustomAssetInTransaction(
       .returning();
 
     row = inserted;
-  } catch (err: any) {
-    const code = err?.code || err?.cause?.code;
+  } catch (err: unknown) {
+    const dbErr = err as {
+      code?: string;
+      constraint_name?: string;
+      constraint?: string;
+      cause?: { code?: string; constraint_name?: string; constraint?: string };
+    } | null;
+    const code = dbErr?.code || dbErr?.cause?.code;
     const constraintName =
-      err?.constraint_name ||
-      err?.cause?.constraint_name ||
-      err?.constraint ||
-      err?.cause?.constraint;
+      dbErr?.constraint_name ||
+      dbErr?.cause?.constraint_name ||
+      dbErr?.constraint ||
+      dbErr?.cause?.constraint;
 
     const isUserTickerMarketConstraint =
       code === '23505' &&

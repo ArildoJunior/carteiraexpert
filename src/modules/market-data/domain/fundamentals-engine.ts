@@ -73,8 +73,7 @@ export function calculateFundamentalIndicators(
   let netMargin: string | null = null;
   if (
     statement.netIncome !== null &&
-    statement.netRevenue !== null &&
-    statement.netRevenue.greaterThan(0)
+    statement.netRevenue?.greaterThan(0)
   ) {
     netMargin = statement.netIncome
       .dividedBy(statement.netRevenue)
@@ -85,8 +84,7 @@ export function calculateFundamentalIndicators(
   let ebitdaMargin: string | null = null;
   if (
     statement.ebitda !== null &&
-    statement.netRevenue !== null &&
-    statement.netRevenue.greaterThan(0)
+    statement.netRevenue?.greaterThan(0)
   ) {
     ebitdaMargin = statement.ebitda
       .dividedBy(statement.netRevenue)
@@ -97,8 +95,7 @@ export function calculateFundamentalIndicators(
   let roe: string | null = null;
   if (
     statement.netIncome !== null &&
-    statement.totalEquity !== null &&
-    statement.totalEquity.greaterThan(0)
+    statement.totalEquity?.greaterThan(0)
   ) {
     roe = statement.netIncome
       .dividedBy(statement.totalEquity)
@@ -109,8 +106,7 @@ export function calculateFundamentalIndicators(
   let roa: string | null = null;
   if (
     statement.netIncome !== null &&
-    statement.totalAssets !== null &&
-    statement.totalAssets.greaterThan(0)
+    statement.totalAssets?.greaterThan(0)
   ) {
     roa = statement.netIncome
       .dividedBy(statement.totalAssets)
@@ -145,8 +141,7 @@ export function calculateFundamentalIndicators(
   let roic: string | null = null;
   if (
     ebitDecimal !== null &&
-    investedCapitalDecimal !== null &&
-    investedCapitalDecimal.greaterThan(0)
+    investedCapitalDecimal?.greaterThan(0)
   ) {
     const oneMinusTax = new Decimal(1).minus(effectiveTaxRate);
     const nopat = ebitDecimal.times(oneMinusTax);
@@ -159,8 +154,7 @@ export function calculateFundamentalIndicators(
   let lpa: string | null = null;
   if (
     statement.netIncome !== null &&
-    statement.sharesCount !== null &&
-    statement.sharesCount.greaterThan(0)
+    statement.sharesCount?.greaterThan(0)
   ) {
     lpaDecimal = statement.netIncome.dividedBy(statement.sharesCount);
     lpa = lpaDecimal.toFixed(4, Decimal.ROUND_HALF_UP);
@@ -171,8 +165,7 @@ export function calculateFundamentalIndicators(
   let vpa: string | null = null;
   if (
     statement.totalEquity !== null &&
-    statement.sharesCount !== null &&
-    statement.sharesCount.greaterThan(0)
+    statement.sharesCount?.greaterThan(0)
   ) {
     vpaDecimal = statement.totalEquity.dividedBy(statement.sharesCount);
     vpa = vpaDecimal.toFixed(4, Decimal.ROUND_HALF_UP);
@@ -182,8 +175,7 @@ export function calculateFundamentalIndicators(
   let netDebtToEbitda: string | null = null;
   if (
     netDebtDecimal !== null &&
-    statement.ebitda !== null &&
-    statement.ebitda.greaterThan(0)
+    statement.ebitda?.greaterThan(0)
   ) {
     netDebtToEbitda = netDebtDecimal
       .dividedBy(statement.ebitda)
@@ -194,7 +186,7 @@ export function calculateFundamentalIndicators(
   // Retorna null quando o PL for nulo ou <= 0. Preserva valores negativos de dívida líquida (caixa líquido).
   let grossDebtToEquity: string | null = null;
   let netDebtToEquity: string | null = null;
-  if (statement.totalEquity !== null && statement.totalEquity.greaterThan(0)) {
+  if (statement.totalEquity?.greaterThan(0)) {
     if (statement.grossDebt !== null) {
       grossDebtToEquity = statement.grossDebt
         .dividedBy(statement.totalEquity)
@@ -215,7 +207,7 @@ export function calculateFundamentalIndicators(
   let evToEbitda: string | null = null;
   let quoteAudit: FundamentalQuoteAudit | null = null;
 
-  if (quote && quote.price && quote.price.greaterThan(0)) {
+  if (quote?.price?.greaterThan(0)) {
     quoteAudit = {
       quotePriceUsed: quote.price.toFixed(4, Decimal.ROUND_HALF_UP),
       quoteDateUsed:
@@ -230,14 +222,14 @@ export function calculateFundamentalIndicators(
 
     if (!currencyMismatch) {
       // P/L = QuotePrice / LPA (somente se LPA > 0)
-      if (lpaDecimal !== null && lpaDecimal.greaterThan(0)) {
+      if (lpaDecimal?.greaterThan(0)) {
         peRatio = quote.price
           .dividedBy(lpaDecimal)
           .toFixed(2, Decimal.ROUND_HALF_UP);
       }
 
       // P/VP = QuotePrice / VPA (somente se VPA > 0)
-      if (vpaDecimal !== null && vpaDecimal.greaterThan(0)) {
+      if (vpaDecimal?.greaterThan(0)) {
         pbRatio = quote.price
           .dividedBy(vpaDecimal)
           .toFixed(2, Decimal.ROUND_HALF_UP);
@@ -245,10 +237,8 @@ export function calculateFundamentalIndicators(
 
       // Dividend Yield = (dividendsDeclared / sharesCount) / QuotePrice
       if (
-        statement.dividendsDeclared !== null &&
-        statement.dividendsDeclared.greaterThanOrEqualTo(0) &&
-        statement.sharesCount !== null &&
-        statement.sharesCount.greaterThan(0)
+        statement.dividendsDeclared?.greaterThanOrEqualTo(0) &&
+        statement.sharesCount?.greaterThan(0)
       ) {
         const dpa = statement.dividendsDeclared.dividedBy(statement.sharesCount);
         dividendYield = dpa
@@ -259,15 +249,14 @@ export function calculateFundamentalIndicators(
       // Enterprise Value (EV) = MarketCap + NetDebt
       // EV/EBITDA = EV / EBITDA
       if (
-        statement.sharesCount !== null &&
-        statement.sharesCount.greaterThan(0) &&
+        statement.sharesCount?.greaterThan(0) &&
         netDebtDecimal !== null
       ) {
         const marketCap = quote.price.times(statement.sharesCount);
         const evDecimal = marketCap.plus(netDebtDecimal);
         enterpriseValue = evDecimal.toFixed(2, Decimal.ROUND_HALF_UP);
 
-        if (statement.ebitda !== null && statement.ebitda.greaterThan(0)) {
+        if (statement.ebitda?.greaterThan(0)) {
           evToEbitda = evDecimal
             .dividedBy(statement.ebitda)
             .toFixed(2, Decimal.ROUND_HALF_UP);

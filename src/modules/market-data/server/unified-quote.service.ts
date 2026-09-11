@@ -1,4 +1,4 @@
-import { eq, and, desc, asc, lte, gte, inArray, isNull, sql } from 'drizzle-orm';
+import { eq, and, desc, asc, lte, gte, inArray, isNull } from 'drizzle-orm';
 import { db, type DbExecutor } from '@/lib/db';
 import { b3HistoricalQuotes } from '@/lib/db/schema/b3-market-data';
 import { marketQuotes } from '@/lib/db/schema/market-data';
@@ -126,8 +126,8 @@ export function countBusinessDays(pastDate: Date | string, currentDate: Date | s
 }
 
 function mapDelayStatus(status?: string | null): 'real_time' | 'delayed' | 'end_of_day' {
-  if (status === 'realtime') return 'real_time';
-  if (status === 'eod') return 'end_of_day';
+  if (status === 'realtime') { return 'real_time'; }
+  if (status === 'eod') { return 'end_of_day'; }
   return 'delayed';
 }
 
@@ -152,7 +152,7 @@ export async function getLatestUsableQuote(
   referenceDate: Date = new Date()
 ): Promise<UnifiedQuote | null> {
   const normalizedTicker = ticker.trim().toUpperCase();
-  if (!normalizedTicker) return null;
+  if (!normalizedTicker) { return null; }
 
   const currentTradingDayStr = getB3TradingDay(referenceDate);
 
@@ -349,7 +349,7 @@ export async function getQuoteAtDate(
   executor: DbExecutor = db
 ): Promise<UnifiedQuote | null> {
   const normalizedTicker = ticker.trim().toUpperCase();
-  if (!normalizedTicker) return null;
+  if (!normalizedTicker) { return null; }
 
   const targetDateStr = normalizeToDateString(date);
 
@@ -422,7 +422,7 @@ export async function getHistoricalQuotes(
   executor: DbExecutor = db
 ): Promise<UnifiedHistoricalQuote[]> {
   const normalizedTicker = ticker.trim().toUpperCase();
-  if (!normalizedTicker) return [];
+  if (!normalizedTicker) { return []; }
 
   const conditions = [eq(b3HistoricalQuotes.ticker, normalizedTicker)];
   if (from) {
@@ -480,8 +480,8 @@ export async function calculateTickerPeriodVariation(
   let totalTrades = 0;
 
   for (const q of quotes) {
-    if (q.highPrice.gt(periodHigh)) periodHigh = q.highPrice;
-    if (q.lowPrice.lt(periodLow)) periodLow = q.lowPrice;
+    if (q.highPrice.gt(periodHigh)) { periodHigh = q.highPrice; }
+    if (q.lowPrice.lt(periodLow)) { periodLow = q.lowPrice; }
     totalVolume = totalVolume.plus(q.financialVolume);
     totalQuantity = totalQuantity.plus(q.quantity);
     totalTrades += q.tradeCount;
@@ -522,7 +522,7 @@ export async function getPortfolioValuationQuotes(
   executor: DbExecutor = db
 ): Promise<Map<string, MarketQuote>> {
   const result = new Map<string, MarketQuote>();
-  if (assetIds.length === 0) return result;
+  if (assetIds.length === 0) { return result; }
 
   // 1. Busca metadados dos ativos autorizados
   const assetRows = await executor
@@ -534,7 +534,7 @@ export async function getPortfolioValuationQuotes(
     (a) => !a.isCustom || a.userId === user.id
   );
 
-  if (authorizedAssets.length === 0) return result;
+  if (authorizedAssets.length === 0) { return result; }
 
   const authIds = authorizedAssets.map((a) => a.id);
 

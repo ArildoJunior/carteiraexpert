@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Decimal } from '@/lib/decimal';
 import type { AssetFundamentalsViewData } from '@/modules/market-data';
 import {
@@ -14,8 +14,14 @@ export interface AssetFundamentalsCardProps {
   error?: string | null;
 }
 
+const SKELETON_INDICATOR_KEYS = [
+  'pe', 'pvp', 'dy', 'evebitda', 'evebit',
+  'lpa', 'vpa', 'divliqebitda', 'divliqpl', 'divbrutapl',
+  'roe', 'roa', 'roic', 'mrgliq', 'mrgbruta',
+] as const;
+
 function formatCurrency(valStr: string | null | undefined, currency = 'BRL'): string {
-  if (!valStr) return '—';
+  if (!valStr) { return '—'; }
   try {
     const d = new Decimal(valStr);
     const isNegative = d.isNegative();
@@ -31,7 +37,7 @@ function formatCurrency(valStr: string | null | undefined, currency = 'BRL'): st
 }
 
 function formatPercent(valStr: string | null | undefined): string {
-  if (!valStr) return '—';
+  if (!valStr) { return '—'; }
   try {
     const d = new Decimal(valStr).mul(100);
     const isNegative = d.isNegative();
@@ -46,7 +52,7 @@ function formatPercent(valStr: string | null | undefined): string {
 }
 
 function formatDecimal(valStr: string | null | undefined, digits = 2): string {
-  if (!valStr) return '—';
+  if (!valStr) { return '—'; }
   try {
     const d = new Decimal(valStr);
     const isNegative = d.isNegative();
@@ -61,7 +67,7 @@ function formatDecimal(valStr: string | null | undefined, digits = 2): string {
 }
 
 function formatShares(valStr: string | null | undefined): string {
-  if (!valStr) return '—';
+  if (!valStr) { return '—'; }
   try {
     const d = new Decimal(valStr);
     const parts = d.toFixed(0).split('.');
@@ -72,7 +78,7 @@ function formatShares(valStr: string | null | undefined): string {
 }
 
 function formatCnpj(cnpj: string | null | undefined): string {
-  if (!cnpj) return '—';
+  if (!cnpj) { return '—'; }
   const clean = cnpj.replace(/\D/g, '');
   if (clean.length === 14) {
     return `${clean.slice(0, 2)}.${clean.slice(2, 5)}.${clean.slice(5, 8)}/${clean.slice(8, 12)}-${clean.slice(12, 14)}`;
@@ -81,7 +87,7 @@ function formatCnpj(cnpj: string | null | undefined): string {
 }
 
 function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return 'Não informada';
+  if (!dateStr) { return 'Não informada'; }
   try {
     const clean = dateStr.slice(0, 10);
     const [year, month, day] = clean.split('-');
@@ -95,7 +101,7 @@ function formatDate(dateStr: string | null | undefined): string {
 }
 
 function formatCleanSourceReference(sourceRef: string | null | undefined): React.ReactNode {
-  if (!sourceRef) return null;
+  if (!sourceRef) { return null; }
   const trimmed = sourceRef.trim();
 
   if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
@@ -193,8 +199,8 @@ export function AssetFundamentalsCard({
         <div className="space-y-3">
           <div className="h-4 w-40 bg-surface-elevated rounded-md" />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            {Array.from({ length: 15 }).map((_, i) => (
-              <div key={`skel-ind-${i}`} className="h-20 bg-surface-elevated rounded-lg" />
+            {SKELETON_INDICATOR_KEYS.map((k) => (
+              <div key={`skel-ind-${k}`} className="h-20 bg-surface-elevated rounded-lg" />
             ))}
           </div>
         </div>
@@ -425,7 +431,7 @@ export function AssetFundamentalsCard({
                   className="text-text-muted hover:text-text-primary p-0.5 rounded transition-colors"
                   aria-label="Ver memória de cálculo do P/L"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </button>
               </div>
               <div className="text-lg font-bold text-text-primary mt-0.5">
@@ -456,7 +462,7 @@ export function AssetFundamentalsCard({
                   className="text-text-muted hover:text-text-primary p-0.5 rounded transition-colors"
                   aria-label="Ver memória de cálculo do P/VP"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </button>
               </div>
               <div className="text-lg font-bold text-text-primary mt-0.5">
@@ -488,7 +494,7 @@ export function AssetFundamentalsCard({
                   className="text-text-muted hover:text-text-primary p-0.5 rounded transition-colors"
                   aria-label="Ver memória de cálculo do Dividend Yield"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </button>
               </div>
               <div className="text-lg font-bold text-text-primary mt-0.5">
@@ -519,7 +525,7 @@ export function AssetFundamentalsCard({
                   className="text-text-muted hover:text-text-primary p-0.5 rounded transition-colors"
                   aria-label="Ver memória de cálculo do ROE"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </button>
               </div>
               <div className="text-lg font-bold text-text-primary mt-0.5">
@@ -553,7 +559,7 @@ export function AssetFundamentalsCard({
                   className="text-text-muted hover:text-text-primary p-0.5 rounded transition-colors"
                   aria-label="Ver memória de cálculo do ROIC"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </button>
               </div>
               <div className="text-lg font-bold text-text-primary mt-0.5">
@@ -584,7 +590,7 @@ export function AssetFundamentalsCard({
                   className="text-text-muted hover:text-text-primary p-0.5 rounded transition-colors"
                   aria-label="Ver memória de cálculo do ROA"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </button>
               </div>
               <div className="text-lg font-bold text-text-primary mt-0.5">
@@ -615,7 +621,7 @@ export function AssetFundamentalsCard({
                   className="text-text-muted hover:text-text-primary p-0.5 rounded transition-colors"
                   aria-label="Ver memória de cálculo da Margem Líquida"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </button>
               </div>
               <div className="text-lg font-bold text-text-primary mt-0.5">
@@ -646,7 +652,7 @@ export function AssetFundamentalsCard({
                   className="text-text-muted hover:text-text-primary p-0.5 rounded transition-colors"
                   aria-label="Ver memória de cálculo da Margem EBITDA"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </button>
               </div>
               <div className="text-lg font-bold text-text-primary mt-0.5">
@@ -677,7 +683,7 @@ export function AssetFundamentalsCard({
                   className="text-text-muted hover:text-text-primary p-0.5 rounded transition-colors"
                   aria-label="Ver memória de cálculo do LPA"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </button>
               </div>
               <div className="text-lg font-bold text-text-primary mt-0.5">
@@ -708,7 +714,7 @@ export function AssetFundamentalsCard({
                   className="text-text-muted hover:text-text-primary p-0.5 rounded transition-colors"
                   aria-label="Ver memória de cálculo do VPA"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </button>
               </div>
               <div className="text-lg font-bold text-text-primary mt-0.5">
@@ -740,7 +746,7 @@ export function AssetFundamentalsCard({
                   className="text-text-muted hover:text-text-primary p-0.5 rounded transition-colors"
                   aria-label="Ver memória de cálculo do EV"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </button>
               </div>
               <div className="text-lg font-bold text-text-primary mt-0.5">
@@ -771,7 +777,7 @@ export function AssetFundamentalsCard({
                   className="text-text-muted hover:text-text-primary p-0.5 rounded transition-colors"
                   aria-label="Ver memória de cálculo do EV/EBITDA"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </button>
               </div>
               <div className="text-lg font-bold text-text-primary mt-0.5">
@@ -802,7 +808,7 @@ export function AssetFundamentalsCard({
                   className="text-text-muted hover:text-text-primary p-0.5 rounded transition-colors"
                   aria-label="Ver memória de cálculo de Dív. Líquida / EBITDA"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </button>
               </div>
               <div className="text-lg font-bold text-text-primary mt-0.5">
@@ -833,7 +839,7 @@ export function AssetFundamentalsCard({
                   className="text-text-muted hover:text-text-primary p-0.5 rounded transition-colors"
                   aria-label="Ver memória de cálculo de Dív. Bruta / PL"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </button>
               </div>
               <div className="text-lg font-bold text-text-primary mt-0.5">
@@ -864,7 +870,7 @@ export function AssetFundamentalsCard({
                   className="text-text-muted hover:text-text-primary p-0.5 rounded transition-colors"
                   aria-label="Ver memória de cálculo de Dív. Líquida / PL"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </button>
               </div>
               <div className="text-lg font-bold text-text-primary mt-0.5 flex items-center gap-1.5 flex-wrap">

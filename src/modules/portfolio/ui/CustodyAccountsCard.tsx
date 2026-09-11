@@ -75,7 +75,7 @@ export function CustodyAccountsCard({
           onClick={onOpenNewAccount}
           className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-action-primary hover:bg-action-primary/90 text-text-primary text-xs font-semibold shadow-sm transition-all cursor-pointer shrink-0"
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
           Adicionar Corretora
@@ -98,7 +98,7 @@ export function CustodyAccountsCard({
           className="py-10 text-center border border-dashed border-border-theme rounded-xl space-y-3"
         >
           <div className="w-12 h-12 rounded-xl bg-surface-secondary flex items-center justify-center mx-auto text-text-secondary">
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"

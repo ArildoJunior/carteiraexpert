@@ -1,8 +1,7 @@
 import crypto from 'node:crypto';
-import { eq, and, desc, sql, count, gte, inArray, isNull } from 'drizzle-orm';
+import { eq, and, count, gte, inArray, desc } from 'drizzle-orm';
 import { db, type Database, type DatabaseTransaction, type DbExecutor } from '../../../lib/db';
 import { users } from '../../../lib/db/schema/identity';
-import { commercialPlans } from '../../../lib/db/schema/plans';
 import { billingSubscriptions } from '../../../lib/db/schema/billing';
 import { billingGroups, billingGroupMembers, billingGroupInvitations } from '../../../lib/db/schema/groups';
 import { insertAuditLog } from '../../../lib/db/audit';
@@ -10,8 +9,6 @@ import { applyPlanDowngradeInTransaction } from './plan.service';
 import type { SafeUser } from '../../identity/domain/user.types';
 import type {
   BillingGroup,
-  BillingGroupMember,
-  BillingGroupInvitation,
   BillingGroupOverview,
   GroupRole,
   GroupStatus,
@@ -1131,7 +1128,7 @@ export async function dissolveBillingGroup(
 
     // 6. Downgrade em cascata para membros (exceto titular que possui a assinatura)
     for (const m of activeMembers) {
-      if (m.userId === ownerUser.id) continue;
+      if (m.userId === ownerUser.id) { continue; }
 
       const [memberProSub] = await tx
         .select()

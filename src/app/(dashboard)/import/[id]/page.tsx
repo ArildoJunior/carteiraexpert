@@ -25,7 +25,7 @@ export async function generateMetadata({
   }
 
   const user = await getCurrentUser();
-  if (!user) return { title: 'Importações — CarteiraExpert' };
+  if (!user) { return { title: 'Importações — CarteiraExpert' }; }
 
   try {
     const { batch } = await getImportBatchById(id, user);
@@ -48,12 +48,12 @@ export default async function ImportBatchDetailPage({
   }
 
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) { redirect('/login'); }
 
   const hasConsent = await hasAcceptedCurrentTerms(user.id);
-  if (!hasConsent) redirect('/terms-acceptance');
+  if (!hasConsent) { redirect('/terms-acceptance'); }
 
-  let batchData;
+  let batchData: Awaited<ReturnType<typeof getImportBatchById>>;
   try {
     batchData = await getImportBatchById(id, user);
   } catch {

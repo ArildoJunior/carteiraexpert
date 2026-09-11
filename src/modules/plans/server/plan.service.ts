@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { eq, and, isNull, count, desc, inArray, notInArray } from 'drizzle-orm';
+import { eq, and, isNull, count, desc, inArray } from 'drizzle-orm';
 import { db, type Database, type DatabaseTransaction, type DbExecutor } from '../../../lib/db';
 import { users } from '../../../lib/db/schema/identity';
 import { portfolios } from '../../../lib/db/schema/portfolio';
@@ -237,17 +237,17 @@ export async function getPlanQuotaSummary(
   let archivedCount = 0;
 
   for (const p of userPortfolios) {
-    if (p.status === 'active') activeCount++;
-    else if (p.status === 'frozen') frozenCount++;
-    else if (p.status === 'archived') archivedCount++;
+    if (p.status === 'active') { activeCount++; }
+    else if (p.status === 'frozen') { frozenCount++; }
+    else if (p.status === 'archived') { archivedCount++; }
   }
 
-  const hasDefinedQuota = effectivePlan.maxActivePortfolios !== null;
-  const availableSlots = hasDefinedQuota
-    ? Math.max(0, effectivePlan.maxActivePortfolios! - activeCount)
+  const maxActive = effectivePlan.maxActivePortfolios;
+  const availableSlots = maxActive !== null
+    ? Math.max(0, maxActive - activeCount)
     : 0;
-  const canCreateMore = hasDefinedQuota
-    ? activeCount < effectivePlan.maxActivePortfolios!
+  const canCreateMore = maxActive !== null
+    ? activeCount < maxActive
     : false;
 
   return {
@@ -369,7 +369,7 @@ export async function applyPlanDowngradeInTransaction(
     for (const p of activePortfolios) {
       if (!idsToKeep.includes(p.id)) {
         idsToKeep.push(p.id);
-        if (idsToKeep.length >= maxAllowed) break;
+        if (idsToKeep.length >= maxAllowed) { break; }
       }
     }
   }
@@ -382,7 +382,7 @@ export async function applyPlanDowngradeInTransaction(
 
   for (const freezeId of idsToFreeze) {
     const existing = activePortfolios.find((p) => p.id === freezeId);
-    if (!existing) continue;
+    if (!existing) { continue; }
 
     await tx
       .update(portfolios)

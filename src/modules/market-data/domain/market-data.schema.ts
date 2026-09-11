@@ -22,10 +22,10 @@ export const ALLOWED_INPUT_DELAY_STATUSES = [
 
 // ─── Validação Estrita de ISO 8601 com Timezone ──────────────────────────────
 function isValidStrictIsoDateTime(dateStr: string): boolean {
-  if (typeof dateStr !== 'string') return false;
+  if (typeof dateStr !== 'string') { return false; }
   const isoPattern =
     /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/;
-  if (!isoPattern.test(dateStr)) return false;
+  if (!isoPattern.test(dateStr)) { return false; }
 
   const [datePart] = dateStr.split('T');
   const [yearStr, monthStr, dayStr] = datePart.split('-');
@@ -34,17 +34,17 @@ function isValidStrictIsoDateTime(dateStr: string): boolean {
   const d = parseInt(dayStr, 10);
 
   const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
-  if (d > daysInMonth) return false;
+  if (d > daysInMonth) { return false; }
 
   const parsed = new Date(dateStr);
-  return !isNaN(parsed.getTime());
+  return !Number.isNaN(parsed.getTime());
 }
 
 export const quoteDateSchema = z
   .custom<Date | string>(
     (val) => {
       if (val instanceof Date) {
-        return !isNaN(val.getTime());
+        return !Number.isNaN(val.getTime());
       }
       if (typeof val === 'string') {
         return isValidStrictIsoDateTime(val);
@@ -58,7 +58,7 @@ export const quoteDateSchema = z
   )
   .transform((val, ctx) => {
     const d = typeof val === 'string' ? new Date(val.trim()) : val;
-    if (isNaN(d.getTime())) {
+    if (Number.isNaN(d.getTime())) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'Data de cotação inválida.',
@@ -91,14 +91,15 @@ export const quoteDateSchema = z
 export const quotePriceSchema = z
   .custom<string | Decimal>(
     (val) => {
-      if (typeof val === 'number') return false; // Proibição estrita de number do JS
+      if (typeof val === 'number') { return false; // Proibição estrita de number do JS
+}
       if (val instanceof Decimal) {
         return !val.isNaN() && val.isFinite() && val.greaterThanOrEqualTo(0);
       }
       if (typeof val === 'string') {
         try {
           const trimmed = val.trim();
-          if (!trimmed || isNaN(Number(trimmed))) return false;
+          if (!trimmed || Number.isNaN(Number(trimmed))) { return false; }
           const d = new Decimal(trimmed);
           return !d.isNaN() && d.isFinite() && d.greaterThanOrEqualTo(0);
         } catch {
@@ -120,14 +121,15 @@ export const quotePriceSchema = z
 export const ingestQuotePriceSchema = z
   .custom<string | Decimal>(
     (val) => {
-      if (typeof val === 'number') return false; // Proibição estrita de number do JS
+      if (typeof val === 'number') { return false; // Proibição estrita de number do JS
+}
       if (val instanceof Decimal) {
         return !val.isNaN() && val.isFinite() && val.greaterThan(0);
       }
       if (typeof val === 'string') {
         try {
           const trimmed = val.trim();
-          if (!trimmed || isNaN(Number(trimmed))) return false;
+          if (!trimmed || Number.isNaN(Number(trimmed))) { return false; }
           const d = new Decimal(trimmed);
           return !d.isNaN() && d.isFinite() && d.greaterThan(0);
         } catch {
@@ -149,14 +151,14 @@ export const ingestQuotePriceSchema = z
 export const exchangeRateSchema = z
   .custom<string | Decimal>(
     (val) => {
-      if (typeof val === 'number') return false;
+      if (typeof val === 'number') { return false; }
       if (val instanceof Decimal) {
         return !val.isNaN() && val.isFinite() && val.greaterThan(0);
       }
       if (typeof val === 'string') {
         try {
           const trimmed = val.trim();
-          if (!trimmed || isNaN(Number(trimmed))) return false;
+          if (!trimmed || Number.isNaN(Number(trimmed))) { return false; }
           const d = new Decimal(trimmed);
           return !d.isNaN() && d.isFinite() && d.greaterThan(0);
         } catch {

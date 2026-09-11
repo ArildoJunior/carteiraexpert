@@ -4,7 +4,7 @@ import { db, type Database, type DatabaseTransaction, type DbExecutor } from '..
 import { userConsents } from '../../../lib/db/schema/identity';
 import { insertAuditLog } from '../../../lib/db/audit';
 import { anonymizeIp, sanitizeUserAgent } from './session';
-import { CURRENT_CONSENT_VERSIONS, ConsentDocumentType } from '../domain/consent-constants';
+import { CURRENT_CONSENT_VERSIONS, type ConsentDocumentType } from '../domain/consent-constants';
 import type { RecordConsentOptions, ConsentRecord } from '../domain/consent.types';
 import { assertSchemaCompatible } from '../../../lib/db/verify-schema';
 
@@ -30,7 +30,7 @@ export async function getLatestConsent(
     .orderBy(desc(userConsents.createdAt), desc(userConsents.id))
     .limit(1);
 
-  if (!latest) return null;
+  if (!latest) { return null; }
 
   return {
     id: latest.id,

@@ -193,13 +193,13 @@ export class CvmCorruptedDataError extends CvmParserError {
  * Rejeita regex matches inválidos como 2024-02-31, 2023-02-29, 2024-13-45 ou dias/meses zerados.
  */
 export function isValidCalendarDate(dateStr?: string | null): boolean {
-  if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
+  if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) { return false; }
   const parts = dateStr.split('-');
   const year = Number(parts[0]);
   const month = Number(parts[1]);
   const day = Number(parts[2]);
 
-  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+  if (month < 1 || month > 12 || day < 1 || day > 31) { return false; }
 
   const date = new Date(Date.UTC(year, month - 1, day));
   return (
@@ -215,10 +215,10 @@ export function isValidCalendarDate(dateStr?: string | null): boolean {
  * Rejeita explicitamente valores parciais ou inválidos como '1abc', '1.0', '1e5', '0', '-1'.
  */
 export function parseStrictPositiveInteger(raw?: string | null): number | null {
-  if (!raw) return null;
+  if (!raw) { return null; }
   const trimmed = raw.trim();
-  if (!/^\d+$/.test(trimmed)) return null;
+  if (!/^\d+$/.test(trimmed)) { return null; }
   const num = Number(trimmed);
-  if (!Number.isSafeInteger(num) || num < 1) return null;
+  if (!Number.isSafeInteger(num) || num < 1) { return null; }
   return num;
 }

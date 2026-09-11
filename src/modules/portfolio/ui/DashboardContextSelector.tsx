@@ -19,7 +19,7 @@ export function DashboardContextSelector({
   }
 
   function handleSelect(portfolioId: string) {
-    if (portfolioId === selectedPortfolio?.id) return;
+    if (portfolioId === selectedPortfolio?.id) { return; }
     router.push(`/dashboard?portfolioId=${portfolioId}`);
   }
 

@@ -96,7 +96,7 @@ export function AssetPositionDetailModal({
   useEffect(() => {
     let isMounted = true;
     loadData().then(() => {
-      if (!isMounted) return;
+      if (!isMounted) { return; }
     });
 
     return () => {
@@ -234,10 +234,10 @@ export function AssetPositionDetailModal({
   return (
     <div
       id="asset-detail-modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="asset-detail-modal-title"
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
     >
       <div
         id="asset-detail-modal-content"

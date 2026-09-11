@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { Decimal } from '@/lib/decimal';
 import { AssetPositionDetailModal } from './AssetPositionDetailModal';
 import type {
-  SerializedAssetPosition,
   SerializedPortfolioPositionsSummary,
 } from '../domain/position.types';
 

@@ -65,7 +65,7 @@ interface CustomTooltipProps {
 }
 
 function EvolutionCustomTooltip({ active, payload }: CustomTooltipProps) {
-  if (!active || !payload || !payload.length) return null;
+  if (!active || !payload?.length) { return null; }
 
   const data = payload[0].payload;
   const isPnLNeg = data.formattedUnrealizedPnL?.includes('-');
@@ -202,7 +202,7 @@ export function PortfolioEvolutionChart({
         setViewMode(v);
       }
     }
-  }, [initialPreference]);
+  }, [initialPreference, initialSummary.period]);
 
   const applyPreferenceChange = (
     change: Partial<Omit<PortfolioEvolutionPreferenceSnapshot, 'chartArea'>>
@@ -225,7 +225,7 @@ export function PortfolioEvolutionChart({
   };
 
   const handlePeriodClick = async (p: EvolutionPeriod) => {
-    if (p === preferenceRef.current.period && summary.period === p) return;
+    if (p === preferenceRef.current.period && summary.period === p) { return; }
 
     applyPreferenceChange({ period: p });
 
@@ -253,7 +253,7 @@ export function PortfolioEvolutionChart({
 
   const chartData = useMemo(() => {
     return summary.points.map((pt) => {
-      const dateObj = new Date(pt.dateKey + 'T00:00:00Z');
+      const dateObj = new Date(`${pt.dateKey}T00:00:00Z`);
       const shortDate = dateObj.toLocaleDateString('pt-BR', {
         day: '2-digit',
         month: '2-digit',
@@ -288,7 +288,7 @@ export function PortfolioEvolutionChart({
   }, [summary.points]);
 
   const isPeriodNegative = useMemo(() => {
-    if (!summary.formattedCurrentUnrealizedPnL) return false;
+    if (!summary.formattedCurrentUnrealizedPnL) { return false; }
     return summary.formattedCurrentUnrealizedPnL.includes('-');
   }, [summary.formattedCurrentUnrealizedPnL]);
 
@@ -547,9 +547,8 @@ export function PortfolioEvolutionChart({
       )}
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-        <div
-          className="inline-flex rounded-xl bg-background p-1 border border-border-theme"
-          role="group"
+        <fieldset
+          className="inline-flex rounded-xl bg-background p-1 border border-border-theme m-0"
           aria-label="Modo de Visualização"
         >
           {viewModes.map((mode) => (
@@ -568,11 +567,10 @@ export function PortfolioEvolutionChart({
               {mode.label}
             </button>
           ))}
-        </div>
+        </fieldset>
 
-        <div
-          className="inline-flex rounded-xl bg-background p-1 border border-border-theme self-start sm:self-auto"
-          role="group"
+        <fieldset
+          className="inline-flex rounded-xl bg-background p-1 border border-border-theme self-start sm:self-auto m-0"
           aria-label="Intervalo de Período"
         >
           {periods.map((p) => (
@@ -592,7 +590,7 @@ export function PortfolioEvolutionChart({
               {p.label}
             </button>
           ))}
-        </div>
+        </fieldset>
       </div>
 
       <div

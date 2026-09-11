@@ -10,6 +10,24 @@ import type {
 import type { SaveChartPreferenceInput } from '../domain/chart-preferences.schema';
 import { randomUUID } from 'node:crypto';
 
+function mapRecordToSerializedPreference(
+  chartArea: ChartArea,
+  record: {
+    period: string | null;
+    viewMode: string | null;
+    groupingType: string | null;
+    basis: string | null;
+  }
+): SerializedUserChartPreference {
+  return {
+    chartArea,
+    period: (record.period as SerializedUserChartPreference['period']) ?? undefined,
+    viewMode: (record.viewMode as SerializedUserChartPreference['viewMode']) ?? undefined,
+    groupingType: (record.groupingType as SerializedUserChartPreference['groupingType']) ?? undefined,
+    basis: (record.basis as SerializedUserChartPreference['basis']) ?? undefined,
+  };
+}
+
 /**
  * Recupera o mapa de todas as preferências de gráficos do usuário autenticado.
  */
@@ -25,13 +43,7 @@ export async function getUserChartPreferences(
 
   for (const r of records) {
     const area = r.chartArea as ChartArea;
-    map[area] = {
-      chartArea: area,
-      period: (r.period as any) ?? undefined,
-      viewMode: (r.viewMode as any) ?? undefined,
-      groupingType: (r.groupingType as any) ?? undefined,
-      basis: (r.basis as any) ?? undefined,
-    };
+    map[area] = mapRecordToSerializedPreference(area, r);
   }
 
   return map;
@@ -55,15 +67,9 @@ export async function getUserChartPreferenceByArea(
     )
     .limit(1);
 
-  if (!record) return null;
+  if (!record) { return null; }
 
-  return {
-    chartArea: record.chartArea as ChartArea,
-    period: (record.period as any) ?? undefined,
-    viewMode: (record.viewMode as any) ?? undefined,
-    groupingType: (record.groupingType as any) ?? undefined,
-    basis: (record.basis as any) ?? undefined,
-  };
+  return mapRecordToSerializedPreference(record.chartArea as ChartArea, record);
 }
 
 /**
@@ -77,10 +83,10 @@ export async function saveUserChartPreference(
     updatedAt: new Date(),
   };
 
-  if (input.period !== undefined) updatePayload.period = input.period;
-  if (input.viewMode !== undefined) updatePayload.viewMode = input.viewMode;
-  if (input.groupingType !== undefined) updatePayload.groupingType = input.groupingType;
-  if (input.basis !== undefined) updatePayload.basis = input.basis;
+  if (input.period !== undefined) { updatePayload.period = input.period; }
+  if (input.viewMode !== undefined) { updatePayload.viewMode = input.viewMode; }
+  if (input.groupingType !== undefined) { updatePayload.groupingType = input.groupingType; }
+  if (input.basis !== undefined) { updatePayload.basis = input.basis; }
 
   const [saved] = await db
     .insert(userChartPreferences)
@@ -101,11 +107,5 @@ export async function saveUserChartPreference(
     })
     .returning();
 
-  return {
-    chartArea: saved.chartArea as ChartArea,
-    period: (saved.period as any) ?? undefined,
-    viewMode: (saved.viewMode as any) ?? undefined,
-    groupingType: (saved.groupingType as any) ?? undefined,
-    basis: (saved.basis as any) ?? undefined,
-  };
+  return mapRecordToSerializedPreference(saved.chartArea as ChartArea, saved);
 }

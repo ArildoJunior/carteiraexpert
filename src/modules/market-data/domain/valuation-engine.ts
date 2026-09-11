@@ -95,7 +95,7 @@ export function calculateAssetValuation(
   if (quoteCurrency === 'BRL') {
     marketValueBrl = marketValue;
     fxRateUsed = new Decimal(1);
-  } else if (fxRate && fxRate.rate.greaterThan(0)) {
+  } else if (fxRate?.rate.greaterThan(0)) {
     marketValueBrl = marketValue.times(fxRate.rate);
     fxRateUsed = fxRate.rate;
     fxDateUsed = fxRate.rateDate;

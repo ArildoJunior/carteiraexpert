@@ -64,19 +64,19 @@ export function ImportUploadZone({
     setSelectedFile(file);
   }
 
-  function handleDragOver(e: DragEvent<HTMLDivElement>) {
+  function handleDragOver(e: DragEvent<HTMLLabelElement>) {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(true);
   }
 
-  function handleDragLeave(e: DragEvent<HTMLDivElement>) {
+  function handleDragLeave(e: DragEvent<HTMLLabelElement>) {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
   }
 
-  function handleDrop(e: DragEvent<HTMLDivElement>) {
+  function handleDrop(e: DragEvent<HTMLLabelElement>) {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
@@ -210,7 +210,7 @@ export function ImportUploadZone({
           <select
             id="select-format"
             value={selectedFormat}
-            onChange={(e) => setSelectedFormat(e.target.value as any)}
+            onChange={(e) => setSelectedFormat(e.target.value as ImportFormatId | 'auto')}
             disabled={isPending}
             className="w-full bg-background border border-border-theme rounded-lg px-3.5 py-2.5 text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-action-primary focus:border-transparent disabled:opacity-50"
           >
@@ -223,15 +223,14 @@ export function ImportUploadZone({
       </div>
 
       {/* Zona de Drop e Seleção de Arquivo */}
-      <div
+      <label
+        htmlFor="file-input-csv"
         id="import-drop-zone"
-        role="region"
         aria-label="Área de envio de arquivo CSV"
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
-        className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-150 flex flex-col items-center justify-center ${
+        className={`block border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-150 flex flex-col items-center justify-center ${
           isDragging
             ? 'border-action-primary bg-action-primary/5 scale-[1.01]'
             : selectedFile
@@ -245,17 +244,17 @@ export function ImportUploadZone({
           type="file"
           accept=".csv,text/csv,text/plain"
           onChange={handleInputChange}
-          className="hidden"
+          className="sr-only"
           aria-label="Selecionar arquivo CSV"
         />
 
         <div className="w-12 h-12 rounded-full bg-surface-elevated border border-border-theme flex items-center justify-center mb-3">
           {selectedFile ? (
-            <svg className="w-6 h-6 text-accent-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-6 h-6 text-accent-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           ) : (
-            <svg className="w-6 h-6 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-6 h-6 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
           )}
@@ -283,7 +282,7 @@ export function ImportUploadZone({
             </p>
           </div>
         )}
-      </div>
+      </label>
 
       {/* Alertas e Mensagens de Feedback */}
       {errorMessage && (
@@ -292,7 +291,7 @@ export function ImportUploadZone({
           role="alert"
           className="flex items-start gap-2.5 text-sm text-accent-danger bg-accent-danger/10 border border-accent-danger/30 rounded-lg p-3"
         >
-          <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <div>{errorMessage}</div>
@@ -305,7 +304,7 @@ export function ImportUploadZone({
           role="status"
           className="flex items-start gap-2.5 text-sm text-accent-success bg-accent-success/10 border border-accent-success/30 rounded-lg p-3"
         >
-          <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
           </svg>
           <div>{successMessage}</div>
@@ -320,7 +319,7 @@ export function ImportUploadZone({
           onClick={downloadStandardTemplate}
           className="text-xs text-text-secondary hover:text-action-primary transition-colors flex items-center gap-1.5 py-1"
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
           </svg>
           Baixar modelo de planilha (.csv)
@@ -340,7 +339,7 @@ export function ImportUploadZone({
             </>
           ) : (
             <>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
               </svg>
               <span>Processar e Revisar Lote</span>

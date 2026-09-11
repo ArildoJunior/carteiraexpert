@@ -30,10 +30,10 @@ function sanitizeHeader(header: string): string {
  * Ex: "KNIP11 - KINEA RENDIMENTOS IMOBILIARIOS FII" -> "KNIP11"
  */
 function extractTickerFromProduct(productStr: string): string {
-  if (!productStr) return '';
+  if (!productStr) { return ''; }
   const trimmed = productStr.trim();
   const match = trimmed.match(/^([A-Z0-9]{4,7})(?:\s*[-–—]|\s+|$)/i);
-  if (match && match[1]) {
+  if (match?.[1]) {
     return normalizeTicker(match[1]);
   }
   return normalizeTicker(trimmed.split(' ')[0]);
@@ -46,9 +46,9 @@ export class B3MovementsCsvParserAdapter implements ImportParserAdapter {
     'Extrato de movimentações e custódia exportado da Área do Investidor da B3.';
 
   canParse(rawContent: string, _fileName: string): boolean {
-    if (!rawContent || rawContent.trim().length === 0) return false;
+    if (!rawContent || rawContent.trim().length === 0) { return false; }
     const lines = rawContent.split(/\r?\n/).filter((l) => l.trim().length > 0);
-    if (lines.length < 2) return false;
+    if (lines.length < 2) { return false; }
 
     const firstLine = lines[0];
     const delimiter = detectCsvDelimiter(rawContent);
@@ -90,11 +90,11 @@ export class B3MovementsCsvParserAdapter implements ImportParserAdapter {
     const instIdx = headers.findIndex((h) => h.includes('instituicao'));
 
     const missingHeaders: string[] = [];
-    if (dateIdx === -1) missingHeaders.push('Data');
-    if (entryExitIdx === -1) missingHeaders.push('Entrada/Saída');
-    if (movementIdx === -1) missingHeaders.push('Movimentação');
-    if (productIdx === -1) missingHeaders.push('Produto');
-    if (qtyIdx === -1) missingHeaders.push('Quantidade');
+    if (dateIdx === -1) { missingHeaders.push('Data'); }
+    if (entryExitIdx === -1) { missingHeaders.push('Entrada/Saída'); }
+    if (movementIdx === -1) { missingHeaders.push('Movimentação'); }
+    if (productIdx === -1) { missingHeaders.push('Produto'); }
+    if (qtyIdx === -1) { missingHeaders.push('Quantidade'); }
 
     if (missingHeaders.length > 0) {
       throw new Error(
@@ -104,12 +104,12 @@ export class B3MovementsCsvParserAdapter implements ImportParserAdapter {
 
     const parsedRows: ParsedImportRow[] = [];
     let validCount = 0;
-    let warningCount = 0;
+    const warningCount = 0;
     let errorCount = 0;
 
     for (let i = 1; i < lines.length; i++) {
       const rawLine = lines[i];
-      if (!rawLine.trim()) continue;
+      if (!rawLine.trim()) { continue; }
 
       const lineNumber = i + 1;
       const columns = parseCsvLine(rawLine, delimiter);

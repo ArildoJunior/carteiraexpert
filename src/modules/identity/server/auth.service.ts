@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { eq, and, isNull, gt } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import { db } from '../../../lib/db';
 import { users, sessions, passwordResetTokens } from '../../../lib/db/schema/identity';
 import { insertAuditLog } from '../../../lib/db/audit';
@@ -9,7 +9,7 @@ import {
   needsRehash,
   DUMMY_ARGON2_HASH,
 } from '../domain/password';
-import { createSession, revokeAllUserSessions, hashToken } from './session';
+import { createSession, hashToken } from './session';
 import {
   isBlocked,
   loginKey,
@@ -26,14 +26,14 @@ import type { SafeUser } from '../domain/user.types';
 // ─── Mascaramento de E-mail ───────────────────────────────────────────────────
 function maskEmail(email: string): string {
   const [local, domain] = email.split('@');
-  if (!local || !domain) return '[e-mail inválido]';
-  if (local.length <= 2) return `${local[0]}***@${domain}`;
+  if (!local || !domain) { return '[e-mail inválido]'; }
+  if (local.length <= 2) { return `${local[0]}***@${domain}`; }
   return `${local[0]}***${local.at(-1)}@${domain}`;
 }
 
 function anonymizeIpForAudit(ip: string | null | undefined): string | null {
-  if (!ip) return null;
-  if (/^\d+\.\d+\.\d+\.\d+$/.test(ip)) return ip.replace(/\.\d+$/, '.0');
+  if (!ip) { return null; }
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(ip)) { return ip.replace(/\.\d+$/, '.0'); }
   return null;
 }
 
@@ -155,10 +155,14 @@ export async function register(
       }
     });
 
-    return { success: true, token, sessionId, expiresAt, user: createdUser! };
+    if (!createdUser) {
+      return { success: false, error: 'Erro inesperado ao criar usuário.' };
+    }
+
+    return { success: true, token, sessionId, expiresAt, user: createdUser };
   } catch (err: unknown) {
     const cause = typeof err === 'object' && err !== null && 'cause' in err ? (err as { cause: unknown }).cause : null;
-    const errStr = String(err) + ' ' + (cause ? String(cause) : '') + ' ' + JSON.stringify(err);
+    const errStr = `${String(err)} ${cause ? String(cause) : ''} ${JSON.stringify(err)}`;
 
     const isUniqueViolation =
       (typeof err === 'object' && err !== null && 'code' in err && (err as { code?: string }).code === '23505') ||
@@ -264,7 +268,7 @@ export async function login(
 
 // ─── LOGOUT ───────────────────────────────────────────────────────────────────
 export async function logout(sessionId: string | null, userId: string | null): Promise<void> {
-  if (!sessionId) return;
+  if (!sessionId) { return; }
 
   await db
     .update(sessions)
@@ -293,7 +297,7 @@ export async function requestPasswordReset(
   const emailKey = resetByEmailKey(email);
 
   const { isBlocked: blocked } = await checkResetRateLimit(ipKey, emailKey);
-  if (blocked) return;
+  if (blocked) { return; }
 
   await recordResetAttempt(ipKey, emailKey);
 
@@ -303,7 +307,7 @@ export async function requestPasswordReset(
     .where(eq(users.email, email))
     .limit(1);
 
-  if (!user || user.status !== 'active') {
+  if (user?.status !== 'active') {
     await insertAuditLog(
       { tableName: 'users', recordId: 'anonymous', action: 'UPDATE', actorType: 'system', source: 'manual' },
       { newValue: { email: maskEmail(email), status: 'user_not_found' } },

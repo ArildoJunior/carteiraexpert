@@ -34,7 +34,7 @@ export function CustomAssetModal({
     }
   }, [isOpen, initialTicker]);
 
-  if (!isOpen) return null;
+  if (!isOpen) { return null; }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

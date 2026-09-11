@@ -25,7 +25,7 @@ export function isCvmShareClass(value: unknown): value is CvmShareClass {
 }
 
 export function parseCvmShareClass(value: unknown): CvmShareClass | null {
-  if (isCvmShareClass(value)) return value;
+  if (isCvmShareClass(value)) { return value; }
   return null;
 }
 

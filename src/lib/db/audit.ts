@@ -37,16 +37,16 @@ const MAX_PAYLOAD_SIZE = 64 * 1024; // 64 KB
 const MAX_STRING_LENGTH = 1000;
 
 export function sanitizeValue(
-  value: any,
+  value: unknown,
   options: SanitizerOptions,
   path: string[] = [],
-  seen = new Set<any>()
-): any {
-  if (value === null) return null;
-  if (value === undefined) return undefined;
+  seen = new Set<object>()
+): unknown {
+  if (value === null) { return null; }
+  if (value === undefined) { return undefined; }
 
   // Detecção de referências cíclicas para evitar recursão infinita
-  if (typeof value === 'object') {
+  if (typeof value === 'object' && value !== null) {
     if (seen.has(value)) {
       throw new Error('Referência cíclica detectada no payload de auditoria.');
     }
@@ -108,7 +108,7 @@ export function sanitizeValue(
 
   // Arrays recursivos
   if (Array.isArray(value)) {
-    const sanitizedArray: any[] = [];
+    const sanitizedArray: unknown[] = [];
     for (let i = 0; i < value.length; i++) {
       const item = sanitizeValue(value[i], options, [...path, i.toString()], seen);
       if (item !== undefined) {
@@ -121,8 +121,9 @@ export function sanitizeValue(
 
   // Objetos recursivos
   if (typeof value === 'object') {
-    const sanitizedObj: Record<string, any> = {};
-    for (const key of Object.keys(value)) {
+    const sanitizedObj: Record<string, unknown> = {};
+    const record = value as Record<string, unknown>;
+    for (const key of Object.keys(record)) {
       // 1. Remoção primária de campos proibidos por correspondência exata
       if (PROHIBITED_AUDIT_FIELDS.has(key.toLowerCase())) {
         continue;
@@ -135,7 +136,7 @@ export function sanitizeValue(
         }
       }
 
-      const val = sanitizeValue(value[key], options, [...path, key], seen);
+      const val = sanitizeValue(record[key], options, [...path, key], seen);
       if (val !== undefined) {
         sanitizedObj[key] = val;
       }
@@ -147,7 +148,7 @@ export function sanitizeValue(
   throw new Error(`Tipo de dado não suportado no campo "${path.join('.')}": ${typeof value}`);
 }
 
-export function sanitizePayload(payload: any, options: SanitizerOptions): any {
+export function sanitizePayload<T = Record<string, unknown>>(payload: T, options: SanitizerOptions): T {
   if (!options.preMinimized && !options.allowlist) {
     throw new Error(
       'O sanitizador de auditoria exige uma allowlist por padrão, exceto se preMinimized estiver configurado.'
@@ -164,7 +165,7 @@ export function sanitizePayload(payload: any, options: SanitizerOptions): any {
     );
   }
 
-  return result;
+  return result as T;
 }
 
 /**
@@ -176,8 +177,8 @@ const VALID_ACTIONS = new Set(['INSERT', 'UPDATE', 'DELETE', 'REVERSAL', 'ADJUST
 export async function insertAuditLog(
   log: AuditLogOptions,
   payloads?: {
-    oldValue?: any;
-    newValue?: any;
+    oldValue?: unknown;
+    newValue?: unknown;
   },
   options: SanitizerOptions = {},
   executor: AuditExecutor = db

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import type {
   SerializedEditorialDocument,
   EditorialDocumentType,
@@ -48,7 +48,7 @@ export function EditorialDocumentEditor({
     initialDocument?.visibility || 'INTERNAL'
   );
   const [content, setContent] = useState(initialDocument?.content || '');
-  const [notes, setNotes] = useState('');
+  const [notes] = useState('');
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -96,7 +96,7 @@ export function EditorialDocumentEditor({
   };
 
   const handleSubmitReview = async () => {
-    if (!initialDocument?.id) return;
+    if (!initialDocument?.id) { return; }
     setErrorMessage(null);
     if (hasBlockers) {
       setErrorMessage('Não é permitido submeter para revisão com pendências impeditivas (BLOCKER).');
@@ -112,7 +112,7 @@ export function EditorialDocumentEditor({
   };
 
   const handlePublish = async () => {
-    if (!initialDocument?.id) return;
+    if (!initialDocument?.id) { return; }
     setErrorMessage(null);
 
     try {
@@ -138,13 +138,18 @@ export function EditorialDocumentEditor({
         actionType,
         prompt: promptToUse,
         documentType,
-      })) as any;
+      })) as {
+        suggestedTitle?: string;
+        suggestedContent?: string;
+        suggestedTitles?: string[];
+        summary?: string;
+      } | null | undefined;
 
       if (actionType === 'GENERATE_DRAFT' && response) {
         setTitle(response.suggestedTitle || title);
         setContent(response.suggestedContent || content);
         setSuccessMessage('Rascunho gerado pela IA inserido no editor (Origem: AI_DRAFT).');
-      } else if (actionType === 'SUGGEST_TITLE' && response?.suggestedTitles?.length > 0) {
+      } else if (actionType === 'SUGGEST_TITLE' && response?.suggestedTitles && response.suggestedTitles.length > 0) {
         setTitle(response.suggestedTitles[0]);
         setSuccessMessage('Título sugerido pela IA aplicado.');
       } else if (actionType === 'SUMMARIZE' && response?.summary) {
@@ -379,9 +384,9 @@ export function EditorialDocumentEditor({
               Análise Preventiva de Guardrails:
             </h5>
             <div className="space-y-1">
-              {realtimeFlags.map((f, i) => (
+              {realtimeFlags.map((f) => (
                 <div
-                  key={i}
+                  key={`${f.code}:${f.message}`}
                   className={`text-xs p-2 rounded border flex items-center justify-between ${
                     f.severity === 'BLOCKER'
                       ? 'bg-rose-950/60 border-rose-800 text-rose-300'

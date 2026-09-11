@@ -11,7 +11,6 @@ import {
   parseCotahistQuoteRecord,
   parseCotahistTrailer,
   getCotahistLineType,
-  parseB3DateString,
 } from '../domain/cotahist-parser';
 import type {
   CotahistBatchSummary,
@@ -188,7 +187,7 @@ export class CotahistIngestionService {
       });
 
       const flushBuffer = async () => {
-        if (quoteBuffer.length === 0) return;
+        if (quoteBuffer.length === 0) { return; }
 
         const currentChunk = quoteBuffer;
         quoteBuffer = [];

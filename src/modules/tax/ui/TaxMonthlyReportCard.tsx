@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { SerializedTaxMonthlyCalculationResult } from '../domain/tax.types';
 
 interface TaxMonthlyReportCardProps {
@@ -29,7 +29,7 @@ function formatBrl(valStr: string): string {
   }).format(num);
 }
 
-export function TaxMonthlyReportCard({ monthResult, defaultRatePercent = '15%' }: TaxMonthlyReportCardProps) {
+export function TaxMonthlyReportCard({ monthResult }: TaxMonthlyReportCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const monthName = MONTH_NAMES[monthResult.month - 1] || `Mês ${monthResult.month}`;

@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import Link from 'next/link';
 import type { B3HistoricalQuotesResult } from '../domain/b3-historical-quotes.types';
 
@@ -12,10 +11,10 @@ interface B3HistoricalQuotesExplorerProps {
 }
 
 function formatBrlMoney(valueStr: string | null | undefined): string {
-  if (!valueStr) return '—';
+  if (!valueStr) { return '—'; }
   try {
     const num = Number(valueStr);
-    if (Number.isNaN(num)) return valueStr;
+    if (Number.isNaN(num)) { return valueStr; }
     return `R$ ${num.toLocaleString('pt-BR', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
@@ -26,10 +25,10 @@ function formatBrlMoney(valueStr: string | null | undefined): string {
 }
 
 function formatQuantity(valueStr: string | null | undefined): string {
-  if (!valueStr) return '0';
+  if (!valueStr) { return '0'; }
   try {
     const num = Number(valueStr);
-    if (Number.isNaN(num)) return valueStr;
+    if (Number.isNaN(num)) { return valueStr; }
     return Math.floor(num).toLocaleString('pt-BR');
   } catch {
     return valueStr;
@@ -51,11 +50,11 @@ export function B3HistoricalQuotesExplorer({
       q.set('tab', 'cotahist');
     }
     q.set('ticker', (overrideTicker ?? ticker).toUpperCase());
-    if (startDate) q.set('startDate', startDate);
-    if (endDate) q.set('endDate', endDate);
-    if (order && order !== 'desc') q.set('order', order);
-    if (targetPage > 1) q.set('page', String(targetPage));
-    if (limit !== 20) q.set('limit', String(limit));
+    if (startDate) { q.set('startDate', startDate); }
+    if (endDate) { q.set('endDate', endDate); }
+    if (order && order !== 'desc') { q.set('order', order); }
+    if (targetPage > 1) { q.set('page', String(targetPage)); }
+    if (limit !== 20) { q.set('limit', String(limit)); }
 
     const qs = q.toString();
     return qs ? `${basePath}?${qs}` : basePath;

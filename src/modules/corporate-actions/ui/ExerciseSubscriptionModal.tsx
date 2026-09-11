@@ -44,7 +44,7 @@ export function ExerciseSubscriptionModal({
     }
   }, [isOpen, subscription]);
 
-  if (!isOpen || !subscription) return null;
+  if (!isOpen || !subscription) { return null; }
 
   const exercisePriceNum = Number(subscription.offer.exercisePrice);
   const remainingNum = Number(subscription.remainingQuantity);
@@ -57,13 +57,16 @@ export function ExerciseSubscriptionModal({
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     e.stopPropagation();
+    if (!subscription) {
+      return;
+    }
     setPending(true);
     setState({ success: false });
 
     try {
       const formData = new FormData();
-      formData.set('subscriptionRightId', subscription!.id);
-      formData.set('portfolioId', subscription!.portfolioId);
+      formData.set('subscriptionRightId', subscription.id);
+      formData.set('portfolioId', subscription.portfolioId);
       formData.set('quantity', quantity);
       formData.set('fees', fees || '0.00000000');
       formData.set('exerciseDate', exerciseDate ? new Date(exerciseDate).toISOString() : new Date().toISOString());

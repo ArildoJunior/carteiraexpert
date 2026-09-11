@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: EtfDetailPageProps): Promise<
     permanentRedirect(`/fips/${encodeURIComponent(resolved.asset.ticker)}`);
   }
 
-  if (!resolved || resolved.canonicalCategory !== 'etf') {
+  if (resolved?.canonicalCategory !== 'etf') {
     return {
       title: 'ETF Não Encontrado | CarteiraExpert',
     };
@@ -65,7 +65,7 @@ export default async function EtfDetailPage({ params, searchParams }: EtfDetailP
     permanentRedirect(`/fips/${encodeURIComponent(resolved.asset.ticker)}`);
   }
 
-  if (!resolved || resolved.canonicalCategory !== 'etf') {
+  if (resolved?.canonicalCategory !== 'etf') {
     notFound();
   }
 

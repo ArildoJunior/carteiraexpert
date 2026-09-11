@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { CspAssetClass, CspWeightingMethod } from '@/modules/market-data/domain/csp.types';
 import {
   type CspSimulationInput,

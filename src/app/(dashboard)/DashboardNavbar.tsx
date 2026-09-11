@@ -59,7 +59,7 @@ export function DashboardNavbar({ user }: DashboardNavbarProps) {
             </Link>
 
             {/* Desktop Navigation Links */}
-            <div className="hidden md:flex items-center gap-1.5" aria-label="Navegação da Aplicação">
+            <nav className="hidden md:flex items-center gap-1.5" aria-label="Navegação da Aplicação">
               {mainLinks.map((link) => {
                 const isActive = pathname === link.href || (link.href !== '/dashboard' && pathname.startsWith(link.href));
                 return (
@@ -82,7 +82,7 @@ export function DashboardNavbar({ user }: DashboardNavbarProps) {
 
               {/* Catálogo de Ativos na Área Autenticada */}
               <CatalogNavDropdown idPrefix="dashboard-nav" activePath={pathname} />
-            </div>
+            </nav>
           </div>
 
           {/* User Profile & Right Actions (Desktop) */}
@@ -107,11 +107,11 @@ export function DashboardNavbar({ user }: DashboardNavbarProps) {
               className="p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated border border-border-theme focus:outline-none focus:ring-2 focus:ring-action-primary"
             >
               {isMobileMenuOpen ? (
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <svg className="w-5 h-5" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               ) : (
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <svg className="w-5 h-5" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               )}

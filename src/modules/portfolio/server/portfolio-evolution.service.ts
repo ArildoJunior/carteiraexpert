@@ -81,7 +81,7 @@ export async function getPortfolioEvolutionData(
   // 0. Validação defensiva de referenceDate e period
   const today = new Date();
   const refDate = options.referenceDate ? new Date(options.referenceDate) : today;
-  if (isNaN(refDate.getTime())) {
+  if (Number.isNaN(refDate.getTime())) {
     throw new Error('Data de referência inválida.');
   }
   if (getUtcCalendarDaysDiff(refDate, today) > 0) {

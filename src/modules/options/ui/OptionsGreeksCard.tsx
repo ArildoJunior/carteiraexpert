@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import type { SerializedGreeksResult, SerializedOptionContract } from '../domain/options.types';
 import { calculateBlackScholesGreeks } from '../domain/black-scholes-engine';
 import { Decimal, toDecimal } from '@/lib/decimal';
@@ -76,9 +76,8 @@ export function OptionsGreeksCard({
       : 'Out of The Money (Fora do Dinheiro)';
 
   return (
-    <div
+    <section
       id="options-greeks-card"
-      role="region"
       aria-label="Painel de Gregas Informativas Black-Scholes"
       className="rounded-xl border border-border-theme bg-surface p-5 sm:p-6 shadow-sm space-y-5"
     >
@@ -272,6 +271,6 @@ export function OptionsGreeksCard({
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

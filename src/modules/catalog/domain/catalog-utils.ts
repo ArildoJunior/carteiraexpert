@@ -305,7 +305,6 @@ export function getFreshnessBadge(status: DerivedFreshnessStatus): {
         variant: 'muted',
         description: 'Ativo sem cotações registradas no catálogo interno',
       };
-    case 'unknown':
     default:
       return {
         label: 'Indefinido',

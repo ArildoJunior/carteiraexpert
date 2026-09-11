@@ -36,7 +36,7 @@ interface CustomTooltipProps {
 }
 
 function ChartCustomTooltip({ active, payload }: CustomTooltipProps) {
-  if (!active || !payload || payload.length === 0) return null;
+  if (!active || !payload || payload.length === 0) { return null; }
 
   const data = payload[0].payload;
 
@@ -383,23 +383,17 @@ export function PortfolioAllocationCharts({
               const isHovered = activeIndex === index;
 
               return (
-                <div
+                <button
+                  type="button"
                   key={slice.id}
                   id={`chart-legend-item-${slice.label}`}
-                  role="button"
-                  tabIndex={0}
                   aria-label={`${slice.label}: valor ${slice.formattedValue}, participação ${slice.formattedPercent}`}
                   onMouseEnter={() => setActiveIndex(index)}
                   onMouseLeave={() => setActiveIndex(null)}
                   onFocus={() => setActiveIndex(index)}
                   onBlur={() => setActiveIndex(null)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setActiveIndex(activeIndex === index ? null : index);
-                    }
-                  }}
-                  className={`flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-action-primary ${
+                  onClick={() => setActiveIndex(activeIndex === index ? null : index)}
+                  className={`w-full text-left flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-action-primary ${
                     isHovered
                       ? 'bg-surface-elevated border-action-primary/50 shadow-md translate-x-1'
                       : 'bg-background border-border-theme hover:bg-surface-elevated'
@@ -430,7 +424,7 @@ export function PortfolioAllocationCharts({
                       {slice.formattedPercent}
                     </p>
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>

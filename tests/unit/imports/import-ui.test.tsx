@@ -224,7 +224,7 @@ describe('Importações — Testes Unitários de Interface (jsdom)', () => {
 
       const dropZone = container!.querySelector('#import-drop-zone');
       expect(dropZone).not.toBeNull();
-      expect(dropZone?.getAttribute('role')).toBe('region');
+      expect(dropZone?.getAttribute('aria-label') ?? dropZone?.getAttribute('role')).toBe('Área de envio de arquivo CSV');
     });
 
     it('deve rejeitar client-side arquivo não .csv e exibir mensagem de erro clara', async () => {

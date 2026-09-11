@@ -33,7 +33,7 @@ export function ImportHistoryView({ batches }: ImportHistoryViewProps) {
       {batches.length === 0 ? (
         <div className="text-center py-12 px-4 space-y-3">
           <div className="w-12 h-12 rounded-full bg-surface-elevated border border-border-theme mx-auto flex items-center justify-center text-text-muted">
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </div>
@@ -87,7 +87,7 @@ export function ImportHistoryView({ batches }: ImportHistoryViewProps) {
                   >
                     <td className="py-3 px-3 font-medium text-text-primary">
                       <div className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-4 h-4 text-text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                         <span className="truncate max-w-[200px]" title={batch.fileName}>
@@ -128,7 +128,7 @@ export function ImportHistoryView({ batches }: ImportHistoryViewProps) {
                         }`}
                       >
                         {batch.status === 'pending_review' ? 'Revisar' : 'Ver Detalhes'}
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                         </svg>
                       </Link>

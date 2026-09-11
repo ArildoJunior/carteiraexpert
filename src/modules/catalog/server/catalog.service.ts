@@ -3,7 +3,7 @@ import { db, type DbExecutor } from '@/lib/db';
 import { assets } from '@/lib/db/schema/portfolio';
 import { marketQuotes } from '@/lib/db/schema/market-data';
 import { b3HistoricalQuotes } from '@/lib/db/schema/b3-market-data';
-import { eq, and, isNull, ilike, or, desc, asc, inArray, count, gte, sql } from 'drizzle-orm';
+import { eq, and, isNull, ilike, or, desc, asc, inArray, gte, sql } from 'drizzle-orm';
 import { Decimal } from '@/lib/decimal';
 import {
   catalogFilterSchema,
@@ -23,14 +23,12 @@ import type {
 import {
   calculateDailyVariation,
   deriveFreshnessStatus,
-  getMarketTradingDay,
   B3_TIMEZONE,
 } from '../domain/catalog-utils';
 import {
   inferCanonicalAssetCategory,
   hasBdrEvidence,
   hasFiiEvidence,
-  hasEtfEvidence,
   hasFipEvidence,
 } from '../domain/canonical-classifier';
 
@@ -76,13 +74,14 @@ export async function getPublicCatalogList(
   ];
 
   if (params.category === 'fip') {
-    assetConditions.push(
-      or(
-        eq(assets.assetType, 'fip'),
-        ilike(assets.name, '%FIP%'),
-        ilike(assets.ticker, 'FIP%')
-      )!
+    const fipCond = or(
+      eq(assets.assetType, 'fip'),
+      ilike(assets.name, '%FIP%'),
+      ilike(assets.ticker, 'FIP%')
     );
+    if (fipCond) {
+      assetConditions.push(fipCond);
+    }
   } else if (params.category) {
     assetConditions.push(eq(assets.assetType, params.category));
   } else {
@@ -91,12 +90,13 @@ export async function getPublicCatalogList(
 
   if (trimmedQuery && trimmedQuery.length > 0) {
     const escaped = escapeLike(trimmedQuery);
-    assetConditions.push(
-      or(
-        ilike(assets.ticker, `${escaped}%`),
-        ilike(assets.name, `%${escaped}%`)
-      )!
+    const queryCond = or(
+      ilike(assets.ticker, `${escaped}%`),
+      ilike(assets.name, `%${escaped}%`)
     );
+    if (queryCond) {
+      assetConditions.push(queryCond);
+    }
   }
 
   const assetRows = await executor
@@ -248,12 +248,13 @@ export async function getPublicCatalogList(
     const b3Conditions = [bdiFilterSql];
     if (trimmedQuery && trimmedQuery.length > 0) {
       const escaped = escapeLike(trimmedQuery);
-      b3Conditions.push(
-        or(
-          ilike(b3HistoricalQuotes.ticker, `${escaped}%`),
-          ilike(b3HistoricalQuotes.shortName, `%${escaped}%`)
-        )!
+      const b3QueryCond = or(
+        ilike(b3HistoricalQuotes.ticker, `${escaped}%`),
+        ilike(b3HistoricalQuotes.shortName, `%${escaped}%`)
       );
+      if (b3QueryCond) {
+        b3Conditions.push(b3QueryCond);
+      }
     } else {
       b3Conditions.push(
         sql`${b3HistoricalQuotes.tradeDate} = (SELECT MAX(trade_date) FROM b3_historical_quotes WHERE ${bdiFilterSql})`
@@ -312,7 +313,7 @@ export async function getPublicCatalogList(
         candidateMap.set(matchTicker, {
           id: `b3_${matchTicker}`,
           ticker: matchTicker,
-          name: `${match.shortName}${match.specification ? ' - ' + match.specification : ''}`.trim() || matchTicker,
+          name: `${match.shortName}${match.specification ? ` - ${match.specification}` : ''}`.trim() || matchTicker,
           assetType: inferredType,
           market: 'B3',
           currency: match.currency || 'BRL',
@@ -337,11 +338,11 @@ export async function getPublicCatalogList(
       allCandidates.sort((a, b) => {
         const aExact = a.ticker === upperQ ? 1 : 0;
         const bExact = b.ticker === upperQ ? 1 : 0;
-        if (aExact !== bExact) return bExact - aExact;
+        if (aExact !== bExact) { return bExact - aExact; }
 
         const aStarts = a.ticker.startsWith(upperQ) ? 1 : 0;
         const bStarts = b.ticker.startsWith(upperQ) ? 1 : 0;
-        if (aStarts !== bStarts) return bStarts - aStarts;
+        if (aStarts !== bStarts) { return bStarts - aStarts; }
 
         return params.sortOrder === 'desc'
           ? b.ticker.localeCompare(a.ticker)
@@ -403,7 +404,7 @@ export async function getPublicCatalogList(
 
   // b) De b3_historical_quotes para os que faltam
   const tickersNeedingB3 = pagedAssets
-    .filter((a) => !quotesMap.has(a.id) || quotesMap.get(a.id)!.length === 0)
+    .filter((a) => !quotesMap.has(a.id) || quotesMap.get(a.id)?.length === 0)
     .map((a) => a.ticker);
 
   if (tickersNeedingB3.length > 0) {
@@ -436,7 +437,7 @@ export async function getPublicCatalogList(
     }
 
     for (const asset of pagedAssets) {
-      if (!quotesMap.has(asset.id) || quotesMap.get(asset.id)!.length === 0) {
+      if (!quotesMap.has(asset.id) || quotesMap.get(asset.id)?.length === 0) {
         const rowsForTicker = b3ByTicker.get(asset.ticker) ?? [];
         if (rowsForTicker.length > 0) {
           quotesMap.set(
@@ -567,7 +568,7 @@ export const resolveCanonicalAsset = cache(
     const officialName =
       asset?.name ??
       (shortName
-        ? `${shortName}${specification ? ' - ' + specification : ''}`
+        ? `${shortName}${specification ? ` - ${specification}` : ''}`
         : normalizedTicker);
     const isin = latestB3Quote?.isin ?? null;
 
@@ -592,10 +593,10 @@ export const resolveCanonicalAsset = cache(
     }
 
     // 5. Monta cotações e detalhes do ativo
-    let assetId = asset?.id ?? `b3_${normalizedTicker}`;
-    let assetName = officialName;
-    let assetMarket = asset?.market ?? 'B3';
-    let assetCurrency = asset?.currency ?? latestB3Quote?.currency ?? 'BRL';
+    const assetId = asset?.id ?? `b3_${normalizedTicker}`;
+    const assetName = officialName;
+    const assetMarket = asset?.market ?? 'B3';
+    const assetCurrency = asset?.currency ?? latestB3Quote?.currency ?? 'BRL';
 
     const quotes: Array<{
       price: Decimal;

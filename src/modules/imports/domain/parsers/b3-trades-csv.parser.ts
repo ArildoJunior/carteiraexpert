@@ -31,9 +31,9 @@ export class B3TradesCsvParserAdapter implements ImportParserAdapter {
     'Extrato oficial de negociação de ativos (ações, FIIs, ETFs, BDRs) exportado da Área do Investidor da B3.';
 
   canParse(rawContent: string, _fileName: string): boolean {
-    if (!rawContent || rawContent.trim().length === 0) return false;
+    if (!rawContent || rawContent.trim().length === 0) { return false; }
     const lines = rawContent.split(/\r?\n/).filter((l) => l.trim().length > 0);
-    if (lines.length < 2) return false;
+    if (lines.length < 2) { return false; }
 
     const firstLine = lines[0];
     const delimiter = detectCsvDelimiter(rawContent);
@@ -74,11 +74,11 @@ export class B3TradesCsvParserAdapter implements ImportParserAdapter {
     const instIdx = headers.findIndex((h) => h.includes('instituicao'));
 
     const missingHeaders: string[] = [];
-    if (dateIdx === -1) missingHeaders.push('Data do Negócio');
-    if (typeIdx === -1) missingHeaders.push('Tipo de Movimentação');
-    if (tickerIdx === -1) missingHeaders.push('Código de Negociação');
-    if (qtyIdx === -1) missingHeaders.push('Quantidade');
-    if (priceIdx === -1) missingHeaders.push('Preço');
+    if (dateIdx === -1) { missingHeaders.push('Data do Negócio'); }
+    if (typeIdx === -1) { missingHeaders.push('Tipo de Movimentação'); }
+    if (tickerIdx === -1) { missingHeaders.push('Código de Negociação'); }
+    if (qtyIdx === -1) { missingHeaders.push('Quantidade'); }
+    if (priceIdx === -1) { missingHeaders.push('Preço'); }
 
     if (missingHeaders.length > 0) {
       throw new Error(
@@ -88,12 +88,12 @@ export class B3TradesCsvParserAdapter implements ImportParserAdapter {
 
     const parsedRows: ParsedImportRow[] = [];
     let validCount = 0;
-    let warningCount = 0;
+    const warningCount = 0;
     let errorCount = 0;
 
     for (let i = 1; i < lines.length; i++) {
       const rawLine = lines[i];
-      if (!rawLine.trim()) continue;
+      if (!rawLine.trim()) { continue; }
 
       const lineNumber = i + 1;
       const columns = parseCsvLine(rawLine, delimiter);

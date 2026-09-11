@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: BdrDetailPageProps): Promise<
   const { ticker } = await params;
   const asset = await getPublicAssetDetailByTicker(ticker, 'bdr');
 
-  if (!asset || asset.assetType !== 'bdr') {
+  if (asset?.assetType !== 'bdr') {
     return {
       title: 'BDR Não Encontrado | CarteiraExpert',
     };
@@ -51,7 +51,7 @@ export default async function BdrDetailPage({ params, searchParams }: BdrDetailP
 
   const asset = await getPublicAssetDetailByTicker(ticker, 'bdr');
 
-  if (!asset || asset.assetType !== 'bdr') {
+  if (asset?.assetType !== 'bdr') {
     notFound();
   }
 

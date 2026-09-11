@@ -27,9 +27,9 @@ export function createDecimalValidator(options: DecimalValidatorOptions) {
     .custom<string | Decimal>(
       (val) => {
         // Rejeita estritamente o tipo 'number' do JavaScript
-        if (typeof val === 'number') return false;
-        if (typeof val === 'string') return true;
-        if (val instanceof Decimal) return true;
+        if (typeof val === 'number') { return false; }
+        if (typeof val === 'string') { return true; }
+        if (val instanceof Decimal) { return true; }
         return false;
       },
       {

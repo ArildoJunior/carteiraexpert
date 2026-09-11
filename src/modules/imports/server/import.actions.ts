@@ -9,14 +9,12 @@ import {
   toggleImportBatchItemExclusion,
   updateImportBatchItem,
   resolveUnmappedBatchItemAsset,
-  type ProcessImportUploadInput,
 } from './import.service';
 import {
   uploadImportFileSchema,
   confirmImportBatchSchema,
   rejectImportBatchSchema,
   toggleImportBatchItemExclusionSchema,
-  updateImportItemSchema,
   resolveUnmappedAssetSchema,
   type UploadImportFileInput,
   type ConfirmImportBatchInput,
@@ -25,8 +23,7 @@ import {
   type UpdateImportItemInput,
   type ResolveUnmappedAssetInput,
 } from '../domain/import.schema';
-import type { ImportBatch, ImportBatchItem, SerializedImportBatch } from '../domain/import.types';
-import { serializeImportBatch } from '../domain/import-utils';
+import type { ImportBatch } from '../domain/import.types';
 import {
   ImportBatchNotFoundError,
   ImportBatchItemNotFoundError,

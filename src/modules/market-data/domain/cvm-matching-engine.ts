@@ -17,11 +17,11 @@ const OUT_OF_SCOPE_TYPES = new Set(['fii', 'etf', 'bdr', 'crypto']);
  */
 export function inferExpectedShareClass(ticker: string): NormalizedShareClass | null {
   const normalized = ticker.trim().toUpperCase();
-  if (normalized.endsWith('3')) return 'ON';
-  if (normalized.endsWith('4')) return 'PN';
-  if (normalized.endsWith('5')) return 'PNA';
-  if (normalized.endsWith('6')) return 'PNB';
-  if (normalized.endsWith('11')) return 'UNT';
+  if (normalized.endsWith('3')) { return 'ON'; }
+  if (normalized.endsWith('4')) { return 'PN'; }
+  if (normalized.endsWith('5')) { return 'PNA'; }
+  if (normalized.endsWith('6')) { return 'PNB'; }
+  if (normalized.endsWith('11')) { return 'UNT'; }
   return null;
 }
 
@@ -29,17 +29,17 @@ export function inferExpectedShareClass(ticker: string): NormalizedShareClass | 
  * Normaliza classe de valor mobiliário reportada pela CVM/FCA.
  */
 export function normalizeCvmShareClass(rawClass?: string | null): NormalizedShareClass | null {
-  if (!rawClass) return null;
+  if (!rawClass) { return null; }
   const upper = rawClass.trim().toUpperCase();
-  if (upper === 'ON' || upper === 'ORD' || upper === 'ORDINARIA' || upper === 'ORDINÁRIA' || upper.includes('ORDIN')) return 'ON';
+  if (upper === 'ON' || upper === 'ORD' || upper === 'ORDINARIA' || upper === 'ORDINÁRIA' || upper.includes('ORDIN')) { return 'ON'; }
   if (upper === 'PN' || upper === 'PREF' || upper === 'PREFERENCIAL' || upper.includes('PREFEREN')) {
-    if (upper.includes(' A') || upper.endsWith('A')) return 'PNA';
-    if (upper.includes(' B') || upper.endsWith('B')) return 'PNB';
+    if (upper.includes(' A') || upper.endsWith('A')) { return 'PNA'; }
+    if (upper.includes(' B') || upper.endsWith('B')) { return 'PNB'; }
     return 'PN';
   }
-  if (upper === 'PNA' || upper === 'PREF A' || upper === 'PREFERENCIAL A') return 'PNA';
-  if (upper === 'PNB' || upper === 'PREF B' || upper === 'PREFERENCIAL B') return 'PNB';
-  if (upper === 'UNT' || upper === 'UNIT' || upper === 'UNITS' || upper.includes('CERTIFICADO')) return 'UNT';
+  if (upper === 'PNA' || upper === 'PREF A' || upper === 'PREFERENCIAL A') { return 'PNA'; }
+  if (upper === 'PNB' || upper === 'PREF B' || upper === 'PREFERENCIAL B') { return 'PNB'; }
+  if (upper === 'UNT' || upper === 'UNIT' || upper === 'UNITS' || upper.includes('CERTIFICADO')) { return 'UNT'; }
   return null;
 }
 
@@ -47,10 +47,10 @@ export function normalizeCvmShareClass(rawClass?: string | null): NormalizedShar
  * Normaliza CNPJ para 14 dígitos numéricos estritos.
  */
 export function normalizeCnpjDigits(rawCnpj?: string | null): string | null {
-  if (!rawCnpj) return null;
+  if (!rawCnpj) { return null; }
   const digits = rawCnpj.replace(/\D/g, '');
-  if (digits.length === 14) return digits;
-  if (digits.length > 0 && digits.length < 14) return digits.padStart(14, '0');
+  if (digits.length === 14) { return digits; }
+  if (digits.length > 0 && digits.length < 14) { return digits.padStart(14, '0'); }
   return null;
 }
 
@@ -58,10 +58,10 @@ export function normalizeCnpjDigits(rawCnpj?: string | null): string | null {
  * Normaliza Código CVM para 6 dígitos numéricos estritos.
  */
 export function normalizeCvmCodeDigits(rawCode?: string | null): string | null {
-  if (!rawCode) return null;
+  if (!rawCode) { return null; }
   const digits = rawCode.replace(/\D/g, '');
-  if (digits.length === 6) return digits;
-  if (digits.length > 0 && digits.length < 6) return digits.padStart(6, '0');
+  if (digits.length === 6) { return digits; }
+  if (digits.length > 0 && digits.length < 6) { return digits.padStart(6, '0'); }
   return null;
 }
 
@@ -92,15 +92,15 @@ export class CvmMatchingEngine {
     for (const company of context.companies) {
       const normCvm = normalizeCvmCodeDigits(company.cvmCode);
       const normCnpj = normalizeCnpjDigits(company.cnpj);
-      if (normCvm) this.companiesByCvmCode.set(normCvm, company);
-      if (normCnpj) this.companiesByCnpj.set(normCnpj, company);
+      if (normCvm) { this.companiesByCvmCode.set(normCvm, company); }
+      if (normCnpj) { this.companiesByCnpj.set(normCnpj, company); }
     }
 
     // 2. Indexa mapeamentos de valores mobiliários CVM/FCA por Ticker em caixa alta e raiz de 4 letras
     if (context.securityMappings) {
       for (const sec of context.securityMappings) {
         const t = sec.ticker.trim().toUpperCase();
-        if (!t) continue;
+        if (!t) { continue; }
         const list = this.securityMappingsByTicker.get(t) ?? [];
         list.push(sec);
         this.securityMappingsByTicker.set(t, list);
@@ -528,8 +528,8 @@ export class CvmMatchingEngine {
     // Se o modo estrito exigir ISIN E CD_CVM diretamente no mesmo registro FCA, rebaixa para PENDING_REVIEW
     if (this.strictCvmDirectEvidenceOnly && (!hasDirectCvmIsin || !hasDirectCvmCode)) {
       const missingDirect: string[] = [];
-      if (!hasDirectCvmCode) missingDirect.push('CD_CVM_DERIVADO_VIA_CNPJ');
-      if (!hasDirectCvmIsin) missingDirect.push('CVM_FCA_LACKS_ISIN_COLUMN');
+      if (!hasDirectCvmCode) { missingDirect.push('CD_CVM_DERIVADO_VIA_CNPJ'); }
+      if (!hasDirectCvmIsin) { missingDirect.push('CVM_FCA_LACKS_ISIN_COLUMN'); }
 
       return {
         assetId: asset.id,

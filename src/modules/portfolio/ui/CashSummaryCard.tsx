@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { SerializedCashAccount, SerializedCashSummary } from '../domain/cash.types';
+import type { SerializedCashSummary } from '../domain/cash.types';
 import { Decimal } from '@/lib/decimal';
 
 interface CashSummaryCardProps {

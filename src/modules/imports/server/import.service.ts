@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { eq, and, isNull, or, inArray, desc, sql } from 'drizzle-orm';
+import { eq, and, isNull, or, inArray, desc } from 'drizzle-orm';
 import { db, type Database, type DatabaseTransaction, type DbExecutor } from '@/lib/db';
 import { importBatches, importBatchItems } from '@/lib/db/schema/imports';
 import { assets, portfolioEvents, portfolios } from '@/lib/db/schema/portfolio';
@@ -22,22 +22,22 @@ import {
   type RejectImportBatchInput,
 } from '../domain/import.schema';
 import type {
+  ImportActionType,
   ImportBatch,
   ImportBatchItem,
+  ImportBatchStatus,
   ImportFormatId,
   ImportItemStatus,
   ParsedImportBatch,
-  ParsedImportRow,
 } from '../domain/import.types';
+import type { CreatePortfolioEventOutput } from '@/modules/portfolio/domain/portfolio-event.schema';
 import {
   ImportBatchNotFoundError,
   ImportBatchItemNotFoundError,
   ImportBatchNotEditableError,
   ImportFileValidationError,
 } from '../domain/errors';
-import {
-  type ResolveUnmappedAssetInput,
-} from '../domain/import.schema';
+import type { ResolveUnmappedAssetInput } from '../domain/import.schema';
 import { Decimal } from '@/lib/decimal';
 
 const UUID_REGEX =
@@ -304,8 +304,8 @@ export async function processImportUpload(
       insertedItems = rawInsertedItems.map((item) => ({
         ...item,
         status: item.status as ImportItemStatus,
-        actionType: item.actionType as any,
-        direction: item.direction as any,
+        actionType: item.actionType as ImportActionType,
+        direction: item.direction as 'IN' | 'OUT' | null,
         quantity: new Decimal(item.quantity),
         unitPrice: new Decimal(item.unitPrice),
         fees: new Decimal(item.fees),
@@ -360,7 +360,7 @@ export async function processImportUpload(
     const mappedBatch: ImportBatch = {
       ...insertedBatch,
       fileFormat: insertedBatch.fileFormat as ImportFormatId,
-      status: insertedBatch.status as any,
+      status: insertedBatch.status as ImportBatchStatus,
     };
 
     return { batch: mappedBatch, items: insertedItems };
@@ -427,8 +427,8 @@ export async function getImportBatchById(
       resolvedAssetTicker: assetInfo?.ticker || null,
       resolvedAssetName: assetInfo?.name || null,
       status: item.status as ImportItemStatus,
-      actionType: item.actionType as any,
-      direction: item.direction as any,
+      actionType: item.actionType as ImportActionType,
+      direction: item.direction as 'IN' | 'OUT' | null,
       quantity: new Decimal(item.quantity),
       unitPrice: new Decimal(item.unitPrice),
       fees: new Decimal(item.fees),
@@ -440,7 +440,7 @@ export async function getImportBatchById(
     ...batch,
     portfolioName: portfolio?.name,
     fileFormat: batch.fileFormat as ImportFormatId,
-    status: batch.status as any,
+    status: batch.status as ImportBatchStatus,
   };
 
   return { batch: mappedBatch, items };
@@ -476,7 +476,7 @@ export async function listImportBatches(
     ...b,
     portfolioName: portfolioName || undefined,
     fileFormat: b.fileFormat as ImportFormatId,
-    status: b.status as any,
+    status: b.status as ImportBatchStatus,
   }));
 }
 
@@ -618,8 +618,8 @@ export async function updateImportBatchItem(
     return {
       ...updated,
       status: updated.status as ImportItemStatus,
-      actionType: updated.actionType as any,
-      direction: updated.direction as any,
+      actionType: updated.actionType as ImportActionType,
+      direction: updated.direction as 'IN' | 'OUT' | null,
       quantity: new Decimal(updated.quantity),
       unitPrice: new Decimal(updated.unitPrice),
       fees: new Decimal(updated.fees),
@@ -669,8 +669,8 @@ export async function toggleImportBatchItemExclusion(
     return {
       ...updated,
       status: updated.status as ImportItemStatus,
-      actionType: updated.actionType as any,
-      direction: updated.direction as any,
+      actionType: updated.actionType as ImportActionType,
+      direction: updated.direction as 'IN' | 'OUT' | null,
       quantity: new Decimal(updated.quantity),
       unitPrice: new Decimal(updated.unitPrice),
       fees: new Decimal(updated.fees),
@@ -778,8 +778,8 @@ export async function resolveUnmappedBatchItemAsset(
     return {
       ...updated,
       status: updated.status as ImportItemStatus,
-      actionType: updated.actionType as any,
-      direction: updated.direction as any,
+      actionType: updated.actionType as ImportActionType,
+      direction: updated.direction as 'IN' | 'OUT' | null,
       quantity: new Decimal(updated.quantity),
       unitPrice: new Decimal(updated.unitPrice),
       fees: new Decimal(updated.fees),
@@ -805,9 +805,9 @@ async function recalculateBatchMetrics(
   let error = 0;
 
   for (const item of items) {
-    if (item.status === 'error') error++;
-    else if (item.status === 'warning') warning++;
-    else valid++;
+    if (item.status === 'error') { error++; }
+    else if (item.status === 'warning') { warning++; }
+    else { valid++; }
   }
 
   await tx
@@ -949,7 +949,7 @@ export async function confirmImportBatch(
     const sortedItems = [...itemsToImport].sort((a, b) => {
       const timeA = new Date(a.tradeDate).getTime();
       const timeB = new Date(b.tradeDate).getTime();
-      if (timeA !== timeB) return timeA - timeB;
+      if (timeA !== timeB) { return timeA - timeB; }
 
       const isEntryA =
         a.actionType === 'BUY' ||
@@ -959,8 +959,8 @@ export async function confirmImportBatch(
         b.actionType === 'BUY' ||
         b.actionType === 'TRANSFER_IN' ||
         (b.actionType === 'MANUAL_ADJUSTMENT' && b.direction === 'IN');
-      if (isEntryA && !isEntryB) return -1;
-      if (!isEntryA && isEntryB) return 1;
+      if (isEntryA && !isEntryB) { return -1; }
+      if (!isEntryA && isEntryB) { return 1; }
 
       return a.lineNumber - b.lineNumber;
     });
@@ -972,11 +972,15 @@ export async function confirmImportBatch(
       const targetCurrency: 'BRL' | 'USD' | 'EUR' =
         rawCurr === 'USD' || rawCurr === 'EUR' ? rawCurr : 'BRL';
 
+      if (!item.resolvedAssetId) {
+        throw new Error(`Item da linha ${item.lineNumber} não possui ativo resolvido.`);
+      }
+
       const eventOutput = {
         portfolioId: targetPortfolioId,
-        assetId: item.resolvedAssetId!,
-        type: item.actionType as any,
-        direction: item.direction as any,
+        assetId: item.resolvedAssetId,
+        type: item.actionType as CreatePortfolioEventOutput['type'],
+        direction: item.direction as CreatePortfolioEventOutput['direction'],
         tradeDate: new Date(item.tradeDate),
         settlementDate: item.settlementDate ? new Date(item.settlementDate) : null,
         quantity: item.quantity.toString(),

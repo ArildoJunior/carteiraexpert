@@ -76,7 +76,6 @@ export function AssetPriceHistoryChart({
   const lastDate = hasData ? chartData[chartData.length - 1].date : null;
 
   const strokeColor = isPositive ? '#10b981' : '#f43f5e';
-  const fillColor = isPositive ? 'rgba(16, 185, 129, 0.12)' : 'rgba(244, 63, 94, 0.12)';
 
   return (
     <div className="rounded-xl border border-border-theme bg-surface p-5 shadow-xs">
@@ -171,7 +170,7 @@ export function AssetPriceHistoryChart({
               />
               <Tooltip
                 content={({ active, payload }) => {
-                  if (active && payload && payload.length) {
+                  if (active && payload?.length) {
                     const data = payload[0].payload;
                     return (
                       <div className="rounded-lg bg-surface border border-border-theme p-2.5 shadow-md text-xs">

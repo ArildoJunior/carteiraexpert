@@ -21,7 +21,6 @@ import {
 import {
   CustodyInstitutionNotFoundError,
   CustodyAccountNotFoundError,
-  CustodyAccountArchivedError,
   PortfolioFrozenError,
   PortfolioNotFoundError,
 } from '../domain/errors';

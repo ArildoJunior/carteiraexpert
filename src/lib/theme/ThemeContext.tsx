@@ -56,8 +56,8 @@ function getStoredTheme(): ThemePreference {
 }
 
 function resolveTheme(preference: ThemePreference): ResolvedTheme {
-  if (preference === 'dark') return 'dark';
-  if (preference === 'light') return 'light';
+  if (preference === 'dark') { return 'dark'; }
+  if (preference === 'light') { return 'light'; }
   return getSystemTheme();
 }
 
@@ -78,7 +78,7 @@ function getInitialTheme(defaultTheme: ThemePreference): ThemePreference {
 }
 
 function applyThemeClass(resolved: ResolvedTheme) {
-  if (typeof document === 'undefined') return;
+  if (typeof document === 'undefined') { return; }
   const root = document.documentElement;
   if (resolved === 'dark') {
     root.classList.add('dark');
@@ -112,7 +112,7 @@ export function ThemeProvider({
 
   // Monitora alterações na preferência do sistema quando o tema for 'system'
   useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return;
+    if (typeof window === 'undefined' || !window.matchMedia) { return; }
 
     let mediaQuery: MediaQueryList;
     try {
@@ -132,7 +132,8 @@ export function ThemeProvider({
     if (mediaQuery.addEventListener) {
       mediaQuery.addEventListener('change', handleChange);
       return () => mediaQuery.removeEventListener('change', handleChange);
-    } else if (mediaQuery.addListener) {
+    }
+    if (mediaQuery.addListener) {
       // Compatibilidade legada
       mediaQuery.addListener(handleChange);
       return () => mediaQuery.removeListener(handleChange);

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -10,7 +10,6 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
-  Legend,
 } from 'recharts';
 import { Decimal } from '@/lib/decimal';
 import type {
@@ -24,8 +23,10 @@ import {
 } from '../domain/projection-engine';
 import { projectionPremisesInputSchema } from '../domain/projection.schema';
 
+const PAGE_SIZE = 12;
+
 function formatBrl(valStr: string | null | undefined): string {
-  if (!valStr) return 'R$ 0,00';
+  if (!valStr) { return 'R$ 0,00'; }
   try {
     const d = new Decimal(valStr);
     const isNegative = d.isNegative();
@@ -40,7 +41,7 @@ function formatBrl(valStr: string | null | undefined): string {
 }
 
 function formatPercent(valStr: string | null | undefined): string {
-  if (!valStr) return '0,00%';
+  if (!valStr) { return '0,00%'; }
   try {
     const d = new Decimal(valStr);
     const parts = d.toFixed(2).split('.');
@@ -65,7 +66,6 @@ export function CompoundInterestSimulator() {
   // Controles de visualização da tabela
   const [tableFrequency, setTableFrequency] = useState<'ANNUAL' | 'MONTHLY'>('ANNUAL');
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const pageSize = 12;
 
   // Validação e cálculo determinístico reativo
   const calculation = useMemo<{
@@ -123,7 +123,7 @@ export function CompoundInterestSimulator() {
 
   // Dados para o gráfico temporal
   const chartData = useMemo(() => {
-    if (!resultSet) return [];
+    if (!resultSet) { return []; }
     return resultSet.timeline.map((point) => ({
       month: point.month,
       year: Math.floor(point.month / 12),
@@ -136,7 +136,7 @@ export function CompoundInterestSimulator() {
 
   // Dados para a tabela (anual ou mensal paginada)
   const filteredTablePoints = useMemo<SerializedMonthlyProjectionPoint[]>(() => {
-    if (!resultSet) return [];
+    if (!resultSet) { return []; }
     if (tableFrequency === 'ANNUAL') {
       return resultSet.timeline.filter(
         (p) => p.month % 12 === 0 || p.month === resultSet.timeline.length
@@ -145,11 +145,11 @@ export function CompoundInterestSimulator() {
     return resultSet.timeline;
   }, [resultSet, tableFrequency]);
 
-  const totalTablePages = Math.max(1, Math.ceil(filteredTablePoints.length / pageSize));
+  const totalTablePages = Math.max(1, Math.ceil(filteredTablePoints.length / PAGE_SIZE));
   const paginatedTablePoints = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredTablePoints.slice(start, start + pageSize);
-  }, [filteredTablePoints, currentPage, pageSize]);
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredTablePoints.slice(start, start + PAGE_SIZE);
+  }, [filteredTablePoints, currentPage]);
 
   return (
     <div className="w-full space-y-8" id="compound-interest-simulator">
@@ -570,8 +570,8 @@ export function CompoundInterestSimulator() {
                 />
                 <YAxis
                   tickFormatter={(val) => {
-                    if (val >= 1000000) return `R$ ${(val / 1000000).toFixed(1)}M`;
-                    if (val >= 1000) return `R$ ${(val / 1000).toFixed(0)}k`;
+                    if (val >= 1000000) { return `R$ ${(val / 1000000).toFixed(1)}M`; }
+                    if (val >= 1000) { return `R$ ${(val / 1000).toFixed(0)}k`; }
                     return `R$ ${val}`;
                   }}
                   tick={{ fontSize: 11 }}
@@ -580,10 +580,10 @@ export function CompoundInterestSimulator() {
                   formatter={(value: unknown, name: unknown) => {
                     const num = typeof value === 'number' ? value : Number(value);
                     const formatted = formatBrl(num.toFixed(2));
-                    if (name === 'nominal') return [formatted, 'Saldo Nominal'];
-                    if (name === 'real') return [formatted, 'Saldo Real'];
-                    if (name === 'contributed') return [formatted, 'Total Aportado'];
-                    if (name === 'interest') return [formatted, 'Juros Acumulados'];
+                    if (name === 'nominal') { return [formatted, 'Saldo Nominal']; }
+                    if (name === 'real') { return [formatted, 'Saldo Real']; }
+                    if (name === 'contributed') { return [formatted, 'Total Aportado']; }
+                    if (name === 'interest') { return [formatted, 'Juros Acumulados']; }
                     return [formatted, String(name)];
                   }}
                   labelFormatter={(m) => `Mês ${m} (~${(Number(m) / 12).toFixed(1)} anos)`}

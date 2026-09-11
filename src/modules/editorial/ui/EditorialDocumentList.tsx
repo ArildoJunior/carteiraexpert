@@ -1,8 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type {
   SerializedEditorialDocument,
-  EditorialStatus,
-  EditorialDocumentType,
 } from '../domain/editorial.types';
 import { EditorialStatusBadge } from './EditorialStatusBadge';
 
@@ -27,8 +25,8 @@ export function EditorialDocumentList({
   const [typeFilter, setTypeFilter] = useState<string>('ALL');
 
   const filtered = documents.filter((doc) => {
-    if (statusFilter !== 'ALL' && doc.status !== statusFilter) return false;
-    if (typeFilter !== 'ALL' && doc.documentType !== typeFilter) return false;
+    if (statusFilter !== 'ALL' && doc.status !== statusFilter) { return false; }
+    if (typeFilter !== 'ALL' && doc.documentType !== typeFilter) { return false; }
     return true;
   });
 

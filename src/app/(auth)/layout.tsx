@@ -15,7 +15,7 @@ export default async function AuthLayout({
 }) {
   // Proteção server-side: se o usuário já tem sessão válida, redireciona.
   const user = await getCurrentUser();
-  if (user) redirect('/dashboard');
+  if (user) { redirect('/dashboard'); }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background text-text-primary p-4 relative">

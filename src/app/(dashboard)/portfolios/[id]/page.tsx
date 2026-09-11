@@ -37,7 +37,7 @@ export async function generateMetadata({
   }
 
   const user = await getCurrentUser();
-  if (!user) return { title: 'Carteira — CarteiraExpert' };
+  if (!user) { return { title: 'Carteira — CarteiraExpert' }; }
 
   try {
     const portfolio = await getPortfolioById(id, user);
@@ -60,9 +60,9 @@ export default async function PortfolioDetailPage({
   }
 
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) { redirect('/login'); }
 
-  let portfolio;
+  let portfolio: Awaited<ReturnType<typeof getPortfolioById>>;
   try {
     portfolio = await getPortfolioById(id, user);
   } catch {

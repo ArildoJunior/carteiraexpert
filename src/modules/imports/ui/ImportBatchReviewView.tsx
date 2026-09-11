@@ -85,7 +85,7 @@ export function ImportBatchReviewView({
   });
 
   async function handleToggleExclusion(item: SerializedImportBatchItem) {
-    if (!isPendingReview) return;
+    if (!isPendingReview) { return; }
     const newExcluded = !item.isExcluded;
 
     // Atualização otimista
@@ -197,7 +197,7 @@ export function ImportBatchReviewView({
                 className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
                 title="Voltar para lista de importações"
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
               </Link>
@@ -257,7 +257,7 @@ export function ImportBatchReviewView({
             role="alert"
             className="flex items-start gap-2.5 text-sm text-accent-danger bg-accent-danger/10 border border-accent-danger/30 rounded-lg p-3"
           >
-            <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <div>{actionError}</div>
@@ -270,7 +270,7 @@ export function ImportBatchReviewView({
             role="status"
             className="flex items-start gap-2.5 text-sm text-accent-success bg-accent-success/10 border border-accent-success/30 rounded-lg p-3"
           >
-            <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
             </svg>
             <div>
@@ -551,8 +551,8 @@ export function ImportBatchReviewView({
                       <td className="py-3 px-3 max-w-xs">
                         {item.validationErrors && item.validationErrors.length > 0 ? (
                           <ul className="space-y-0.5">
-                            {item.validationErrors.map((err, idx) => (
-                              <li key={idx} className="text-[11px] text-accent-danger flex items-start gap-1">
+                            {item.validationErrors.map((err) => (
+                              <li key={err} className="text-[11px] text-accent-danger flex items-start gap-1">
                                 <span>•</span>
                                 <span>{err}</span>
                               </li>
@@ -697,7 +697,7 @@ export function ImportBatchReviewView({
             className="bg-surface border border-border-theme rounded-xl max-w-md w-full p-6 shadow-xl space-y-4 animate-in fade-in zoom-in-95 duration-150"
           >
             <div className="w-10 h-10 rounded-full bg-accent-success/10 border border-accent-success/30 flex items-center justify-center text-accent-success">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
               </svg>
             </div>
@@ -755,7 +755,7 @@ export function ImportBatchReviewView({
             className="bg-surface border border-border-theme rounded-xl max-w-md w-full p-6 shadow-xl space-y-4 animate-in fade-in zoom-in-95 duration-150"
           >
             <div className="w-10 h-10 rounded-full bg-accent-danger/10 border border-accent-danger/30 flex items-center justify-center text-accent-danger">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
             </div>

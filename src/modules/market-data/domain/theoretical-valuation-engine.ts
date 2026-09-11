@@ -2,7 +2,6 @@ import { Decimal } from '@/lib/decimal';
 import type {
   ValuationFundamentalContext,
   ValuationQuoteContext,
-  ValuationModelType,
   ValuationCalculationStatus,
   DataQualityStatus,
   ValuationTraceability,
@@ -28,7 +27,6 @@ import type {
   SerializedGrahamPremises,
   SerializedDcfPremises,
   SerializedMultiplesPremises,
-  SerializedConsensusValuationResult,
 } from './theoretical-valuation.types';
 
 export const METHODOLOGY_VERSION = '1.0.0';
@@ -60,7 +58,7 @@ function calculateMarginOfSafety(
   quote: ValuationQuoteContext | null,
   statementCurrency: string
 ): Decimal | null {
-  if (!intrinsicValue || !quote || !quote.price || quote.price.isZero() || quote.price.isNegative()) {
+  if (!intrinsicValue || !quote?.price || quote.price.isZero() || quote.price.isNegative()) {
     return null;
   }
   const quoteCurrency = (quote.currency || 'BRL').toUpperCase();
@@ -964,19 +962,19 @@ export function calculateMultiplesValuation(
 
   // 1. Preço Justo P/L: TargetPE * LPA
   let fairPricePe: Decimal | null = null;
-  if (targetPe && lpaDecimal && lpaDecimal.greaterThan(0)) {
+  if (targetPe && lpaDecimal?.greaterThan(0)) {
     fairPricePe = targetPe.times(lpaDecimal);
   }
 
   // 2. Preço Justo P/VP: TargetPB * VPA
   let fairPricePb: Decimal | null = null;
-  if (targetPb && vpaDecimal && vpaDecimal.greaterThan(0)) {
+  if (targetPb && vpaDecimal?.greaterThan(0)) {
     fairPricePb = targetPb.times(vpaDecimal);
   }
 
   // 3. Preço Justo EV/EBITDA: (TargetEV_EBITDA * EBITDA - NetDebt) / SharesCount
   let fairPriceEvToEbitda: Decimal | null = null;
-  if (targetEvToEbitda && statement.ebitda && statement.ebitda.greaterThan(0) && netDebtDecimal !== null) {
+  if (targetEvToEbitda && statement.ebitda?.greaterThan(0) && netDebtDecimal !== null) {
     const targetEV = targetEvToEbitda.times(statement.ebitda);
     const equityValue = targetEV.minus(netDebtDecimal);
     if (equityValue.greaterThan(0)) {
@@ -992,19 +990,19 @@ export function calculateMultiplesValuation(
 
   if (selectedMultipleMethod === 'PE') {
     intrinsicValue = fairPricePe;
-    if (fairPricePe) modelsUsedCount = 1;
+    if (fairPricePe) { modelsUsedCount = 1; }
   } else if (selectedMultipleMethod === 'EV_EBITDA') {
     intrinsicValue = fairPriceEvToEbitda;
-    if (fairPriceEvToEbitda) modelsUsedCount = 1;
+    if (fairPriceEvToEbitda) { modelsUsedCount = 1; }
   } else if (selectedMultipleMethod === 'PB') {
     intrinsicValue = fairPricePb;
-    if (fairPricePb) modelsUsedCount = 1;
+    if (fairPricePb) { modelsUsedCount = 1; }
   } else {
     // AVERAGE de todos os múltiplos válidos e positivos
     const availablePrices: Decimal[] = [];
-    if (fairPricePe && fairPricePe.greaterThan(0)) availablePrices.push(fairPricePe);
-    if (fairPriceEvToEbitda && fairPriceEvToEbitda.greaterThan(0)) availablePrices.push(fairPriceEvToEbitda);
-    if (fairPricePb && fairPricePb.greaterThan(0)) availablePrices.push(fairPricePb);
+    if (fairPricePe?.greaterThan(0)) { availablePrices.push(fairPricePe); }
+    if (fairPriceEvToEbitda?.greaterThan(0)) { availablePrices.push(fairPriceEvToEbitda); }
+    if (fairPricePb?.greaterThan(0)) { availablePrices.push(fairPricePb); }
 
     if (availablePrices.length > 0) {
       const sum = availablePrices.reduce((acc, p) => acc.plus(p), new Decimal(0));
@@ -1155,11 +1153,12 @@ export function calculateConsensusValuation(
 
   let sumWeightedPrices = new Decimal(0);
   const modelWeights = validModels.map((m) => {
-    sumWeightedPrices = sumWeightedPrices.plus(m.intrinsicValue!);
+    const intrinsicValue = m.intrinsicValue ?? new Decimal(0);
+    sumWeightedPrices = sumWeightedPrices.plus(intrinsicValue);
     return {
       model: m.model,
       modelName: m.modelName,
-      targetPrice: m.intrinsicValue!,
+      targetPrice: intrinsicValue,
       weight: weightPerModel,
       status: m.status,
     };

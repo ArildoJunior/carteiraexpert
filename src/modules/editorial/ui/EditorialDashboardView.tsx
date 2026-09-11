@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type {
   SerializedEditorialDocument,
   SerializedEditorialVersion,
@@ -108,8 +108,8 @@ export function EditorialDashboardView() {
           visibility: data.visibility,
           notes: data.notes,
         });
-        if (!res.success) throw new Error(res.error);
-        if (res.data) setSelectedDocument(res.data);
+        if (!res.success) { throw new Error(res.error); }
+        if (res.data) { setSelectedDocument(res.data); }
       } else {
         const res = await createEditorialDocumentAction({
           title: data.title,
@@ -118,8 +118,8 @@ export function EditorialDashboardView() {
           documentType: data.documentType,
           visibility: data.visibility,
         });
-        if (!res.success) throw new Error(res.error);
-        if (res.data) setSelectedDocument(res.data);
+        if (!res.success) { throw new Error(res.error); }
+        if (res.data) { setSelectedDocument(res.data); }
       }
       await fetchDocuments();
     } finally {
@@ -131,8 +131,8 @@ export function EditorialDashboardView() {
     setIsLoading(true);
     try {
       const res = await submitEditorialForReviewAction({ documentId });
-      if (!res.success) throw new Error(res.error);
-      if (res.data) setSelectedDocument(res.data);
+      if (!res.success) { throw new Error(res.error); }
+      if (res.data) { setSelectedDocument(res.data); }
       await fetchDocuments();
     } finally {
       setIsLoading(false);
@@ -143,7 +143,7 @@ export function EditorialDashboardView() {
     decision: 'APPROVE' | 'REJECT' | 'REQUEST_CHANGES',
     comments: string
   ) => {
-    if (!selectedDocument) return;
+    if (!selectedDocument) { return; }
     setIsLoading(true);
     try {
       const res = await reviewEditorialDocumentAction({
@@ -151,7 +151,7 @@ export function EditorialDashboardView() {
         decision,
         comments,
       });
-      if (!res.success) throw new Error(res.error);
+      if (!res.success) { throw new Error(res.error); }
       await fetchDocuments();
       setActiveView('LIST');
       setSelectedDocument(null);
@@ -167,7 +167,7 @@ export function EditorialDashboardView() {
         documentId,
         confirmed: true,
       });
-      if (!res.success) throw new Error(res.error);
+      if (!res.success) { throw new Error(res.error); }
       await fetchDocuments();
       setActiveView('LIST');
       setSelectedDocument(null);
@@ -180,7 +180,7 @@ export function EditorialDashboardView() {
     setIsLoading(true);
     try {
       const res = await archiveEditorialDocumentAction({ documentId });
-      if (!res.success) throw new Error(res.error);
+      if (!res.success) { throw new Error(res.error); }
       await fetchDocuments();
     } finally {
       setIsLoading(false);
@@ -198,7 +198,7 @@ export function EditorialDashboardView() {
       documentType: params.documentType,
       documentId: selectedDocument?.id,
     });
-    if (!res.success) throw new Error(res.error);
+    if (!res.success) { throw new Error(res.error); }
     return res.data;
   };
 

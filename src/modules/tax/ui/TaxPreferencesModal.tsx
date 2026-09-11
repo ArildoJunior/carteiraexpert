@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { SerializedUserTaxPreferences } from '../domain/tax.types';
 import { saveUserTaxPreferencesAction } from '../server/tax.actions';
 
@@ -28,7 +28,7 @@ export function TaxPreferencesModal({
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  if (!isOpen) return null;
+  if (!isOpen) { return null; }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -31,7 +31,7 @@ export const cashTransactionInputSchema = z.object({
       (val) => {
         try {
           const s = String(val).trim();
-          if (!POSITIVE_MONEY_REGEX.test(s)) return false;
+          if (!POSITIVE_MONEY_REGEX.test(s)) { return false; }
           const d = new Decimal(s);
           return d.isPositive() && !d.isZero();
         } catch {
@@ -46,7 +46,7 @@ export const cashTransactionInputSchema = z.object({
     .refine(
       (val) => {
         const d = new Date(val);
-        return !isNaN(d.getTime());
+        return !Number.isNaN(d.getTime());
       },
       { message: 'Data de movimentação inválida.' }
     )

@@ -34,6 +34,7 @@ export function PortfolioModal({
   const [state, setState] = useState<ActionResult<Portfolio>>({ success: false });
 
   useEffect(() => {
+    if (!isOpen) { return; }
     if (portfolioToEdit) {
       setName(portfolioToEdit.name || '');
       setDescription(portfolioToEdit.description || '');
@@ -55,7 +56,7 @@ export function PortfolioModal({
     setState({ success: false });
   }, [portfolioToEdit, isOpen, hasExistingRealPortfolio]);
 
-  if (!isOpen) return null;
+  if (!isOpen) { return null; }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

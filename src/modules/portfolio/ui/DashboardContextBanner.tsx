@@ -23,14 +23,13 @@ export function DashboardContextBanner({
     <div className="space-y-3" id="dashboard-context-banners">
       {/* Banner de Ambiente Hipotético (Estudo ou Análise) */}
       {isHypothetical && (
-        <div
+        <section
           id="dashboard-hypothetical-context-banner"
           className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm shadow-xs ${
             selectedPortfolio.purpose === 'ESTUDO'
               ? 'bg-blue-500/10 border-blue-500/30 text-blue-900 dark:text-blue-100'
               : 'bg-purple-500/10 border-purple-500/30 text-purple-900 dark:text-purple-100'
           }`}
-          role="region"
           aria-label="Aviso de ambiente hipotético"
         >
           <div className="flex items-start gap-3">
@@ -64,15 +63,14 @@ export function DashboardContextBanner({
               <span>+</span> Criar Carteira Real
             </Link>
           )}
-        </div>
+        </section>
       )}
 
       {/* Banner de Carteira Congelada por Quota */}
       {isFrozen && (
-        <div
+        <section
           id="dashboard-frozen-context-banner"
           className="p-3.5 rounded-xl border bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-100 flex items-center justify-between gap-3 text-sm shadow-xs"
-          role="region"
           aria-label="Aviso de carteira congelada"
         >
           <div className="flex items-center gap-2.5">
@@ -92,15 +90,14 @@ export function DashboardContextBanner({
           >
             Fazer Upgrade →
           </Link>
-        </div>
+        </section>
       )}
 
       {/* Banner de Carteira Arquivada */}
       {isArchived && !isFrozen && (
-        <div
+        <section
           id="dashboard-archived-context-banner"
           className="p-3.5 rounded-xl border bg-surface border-border-theme text-text-secondary flex items-center gap-2.5 text-sm shadow-xs"
-          role="region"
           aria-label="Aviso de carteira arquivada"
         >
           <span className="text-lg" aria-hidden="true">
@@ -110,7 +107,7 @@ export function DashboardContextBanner({
             <strong className="text-text-primary">Carteira Arquivada:</strong> Esta carteira está
             arquivada para consulta histórica. Novas operações estão bloqueadas.
           </p>
-        </div>
+        </section>
       )}
     </div>
   );

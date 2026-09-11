@@ -8,12 +8,12 @@ import {
 } from '../domain/cvm-fundamentals-engine';
 import { resolveSharesCountByClass } from '../domain/cvm-capital-composition-parser';
 import { publishFundamentalsInputSchema } from '../domain/cvm-fundamentals.schema';
-import {
-  type ConvertedFundamentals,
-  type CvmFundamentalsAuditAction,
-  type PublishedFundamentalRecord,
-  type PublishFundamentalsInput,
-  type PublishFundamentalsResult,
+import type {
+  ConvertedFundamentals,
+  CvmFundamentalsAuditAction,
+  PublishedFundamentalRecord,
+  PublishFundamentalsInput,
+  PublishFundamentalsResult,
 } from '../domain/cvm-fundamentals.types';
 import type { ResolvedAssetTarget } from '../domain/cvm-binding.types';
 
@@ -55,7 +55,7 @@ export class CvmFundamentalsPublisherService {
       result.companiesProcessed++;
       const [cnpj, cvmCode] = periodKey.split('#');
 
-      const executeInTransaction = async (tx: any) => {
+      const executeInTransaction = async (tx: DbExecutor) => {
         // 3. Resolve os ativos B3 homologados (APPROVED) para a companhia
         const activeAssets = await cvmBindingService.resolveActiveAssetsForCompany(cnpj, tx);
 
@@ -89,7 +89,9 @@ export class CvmFundamentalsPublisherService {
       };
 
       if ('transaction' in executor && typeof executor.transaction === 'function') {
-        await (executor as any).transaction(executeInTransaction);
+        await (executor as typeof db).transaction(async (tx) => {
+          await executeInTransaction(tx);
+        });
       } else {
         await executeInTransaction(executor);
       }
@@ -102,10 +104,10 @@ export class CvmFundamentalsPublisherService {
    * Persiste atomicamente um demonstrativo para um ativo específico com ON CONFLICT e auditoria.
    */
   private async publishForSingleAsset(
-    tx: any,
+    tx: DbExecutor,
     targetAsset: ResolvedAssetTarget,
     cnpj: string,
-    cvmCode: string,
+    _cvmCode: string,
     converted: ConvertedFundamentals,
     actorId: string,
     actorType: 'system' | 'user'
@@ -174,7 +176,7 @@ export class CvmFundamentalsPublisherService {
       cashEquivalents: converted.cashEquivalents ? converted.cashEquivalents.toFixed(4) : null,
       // Respeita incondicionalmente a constraint chk_asset_fundamentals_shares_count (> 0 ou NULL)
       sharesCount:
-        effectiveSharesCount && effectiveSharesCount.gt(0)
+        effectiveSharesCount?.gt(0)
           ? effectiveSharesCount.toFixed(10)
           : null,
       dividendsDeclared: converted.dividendsDeclared ? converted.dividendsDeclared.toFixed(4) : null,
@@ -184,7 +186,7 @@ export class CvmFundamentalsPublisherService {
 
     let actionTaken: 'INSERTED' | 'UPDATED' | 'NO_OP' = 'INSERTED';
 
-    if (isExisting) {
+    if (existingRecord) {
       // Verifica se houve alteração real nos valores
       const isIdentical =
         existingRecord.netRevenue === valuesToPersist.netRevenue &&

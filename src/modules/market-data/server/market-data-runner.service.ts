@@ -80,7 +80,7 @@ export function discoverIncomingCotahistFiles(baseDir?: string): string[] {
   const results: string[] = [];
 
   function scan(dir: string) {
-    if (!fs.existsSync(dir)) return;
+    if (!fs.existsSync(dir)) { return; }
 
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
@@ -271,5 +271,9 @@ export async function runMarketDataIngestion(
     };
   }
 
-  return lockResult.result!;
+  if (!lockResult.result) {
+    throw new Error('Resultado da execução sob lock não disponível.');
+  }
+
+  return lockResult.result;
 }

@@ -16,14 +16,14 @@ export function calculateFileHash(content: string | Buffer): string {
  * - Preserva tickers padrão (ex: "PETR4", "VALE3", "KNIP11", "IVVB11", "AAPL34").
  */
 export function normalizeTicker(rawTicker: string): string {
-  if (!rawTicker) return '';
+  if (!rawTicker) { return ''; }
   const trimmed = rawTicker.trim().toUpperCase();
 
   // Expressão regular para identificar ticker fracionário da B3:
   // 4 letras + 1 ou 2 dígitos + sufixo 'F' (ex: PETR4F, KNIP11F)
   const fractionalRegex = /^([A-Z]{4}\d{1,2})F$/;
   const match = trimmed.match(fractionalRegex);
-  if (match && match[1]) {
+  if (match?.[1]) {
     return match[1];
   }
 
@@ -36,7 +36,7 @@ export function normalizeTicker(rawTicker: string): string {
  */
 export function detectCsvDelimiter(content: string): string {
   const lines = content.split(/\r?\n/).filter((l) => l.trim().length > 0).slice(0, 5);
-  if (lines.length === 0) return ';';
+  if (lines.length === 0) { return ';'; }
 
   let semicolonCount = 0;
   let commaCount = 0;
@@ -69,14 +69,14 @@ export function detectCsvDelimiter(content: string): string {
  * - Moeda: "R$ 38,50", "US$ 100.00"
  */
 export function parseBrazilianDecimal(raw: string | number | undefined | null): Decimal | null {
-  if (raw === undefined || raw === null) return null;
+  if (raw === undefined || raw === null) { return null; }
   if (typeof raw === 'number') {
-    if (isNaN(raw) || !isFinite(raw)) return null;
+    if (Number.isNaN(raw) || !Number.isFinite(raw)) { return null; }
     return new Decimal(raw.toString());
   }
 
   let str = raw.trim();
-  if (!str) return null;
+  if (!str) { return null; }
 
   // Remove símbolos de moeda (R$, $, US$) e espaços
   str = str.replace(/^(R\$|US\$|\$|EUR|€)\s*/i, '').trim();
@@ -102,7 +102,7 @@ export function parseBrazilianDecimal(raw: string | number | undefined | null): 
 
   try {
     const d = new Decimal(str);
-    if (d.isNaN()) return null;
+    if (d.isNaN()) { return null; }
     return d;
   } catch {
     return null;
@@ -114,9 +114,9 @@ export function parseBrazilianDecimal(raw: string | number | undefined | null): 
  * Impede que datas impossíveis (ex: 31 de fevereiro, 31 de abril) sejam aceitas.
  */
 export function isRealCalendarDate(year: number, month: number, day: number): boolean {
-  if (year < 1900 || year > 2100) return false;
-  if (month < 1 || month > 12) return false;
-  if (day < 1 || day > 31) return false;
+  if (year < 1900 || year > 2100) { return false; }
+  if (month < 1 || month > 12) { return false; }
+  if (day < 1 || day > 31) { return false; }
 
   const daysInMonth = [
     31,
@@ -148,9 +148,9 @@ export function isRealCalendarDate(year: number, month: number, day: number): bo
  * às 12:00:00 (meio-dia) para evitar desvios de dia em conversões de fuso.
  */
 export function parseFlexibleDate(rawDateStr: string | undefined | null): Date | null {
-  if (!rawDateStr) return null;
+  if (!rawDateStr) { return null; }
   const str = rawDateStr.trim();
-  if (!str) return null;
+  if (!str) { return null; }
 
   // 1. Padrão brasileiro DD/MM/AAAA ou DD/MM/YYYY
   const brMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
@@ -173,7 +173,7 @@ export function parseFlexibleDate(rawDateStr: string | undefined | null): Date |
     // Cria em UTC compensando o fuso de São Paulo (UTC-3: +3h para UTC)
     // 12:00 horário de Brasília -> 15:00 UTC
     const dateUtc = new Date(Date.UTC(year, month - 1, day, hour + 3, minute, second));
-    return isNaN(dateUtc.getTime()) ? null : dateUtc;
+    return Number.isNaN(dateUtc.getTime()) ? null : dateUtc;
   }
 
   // 2. Padrão ISO YYYY-MM-DD
@@ -190,7 +190,7 @@ export function parseFlexibleDate(rawDateStr: string | undefined | null): Date |
     // Se tiver timezone explícito (Z ou offset)
     if (isoMatch[7]) {
       const parsed = new Date(str);
-      return isNaN(parsed.getTime()) ? null : parsed;
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
     }
 
     const hour = isoMatch[4] ? parseInt(isoMatch[4], 10) : 12;
@@ -198,7 +198,7 @@ export function parseFlexibleDate(rawDateStr: string | undefined | null): Date |
     const second = isoMatch[6] ? parseInt(isoMatch[6], 10) : 0;
 
     const dateUtc = new Date(Date.UTC(year, month - 1, day, hour + 3, minute, second));
-    return isNaN(dateUtc.getTime()) ? null : dateUtc;
+    return Number.isNaN(dateUtc.getTime()) ? null : dateUtc;
   }
 
   return null;
@@ -211,7 +211,7 @@ export function parseFlexibleDate(rawDateStr: string | undefined | null): Date |
 export function mapOperationType(
   rawType: string | undefined | null
 ): { type: ImportActionType; direction: 'IN' | 'OUT' | null } | null {
-  if (!rawType) return null;
+  if (!rawType) { return null; }
   const clean = rawType.trim().toUpperCase();
 
   // Compras

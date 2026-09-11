@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Decimal } from '@/lib/decimal';
 import type {
   DataQualityStatus,
@@ -14,13 +14,15 @@ import {
   serializeTheoreticalValuationResultSet,
 } from '@/modules/market-data/domain/theoretical-valuation-engine';
 
+const SKELETON_VALUATION_KEYS = ['graham', 'bazin', 'gordon', 'fcd'] as const;
+
 export interface TheoreticalValuationCardProps {
   valuationData?: SerializedTheoreticalValuationResultSet | null;
   isLoading?: boolean;
 }
 
 function formatCurrency(valStr: string | null | undefined, currency = 'BRL'): string {
-  if (!valStr) return '—';
+  if (!valStr) { return '—'; }
   try {
     const d = new Decimal(valStr);
     const isNegative = d.isNegative();
@@ -36,7 +38,7 @@ function formatCurrency(valStr: string | null | undefined, currency = 'BRL'): st
 }
 
 function formatPercent(valStr: string | null | undefined): string {
-  if (!valStr) return '—';
+  if (!valStr) { return '—'; }
   try {
     const d = new Decimal(valStr);
     const isNegative = d.isNegative();
@@ -51,7 +53,7 @@ function formatPercent(valStr: string | null | undefined): string {
 }
 
 function formatRate(valStr: string | null | undefined): string {
-  if (!valStr) return '—';
+  if (!valStr) { return '—'; }
   try {
     const d = new Decimal(valStr).times(100);
     return `${d.toFixed(1).replace('.', ',')}%`;
@@ -90,7 +92,7 @@ function getStatusBadge(status: ValuationCalculationStatus) {
 }
 
 function getDataQualityBadge(status?: DataQualityStatus) {
-  if (!status) return null;
+  if (!status) { return null; }
   switch (status) {
     case 'VALID':
       return (
@@ -139,8 +141,8 @@ export function TheoreticalValuationCard({
 
   // Se o usuário estiver simulando premissas customizadas, recalcula localmente de forma determinística
   const activeData: SerializedTheoreticalValuationResultSet | null = useMemo(() => {
-    if (!valuationData) return null;
-    if (!showSimulator) return valuationData;
+    if (!valuationData) { return null; }
+    if (!showSimulator) { return valuationData; }
 
     try {
       // Reconstrói contexto contábil básico dos fatos reportados
@@ -238,8 +240,8 @@ export function TheoreticalValuationCard({
           <div className="h-8 w-28 bg-surface-elevated rounded-md" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={`skel-val-${i}`} className="h-48 bg-surface-elevated rounded-xl" />
+          {SKELETON_VALUATION_KEYS.map((modelKey) => (
+            <div key={`skel-val-${modelKey}`} className="h-48 bg-surface-elevated rounded-xl" />
           ))}
         </div>
       </div>

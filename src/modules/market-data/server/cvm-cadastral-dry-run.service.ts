@@ -113,7 +113,7 @@ export async function inspectLocalFile(filePath: string): Promise<LocalFileInspe
       sha256,
       encodingDetected: 'ISO-8859-1 (latin1)',
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return {
       fileName,
       filePath,
@@ -121,7 +121,7 @@ export async function inspectLocalFile(filePath: string): Promise<LocalFileInspe
       sizeBytes: null,
       sha256: null,
       encodingDetected: null,
-      error: err.message,
+      error: err instanceof Error ? err.message : String(err),
     };
   }
 }

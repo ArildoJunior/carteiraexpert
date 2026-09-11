@@ -44,7 +44,7 @@ export async function* parseCvmCapitalCompositionStream(
 
   for await (const rawLine of lineStream) {
     const line = rawLine.replace(/[\r\n]/g, '').trim();
-    if (!line) continue;
+    if (!line) { continue; }
 
     const parts = line.split(';').map((p) => p.trim());
 
@@ -104,9 +104,9 @@ export async function* parseCvmCapitalCompositionStream(
       // 3. Extração estrita de quantidades de ações
       // Diferenciação: se contiver apenas dígitos -> Decimal(val) (incluindo 0); se vazio -> null; se corrompido -> descarta linha
       const parseShareQuantity = (rawVal?: string): { value: Decimal | null; isCorrupted: boolean } => {
-        if (!rawVal || rawVal.trim() === '') return { value: null, isCorrupted: false };
+        if (!rawVal || rawVal.trim() === '') { return { value: null, isCorrupted: false }; }
         const trimmed = rawVal.trim();
-        if (!/^\d+$/.test(trimmed)) return { value: null, isCorrupted: true };
+        if (!/^\d+$/.test(trimmed)) { return { value: null, isCorrupted: true }; }
         return { value: new Decimal(trimmed), isCorrupted: false };
       };
 
@@ -129,7 +129,6 @@ export async function* parseCvmCapitalCompositionStream(
       };
     } catch {
       // Descarta linhas individuais corrompidas preservando o processamento das demais
-      continue;
     }
   }
 }
@@ -153,16 +152,16 @@ export function resolveSharesCountByClass(
   shareClass?: CvmShareClass | string | null,
   statementContext?: CvmStatementCompositionContext
 ): Decimal | null {
-  if (!composition) return null;
-  if (!shareClass || !isCvmShareClass(shareClass)) return null;
+  if (!composition) { return null; }
+  if (!shareClass || !isCvmShareClass(shareClass)) { return null; }
 
   // Validação de compatibilidade estrita com o contexto contábil
   if (statementContext) {
     const compCnpj = composition.cnpj.replace(/\D/g, '');
     const ctxCnpj = statementContext.cnpj.replace(/\D/g, '');
-    if (compCnpj !== ctxCnpj) return null;
-    if (composition.referenceDate !== statementContext.referenceDate) return null;
-    if (composition.version !== statementContext.version) return null;
+    if (compCnpj !== ctxCnpj) { return null; }
+    if (composition.referenceDate !== statementContext.referenceDate) { return null; }
+    if (composition.version !== statementContext.version) { return null; }
   }
 
   let rawCount: Decimal | null = null;
@@ -196,7 +195,7 @@ export function resolveSharesCountByClass(
     const { netIncome, officialLpa, totalEquity } = statementContext;
 
     // 1. Calibração primária: confronto estrito entre (Lucro Líquido / rawCount) e LPA Oficial da DRE (conta 3.99)
-    if (officialLpa && officialLpa.gt(0) && netIncome && !netIncome.isZero()) {
+    if (officialLpa?.gt(0) && netIncome && !netIncome.isZero()) {
       const impliedLpaRaw = netIncome.abs().dividedBy(rawCount);
       const ratio = impliedLpaRaw.dividedBy(officialLpa);
       // Se a razão estiver na faixa de 400x a 2.500x (~1.000x), a escala reportada é em milhares

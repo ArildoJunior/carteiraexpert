@@ -65,7 +65,7 @@ export function isValidStrictIsoDateTime(str: string): boolean {
       /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|([+-])(\d{2}):(\d{2}))$/
     );
 
-  if (!match) return false;
+  if (!match) { return false; }
 
   const year = parseInt(match[1], 10);
   const month = parseInt(match[2], 10);
@@ -75,15 +75,15 @@ export function isValidStrictIsoDateTime(str: string): boolean {
   const second = parseInt(match[6], 10);
   const tz = match[7];
 
-  if (month < 1 || month > 12) return false;
-  if (hour < 0 || hour > 23) return false;
-  if (minute < 0 || minute > 59) return false;
-  if (second < 0 || second > 59) return false;
+  if (month < 1 || month > 12) { return false; }
+  if (hour < 0 || hour > 23) { return false; }
+  if (minute < 0 || minute > 59) { return false; }
+  if (second < 0 || second > 59) { return false; }
 
   const isLeapYear = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
   const daysInMonths = [0, 31, isLeapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
-  if (day < 1 || day > daysInMonths[month]) return false;
+  if (day < 1 || day > daysInMonths[month]) { return false; }
 
   if (tz !== 'Z') {
     const tzHours = parseInt(match[9], 10);
@@ -94,14 +94,14 @@ export function isValidStrictIsoDateTime(str: string): boolean {
   }
 
   const parsed = new Date(str.trim());
-  return !isNaN(parsed.getTime());
+  return !Number.isNaN(parsed.getTime());
 }
 
 export const eventDateSchema = z
   .custom<Date | string>(
     (val) => {
       if (val instanceof Date) {
-        return !isNaN(val.getTime());
+        return !Number.isNaN(val.getTime());
       }
       if (typeof val === 'string') {
         return isValidStrictIsoDateTime(val);
@@ -115,7 +115,7 @@ export const eventDateSchema = z
   )
   .transform((val, ctx) => {
     const d = typeof val === 'string' ? new Date(val.trim()) : val;
-    if (isNaN(d.getTime())) {
+    if (Number.isNaN(d.getTime())) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'Data inválida.',

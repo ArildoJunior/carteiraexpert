@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type {
   SerializedEditorialDocument,
   SerializedEditorialVersion,
@@ -76,7 +76,7 @@ export function EditorialReviewPanel({
         </h4>
         {document.regulatoryFlags && document.regulatoryFlags.length > 0 ? (
           <div className="space-y-2">
-            {document.regulatoryFlags.map((flag, idx) => {
+            {document.regulatoryFlags.map((flag) => {
               let badgeColor = 'bg-blue-950 text-blue-300 border-blue-800';
               if (flag.severity === 'BLOCKER') {
                 badgeColor = 'bg-rose-950 text-rose-300 border-rose-800';
@@ -85,7 +85,7 @@ export function EditorialReviewPanel({
               }
               return (
                 <div
-                  key={idx}
+                  key={`${flag.code}:${flag.message}`}
                   className={`p-3 rounded-lg border text-xs flex flex-col gap-1 ${badgeColor}`}
                 >
                   <div className="flex items-center justify-between font-semibold">

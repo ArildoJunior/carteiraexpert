@@ -1,4 +1,3 @@
-import React from 'react';
 import type { SerializedOptionProximityAlert } from '../domain/options.types';
 
 interface OptionsAlertsBannerProps {
@@ -13,7 +12,6 @@ export function OptionsAlertsBanner({ alerts, onSelectOption }: OptionsAlertsBan
 
   return (
     <section
-      role="region"
       aria-label="Alertas de Vencimento de Opções B3"
       className="space-y-3 rounded-xl border border-border-theme bg-surface p-4 sm:p-5 shadow-sm"
     >

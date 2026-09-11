@@ -60,7 +60,7 @@ export async function getPublicAssetTheoreticalValuation(
   // 3. Localiza cotação de mercado mais recente utilizável
   let quoteContext: ValuationQuoteContext | null = null;
   const usableQuote = await getLatestUsableQuote(normalizedTicker, executor);
-  if (usableQuote && usableQuote.closePrice && usableQuote.closePrice.greaterThan(0)) {
+  if (usableQuote?.closePrice?.greaterThan(0)) {
     quoteContext = {
       price: usableQuote.closePrice,
       quoteDate: usableQuote.tradeDate,

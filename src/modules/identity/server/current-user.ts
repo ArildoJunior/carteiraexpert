@@ -21,7 +21,7 @@ export async function getCurrentUser(): Promise<SafeUser | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
-  if (!token) return null;
+  if (!token) { return null; }
 
   const tokenHash = hashToken(token);
   const now = new Date();
@@ -50,7 +50,7 @@ export async function getCurrentUser(): Promise<SafeUser | null> {
     )
     .limit(1);
 
-  if (!row) return null;
+  if (!row) { return null; }
 
   // Verificação de status suspenso (pull-based — reativa na próxima requisição)
   if (row.status === 'suspended') {
@@ -88,7 +88,7 @@ export async function requireAuth(): Promise<SafeUser> {
 export async function getSessionId(): Promise<string | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-  if (!token) return null;
+  if (!token) { return null; }
 
   const tokenHash = hashToken(token);
   const now = new Date();

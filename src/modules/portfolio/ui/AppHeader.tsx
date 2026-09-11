@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import { usePathname } from 'next/navigation';
 import { ThemeToggle } from '@/lib/theme/ThemeToggle';
 import type { SafeUser } from '@/modules/identity/domain/user.types';
@@ -12,24 +11,60 @@ interface AppHeaderProps {
 }
 
 function getContextualTitle(pathname: string): { title: string; category?: string } {
-  if (pathname === '/dashboard') return { title: 'Dashboard Consolidado', category: 'Gestão Patrimonial' };
-  if (pathname === '/portfolios') return { title: 'Minhas Carteiras', category: 'Gestão Patrimonial' };
-  if (pathname.startsWith('/portfolios/')) return { title: 'Detalhes da Carteira', category: 'Gestão Patrimonial' };
-  if (pathname.startsWith('/history')) return { title: 'Histórico de Transações', category: 'Gestão Patrimonial' };
-  if (pathname === '/import') return { title: 'Importação de Dados', category: 'Gestão Patrimonial' };
-  if (pathname.startsWith('/import/')) return { title: 'Revisão de Lote de Importação', category: 'Gestão Patrimonial' };
-  if (pathname.startsWith('/plans')) return { title: 'Assinatura & Planos', category: 'Conta' };
-  if (pathname === '/ativos') return { title: 'Todos os Ativos', category: 'Mercado' };
-  if (pathname === '/acoes') return { title: 'Ações Brasileiras (B3)', category: 'Mercado' };
-  if (pathname.startsWith('/acoes/')) return { title: 'Ações Brasileiras', category: 'Catálogo de Ativos' };
-  if (pathname === '/fiis') return { title: 'Fundos Imobiliários (FIIs)', category: 'Mercado' };
-  if (pathname.startsWith('/fiis/')) return { title: 'Fundos Imobiliários', category: 'Catálogo de Ativos' };
-  if (pathname === '/etfs') return { title: 'Fundos de Índice (ETFs)', category: 'Mercado' };
-  if (pathname.startsWith('/etfs/')) return { title: 'Fundos de Índice', category: 'Catálogo de Ativos' };
-  if (pathname === '/fips') return { title: 'Fundos de Participações (FIPs)', category: 'Mercado' };
-  if (pathname.startsWith('/fips/')) return { title: 'Fundos de Participações', category: 'Catálogo de Ativos' };
-  if (pathname === '/bdrs') return { title: 'Certificados BDRs', category: 'Mercado' };
-  if (pathname.startsWith('/bdrs/')) return { title: 'Certificados BDRs', category: 'Catálogo de Ativos' };
+  if (pathname === '/dashboard') {
+    return { title: 'Dashboard Consolidado', category: 'Gestão Patrimonial' };
+  }
+  if (pathname === '/portfolios') {
+    return { title: 'Minhas Carteiras', category: 'Gestão Patrimonial' };
+  }
+  if (pathname.startsWith('/portfolios/')) {
+    return { title: 'Detalhes da Carteira', category: 'Gestão Patrimonial' };
+  }
+  if (pathname.startsWith('/history')) {
+    return { title: 'Histórico de Transações', category: 'Gestão Patrimonial' };
+  }
+  if (pathname === '/import') {
+    return { title: 'Importação de Dados', category: 'Gestão Patrimonial' };
+  }
+  if (pathname.startsWith('/import/')) {
+    return { title: 'Revisão de Lote de Importação', category: 'Gestão Patrimonial' };
+  }
+  if (pathname.startsWith('/plans')) {
+    return { title: 'Assinatura & Planos', category: 'Conta' };
+  }
+  if (pathname === '/ativos') {
+    return { title: 'Todos os Ativos', category: 'Mercado' };
+  }
+  if (pathname === '/acoes') {
+    return { title: 'Ações Brasileiras (B3)', category: 'Mercado' };
+  }
+  if (pathname.startsWith('/acoes/')) {
+    return { title: 'Ações Brasileiras', category: 'Catálogo de Ativos' };
+  }
+  if (pathname === '/fiis') {
+    return { title: 'Fundos Imobiliários (FIIs)', category: 'Mercado' };
+  }
+  if (pathname.startsWith('/fiis/')) {
+    return { title: 'Fundos Imobiliários', category: 'Catálogo de Ativos' };
+  }
+  if (pathname === '/etfs') {
+    return { title: 'Fundos de Índice (ETFs)', category: 'Mercado' };
+  }
+  if (pathname.startsWith('/etfs/')) {
+    return { title: 'Fundos de Índice', category: 'Catálogo de Ativos' };
+  }
+  if (pathname === '/fips') {
+    return { title: 'Fundos de Participações (FIPs)', category: 'Mercado' };
+  }
+  if (pathname.startsWith('/fips/')) {
+    return { title: 'Fundos de Participações', category: 'Catálogo de Ativos' };
+  }
+  if (pathname === '/bdrs') {
+    return { title: 'Certificados BDRs', category: 'Mercado' };
+  }
+  if (pathname.startsWith('/bdrs/')) {
+    return { title: 'Certificados BDRs', category: 'Catálogo de Ativos' };
+  }
   return { title: 'CarteiraExpert', category: 'Plataforma' };
 }
 
@@ -54,11 +89,25 @@ export function AppHeader({ user, isMobileMenuOpen, onToggleMobileMenu }: AppHea
           className="lg:hidden p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated border border-border-theme focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary transition-colors"
         >
           {isMobileMenuOpen ? (
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           ) : (
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           )}

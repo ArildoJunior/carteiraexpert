@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { createOptionContractAction } from '../server/options.actions';
 import type { SerializedOptionContract } from '../domain/options.types';
 import { Decimal } from '@/lib/decimal';
@@ -59,12 +59,12 @@ export function OptionsContractForm({
   // Cálculos prévios em tempo real
   const summaryPreview = useMemo(() => {
     try {
-      if (!strikePrice || !premiumPaidReceived || !quantity) return null;
+      if (!strikePrice || !premiumPaidReceived || !quantity) { return null; }
       const k = new Decimal(strikePrice);
       const prem = new Decimal(premiumPaidReceived);
       const qty = new Decimal(quantity);
 
-      if (k.lessThanOrEqualTo(0) || prem.isNegative() || qty.lessThanOrEqualTo(0)) return null;
+      if (k.lessThanOrEqualTo(0) || prem.isNegative() || qty.lessThanOrEqualTo(0)) { return null; }
 
       const totalPremium = prem.mul(qty);
       const breakeven = optionType === 'CALL'
@@ -240,9 +240,9 @@ export function OptionsContractForm({
 
         {/* Tipo: CALL / PUT */}
         <div>
-          <label className="block text-xs font-medium text-text-secondary mb-1">
+          <span className="block text-xs font-medium text-text-secondary mb-1">
             Tipo de Opção *
-          </label>
+          </span>
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
@@ -273,9 +273,9 @@ export function OptionsContractForm({
 
         {/* Direção: BUY / SELL */}
         <div>
-          <label className="block text-xs font-medium text-text-secondary mb-1">
+          <span className="block text-xs font-medium text-text-secondary mb-1">
             Direção da Posição *
-          </label>
+          </span>
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
@@ -306,9 +306,9 @@ export function OptionsContractForm({
 
         {/* Estilo: AMERICAN / EUROPEAN */}
         <div>
-          <label className="block text-xs font-medium text-text-secondary mb-1">
+          <span className="block text-xs font-medium text-text-secondary mb-1">
             Estilo de Exercício
-          </label>
+          </span>
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"

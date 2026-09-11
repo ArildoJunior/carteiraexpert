@@ -2,12 +2,9 @@ import { Decimal } from '@/lib/decimal';
 import { cvmSourceReferenceSchema } from './cvm.schema';
 import { validateAndNormalizeCnpj, validateAndNormalizeCvmCode } from './cvm-cad-parser';
 import {
-  CvmCorruptedDataError,
   CvmIncompatibleStreamContextError,
   CvmInvalidContextError,
   CvmInvalidHeaderError,
-  CvmInvalidIdentifierError,
-  CvmInvalidScaleError,
   isValidCalendarDate,
   parseStrictPositiveInteger,
   type CvmAggregatedStatement,
@@ -24,7 +21,6 @@ import {
 } from './cvm-fundamentals-engine';
 import {
   DMPL_REJECTED_COLUMNS,
-  parseCvmDmplStream,
   type ParsedCvmDmplRow,
 } from './cvm-dmpl-parser';
 
@@ -142,7 +138,7 @@ export async function* parseCvmStatementStream(
   for await (const rawLine of lineStream) {
     metrics.totalLinesRead++;
     const line = rawLine.replace(/[\r\n]/g, '').trim();
-    if (!line) continue;
+    if (!line) { continue; }
 
     const parts = line.split(';').map((p) => p.trim());
 
@@ -446,7 +442,7 @@ export class CvmDfpAggregator {
   public ingestDmplRow(row: ParsedCvmDmplRow): void {
     if (this.eligibleCompanies) {
       const cad = this.eligibleCompanies.get(row.cnpj);
-      if (!cad || cad.sectorDecision !== 'PROCESSABLE') {
+      if (cad?.sectorDecision !== 'PROCESSABLE') {
         return;
       }
     }
@@ -523,7 +519,7 @@ export class CvmDfpAggregator {
       const [cnpj, cvmCode, referenceDate] = periodKey.split('#');
       const highestVersion = this.maxVersionByPeriod.get(periodKey);
 
-      if (!highestVersion) continue;
+      if (!highestVersion) { continue; }
 
       const companyLegalName = this.companyNames.get(cnpj) || 'COMPANHIA CVM';
 
@@ -585,16 +581,9 @@ export class CvmDfpAggregator {
 
       // 6. Extração de contas opcionais de balanço (BPA e BPP) - Etapa 1
       // Diferenciação estrita: conta ausente -> null; conta presente com valor zero -> Decimal(0)
-      const cashEquivalents = bpaAccounts.has('1.01.01')
-        ? bpaAccounts.get('1.01.01')!
-        : null;
-
-      const shortTermDebt = bppAccounts.has('2.01.04')
-        ? bppAccounts.get('2.01.04')!
-        : null;
-      const longTermDebt = bppAccounts.has('2.02.01')
-        ? bppAccounts.get('2.02.01')!
-        : null;
+      const cashEquivalents = bpaAccounts.get('1.01.01') ?? null;
+      const shortTermDebt = bppAccounts.get('2.01.04') ?? null;
+      const longTermDebt = bppAccounts.get('2.02.01') ?? null;
 
       // Regra estrita: Dívida Bruta calculada somente quando as duas parcelas forem conhecidas
       const grossDebt =
@@ -629,7 +618,7 @@ export class CvmDfpAggregator {
 
       // 9. Extração de contas opcionais de DRE e DFC para EBITDA (Etapa 3)
       // EBIT proveniente da conta DRE 3.05
-      const ebit = dreAccounts.has('3.05') ? dreAccounts.get('3.05')! : null;
+      const ebit = dreAccounts.get('3.05') ?? null;
 
       // Busca slot de DFC Método Indireto estritamente no mesmo contexto
       const dfcType = this.statementType === 'CONSOLIDATED' ? 'DFC_MI_con' : 'DFC_MI_ind';
@@ -672,24 +661,24 @@ export class CvmDfpAggregator {
           // Precedência determinística para CONSOLIDATED:
           // 1. Prioridade absoluta para 'Patrimônio Líquido' (controladores)
           // 2. Fallback secundário para 'Patrimônio Líquido Consolidado' exclusivamente quando 'Patrimônio Líquido' não existir
-          if (columnsMap.has('Patrimônio Líquido')) {
+          const plCol = columnsMap.get('Patrimônio Líquido');
+          const plcCol = columnsMap.get('Patrimônio Líquido Consolidado');
+          if (plCol) {
             selectedColumn = 'Patrimônio Líquido';
-            const colData = columnsMap.get('Patrimônio Líquido')!;
-            dmplAccounts = colData.accounts;
-            dmplDescs = colData.descriptions;
-          } else if (columnsMap.has('Patrimônio Líquido Consolidado')) {
+            dmplAccounts = plCol.accounts;
+            dmplDescs = plCol.descriptions;
+          } else if (plcCol) {
             selectedColumn = 'Patrimônio Líquido Consolidado';
-            const colData = columnsMap.get('Patrimônio Líquido Consolidado')!;
-            dmplAccounts = colData.accounts;
-            dmplDescs = colData.descriptions;
+            dmplAccounts = plcCol.accounts;
+            dmplDescs = plcCol.descriptions;
           }
         } else {
           // Para INDIVIDUAL: aceita exclusivamente 'Patrimônio Líquido'
-          if (columnsMap.has('Patrimônio Líquido')) {
+          const plCol = columnsMap.get('Patrimônio Líquido');
+          if (plCol) {
             selectedColumn = 'Patrimônio Líquido';
-            const colData = columnsMap.get('Patrimônio Líquido')!;
-            dmplAccounts = colData.accounts;
-            dmplDescs = colData.descriptions;
+            dmplAccounts = plCol.accounts;
+            dmplDescs = plCol.descriptions;
           }
         }
       }
@@ -701,8 +690,8 @@ export class CvmDfpAggregator {
         // 1. Prioridade absoluta para a conta sintética padrão 5.04.06
         if (dmplAccounts.has('5.04.06')) {
           const desc = dmplDescs?.get('5.04.06') || '';
-          if (isDeclaredDividendsAccount('5.04.06', desc)) {
-            const rawVal = dmplAccounts.get('5.04.06')!;
+          const rawVal = dmplAccounts.get('5.04.06');
+          if (isDeclaredDividendsAccount('5.04.06', desc) && rawVal) {
             dividendsDeclared = rawVal.abs();
             dmplOrigin = {
               statementOrigin: this.statementType === 'CONSOLIDATED' ? 'DMPL_con' : 'DMPL_ind',

@@ -13,7 +13,7 @@ export const COTAHIST_RECORD_LENGTH = 245;
  * Não utiliza Date, time, UTC ou fuso horário, preservando a data estrita de pregão.
  */
 export function parseB3DateString(dateStr: string): string | null {
-  if (!dateStr || dateStr.length !== 8 || dateStr === '00000000' || dateStr === '99991231') {
+  if (dateStr?.length !== 8 || dateStr === '00000000' || dateStr === '99991231') {
     return null;
   }
   const yearStr = dateStr.substring(0, 4);
@@ -254,8 +254,8 @@ export function parseCotahistTrailer(rawLine: string): CotahistTrailer {
  */
 export function getCotahistLineType(rawLine: string): '00' | '01' | '99' | 'unknown' {
   const clean = rawLine.replace(/[\r\n]/g, '');
-  if (clean.startsWith('00')) return '00';
-  if (clean.startsWith('01')) return '01';
-  if (clean.startsWith('99')) return '99';
+  if (clean.startsWith('00')) { return '00'; }
+  if (clean.startsWith('01')) { return '01'; }
+  if (clean.startsWith('99')) { return '99'; }
   return 'unknown';
 }

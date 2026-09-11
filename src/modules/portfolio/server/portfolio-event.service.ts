@@ -1,6 +1,5 @@
 import crypto from 'node:crypto';
 import { eq, and, isNull, desc, gte, lte, count, ilike } from 'drizzle-orm';
-import { Decimal } from '@/lib/decimal';
 import { db, type Database, type DatabaseTransaction, type DbExecutor } from '../../../lib/db';
 import { portfolioEvents, portfolios, assets } from '../../../lib/db/schema/portfolio';
 import { custodyAccounts } from '../../../lib/db/schema/custody';

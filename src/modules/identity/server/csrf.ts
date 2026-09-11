@@ -25,7 +25,7 @@ function getAllowedOrigins(): string[] {
 }
 
 function extractOriginFromReferer(referer: string | null): string | null {
-  if (!referer) return null;
+  if (!referer) { return null; }
   try {
     const url = new URL(referer);
     return url.origin;

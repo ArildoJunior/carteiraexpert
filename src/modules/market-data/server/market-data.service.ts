@@ -1,4 +1,4 @@
-import { eq, and, desc, inArray, sql } from 'drizzle-orm';
+import { eq, and, desc, inArray } from 'drizzle-orm';
 import crypto from 'node:crypto';
 import { db, type DbExecutor } from '@/lib/db';
 import { marketQuotes, exchangeRates } from '@/lib/db/schema/market-data';

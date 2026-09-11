@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { TransactionModal } from '@/modules/portfolio/ui/TransactionModal';
-import type { Asset } from '@/modules/portfolio/domain/asset.types';
+import type { Asset, AssetType, Market } from '@/modules/portfolio/domain/asset.types';
 
 export interface UserPortfolioItem {
   id: string;
@@ -72,8 +72,8 @@ export function LaunchOperationDialog({
     id: asset.id,
     ticker: asset.ticker,
     name: asset.name,
-    assetType: asset.assetType as any,
-    market: asset.market as any,
+    assetType: asset.assetType as AssetType,
+    market: asset.market as Market,
     currency: asset.currency,
     isCustom: false,
     userId: null,
@@ -136,7 +136,7 @@ export function LaunchOperationDialog({
               </div>
             ) : (
               <div className="my-5 space-y-3">
-                <label className="block text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                <label htmlFor="select-portfolio-for-launch" className="block text-xs font-semibold text-text-secondary uppercase tracking-wider">
                   Carteira de Destino
                 </label>
                 <select

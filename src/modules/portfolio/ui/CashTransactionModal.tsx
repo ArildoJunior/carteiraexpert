@@ -43,7 +43,7 @@ export function CashTransactionModal({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!isOpen) return null;
+  if (!isOpen) { return null; }
 
   const selectedAccount = accounts.find((a) => a.id === accountId) || accounts[0];
 
@@ -105,7 +105,7 @@ export function CashTransactionModal({
             cashAccountId: selectedAccount.id,
             type: 'WITHDRAWAL',
             amount: requested.toFixed(8),
-            transactionDate: new Date(transactionDate + 'T12:00:00Z'),
+            transactionDate: new Date(`${transactionDate}T12:00:00Z`),
             description: description.trim() || null,
           },
           portfolioId
@@ -122,7 +122,7 @@ export function CashTransactionModal({
             cashAccountId: selectedAccount.id,
             type: 'DEPOSIT',
             amount: new Decimal(amount).toFixed(8),
-            transactionDate: new Date(transactionDate + 'T12:00:00Z'),
+            transactionDate: new Date(`${transactionDate}T12:00:00Z`),
             description: description.trim() || null,
           },
           portfolioId
@@ -235,7 +235,7 @@ export function CashTransactionModal({
           {mode === 'NEW_ACCOUNT' ? (
             <>
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-text-secondary">
+                <label htmlFor="input-new-cash-account-name" className="text-xs font-semibold text-text-secondary">
                   Nome da Conta
                 </label>
                 <input
@@ -250,7 +250,7 @@ export function CashTransactionModal({
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-text-secondary">
+                <label htmlFor="select-new-cash-account-currency" className="text-xs font-semibold text-text-secondary">
                   Moeda da Conta
                 </label>
                 <select
@@ -270,7 +270,7 @@ export function CashTransactionModal({
               {/* Seletor de Conta se houver mais de 1 */}
               {accounts.length > 1 && (
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-text-secondary">
+                  <label htmlFor="select-cash-account" className="text-xs font-semibold text-text-secondary">
                     Conta de Caixa
                   </label>
                   <select
@@ -300,7 +300,7 @@ export function CashTransactionModal({
 
               {/* Valor */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-text-secondary">
+                <label htmlFor="input-cash-amount" className="text-xs font-semibold text-text-secondary">
                   Valor ({selectedAccount?.currency || 'BRL'})
                 </label>
                 <input
@@ -318,7 +318,7 @@ export function CashTransactionModal({
 
               {/* Data da Operação */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-text-secondary">
+                <label htmlFor="input-cash-date" className="text-xs font-semibold text-text-secondary">
                   Data da Movimentação
                 </label>
                 <input
@@ -333,7 +333,7 @@ export function CashTransactionModal({
 
               {/* Descrição opcional */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-text-secondary">
+                <label htmlFor="input-cash-description" className="text-xs font-semibold text-text-secondary">
                   Descrição (opcional)
                 </label>
                 <input

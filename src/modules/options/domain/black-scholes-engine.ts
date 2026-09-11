@@ -117,9 +117,8 @@ export function calculateMoneyness(spot: Decimal, strike: Decimal, optionType: O
 
   if (optionType === 'CALL') {
     return spot.greaterThan(upperAtm) ? 'ITM' : 'OTM';
-  } else {
-    return spot.lessThan(lowerAtm) ? 'ITM' : 'OTM';
   }
+  return spot.lessThan(lowerAtm) ? 'ITM' : 'OTM';
 }
 
 /**

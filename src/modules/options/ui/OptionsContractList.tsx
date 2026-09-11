@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { SerializedOptionContract, OptionStatus } from '../domain/options.types';
 import { updateOptionStatusAction, deleteOptionContractAction } from '../server/options.actions';
 
@@ -22,12 +22,12 @@ export function OptionsContractList({
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
   const filteredOptions = options.filter((opt) => {
-    if (filterStatus === 'ALL') return true;
+    if (filterStatus === 'ALL') { return true; }
     return opt.status === filterStatus;
   });
 
   async function handleClosePosition(contractId: string) {
-    if (!confirm('Deseja marcar este contrato de opção como ENCERRADO?')) return;
+    if (!confirm('Deseja marcar este contrato de opção como ENCERRADO?')) { return; }
     setLoadingId(contractId);
     setActionError(null);
     try {
@@ -46,7 +46,7 @@ export function OptionsContractList({
   }
 
   async function handleDeleteContract(contractId: string) {
-    if (!confirm('Tem certeza de que deseja excluir este contrato? Esta ação pode ser desfeita pelo suporte.')) return;
+    if (!confirm('Tem certeza de que deseja excluir este contrato? Esta ação pode ser desfeita pelo suporte.')) { return; }
     setLoadingId(contractId);
     setActionError(null);
     try {
@@ -65,8 +65,7 @@ export function OptionsContractList({
   }
 
   return (
-    <div
-      role="region"
+    <section
       aria-label="Lista de Contratos de Opções"
       className="rounded-xl border border-border-theme bg-surface p-5 sm:p-6 shadow-sm space-y-4"
     >
@@ -250,7 +249,11 @@ export function OptionsContractList({
                       </span>
                     </td>
 
-                    <td className="py-3 px-3 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    <td
+                      className="py-3 px-3 text-right whitespace-nowrap"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           type="button"
@@ -290,6 +293,6 @@ export function OptionsContractList({
           </table>
         </div>
       )}
-    </div>
+    </section>
   );
 }

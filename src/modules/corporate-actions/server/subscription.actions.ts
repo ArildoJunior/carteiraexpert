@@ -54,9 +54,9 @@ function safeRevalidatePath(path: string): void {
 }
 
 function normalizeFormDate(dateStr: string | null | undefined): string | null {
-  if (!dateStr || typeof dateStr !== 'string') return null;
+  if (!dateStr || typeof dateStr !== 'string') { return null; }
   const trimmed = dateStr.trim();
-  if (!trimmed) return null;
+  if (!trimmed) { return null; }
 
   if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(trimmed)) {
     return trimmed;
@@ -70,7 +70,7 @@ function normalizeFormDate(dateStr: string | null | undefined): string | null {
 }
 
 function extractPayload(input: FormData | Record<string, unknown>): Record<string, unknown> {
-  if (input && typeof input === 'object' && 'forEach' in input && typeof (input as any).forEach === 'function') {
+  if (input && typeof input === 'object' && 'forEach' in input && typeof (input as { forEach?: unknown }).forEach === 'function') {
     const obj: Record<string, unknown> = {};
     (input as FormData).forEach((value, key) => {
       obj[key] = value;

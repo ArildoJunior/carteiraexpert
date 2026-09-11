@@ -1,10 +1,8 @@
-import React from 'react';
 
 export function TaxDisclaimerBanner({ compact = false }: { compact?: boolean }) {
   if (compact) {
     return (
-      <div
-        role="region"
+      <section
         aria-label="Aviso Regulatório Fiscal"
         className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-text-secondary flex items-center gap-2"
       >
@@ -12,14 +10,13 @@ export function TaxDisclaimerBanner({ compact = false }: { compact?: boolean }) 
         <span>
           <strong className="text-text-primary">Módulo Auxiliar de IRPF:</strong> Exclusivamente informativo. O CarteiraExpert não emite DARF, não integra com a Receita Federal e não substitui profissionais habilitados.
         </span>
-      </div>
+      </section>
     );
   }
 
   return (
     <aside
       id="tax-regulatory-disclaimer"
-      role="region"
       aria-label="Aviso Regulatório e Legal Fiscal"
       className="rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-surface to-amber-500/5 p-4 sm:p-5 shadow-sm space-y-3"
     >

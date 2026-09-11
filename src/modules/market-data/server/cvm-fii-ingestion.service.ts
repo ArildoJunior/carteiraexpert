@@ -16,7 +16,7 @@
  */
 
 import crypto from 'node:crypto';
-import postgres from 'postgres';
+import type { Sql } from 'postgres';
 import { ADVISORY_LOCK_KEYS, withAdvisoryLock } from '@/lib/db/advisory-lock';
 import { FiiCadastralResolverEngine } from '../domain/cvm-fii-cadastral-resolver';
 import type {
@@ -107,7 +107,11 @@ export class CvmFiiIngestionService {
       };
     }
 
-    const txResult = lockResult.result!;
+    if (!lockResult.result) {
+      throw new Error('Resultado da execução sob lock não disponível.');
+    }
+
+    const txResult = lockResult.result;
     return {
       status: txResult.status,
       dryRun,
@@ -125,7 +129,7 @@ export class CvmFiiIngestionService {
    * Obtém ou prepara o relatório em memória.
    */
   private async resolvePreparationReport(
-    client: postgres.Sql,
+    client: Sql,
     options: CvmFiiIngestionOptions
   ): Promise<FiiIngestionPreparationReport> {
     if (options.preparedReport) {
@@ -179,8 +183,12 @@ export class CvmFiiIngestionService {
       existingBindings,
     });
 
+    if (!options.packageInput) {
+      throw new Error('options.packageInput é obrigatório quando options.preparedReport não é fornecido.');
+    }
+
     return prepareFiiMonthlyPackage({
-      input: options.packageInput!,
+      input: options.packageInput,
       resolverEngine,
       executionMode: 'PREPARE_ONLY',
     });
@@ -190,7 +198,7 @@ export class CvmFiiIngestionService {
    * Executa a transação no PostgreSQL com verificação estrita de invariantes.
    */
   private async persistReportInTransaction(
-    client: postgres.Sql,
+    client: Sql,
     report: FiiIngestionPreparationReport,
     dryRun: boolean,
     chunkSize: number
@@ -280,7 +288,7 @@ export class CvmFiiIngestionService {
    * Persiste os registros em cvm_fii_registry em chunks seguros.
    */
   private async persistRegistryRecords(
-    tx: postgres.Sql,
+    tx: Sql,
     registryRecords: PreparedFiiRegistryRecord[],
     metrics: CvmFiiIngestionMetrics,
     chunkSize: number
@@ -336,7 +344,7 @@ export class CvmFiiIngestionService {
    * Persiste as demonstrações mensais em fii_monthly_fundamentals.
    */
   private async persistMonthlyFundamentals(
-    tx: postgres.Sql,
+    tx: Sql,
     monthlyRecords: PreparedFiiMonthlyRecord[],
     cnpjToIdMap: Map<string, string>,
     metrics: CvmFiiIngestionMetrics,
@@ -411,7 +419,7 @@ export class CvmFiiIngestionService {
    * Persiste as propostas auditáveis de vínculo em cvm_fii_bindings.
    */
   private async persistBindingProposals(
-    tx: postgres.Sql,
+    tx: Sql,
     bindingProposals: PreparedFiiBindingRecord[],
     cnpjToIdMap: Map<string, string>,
     metrics: CvmFiiIngestionMetrics,
@@ -520,7 +528,7 @@ export class CvmFiiIngestionService {
    * Asserção das invariantes físicas no banco dentro da sessão transacional antes do commit.
    */
   private async assertPhysicalTransactionalInvariants(
-    tx: postgres.Sql
+    tx: Sql
   ): Promise<void> {
     // 1. Integridade referencial: nenhum fundamento mensal órfão
     const [orphanFundamentals] = await tx<{ count: number }[]>`

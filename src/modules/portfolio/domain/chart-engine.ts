@@ -37,7 +37,7 @@ export const ASSET_TYPE_LABELS: Record<string, string> = {
 };
 
 export function getAssetTypeLabel(type?: string | null): string {
-  if (!type) return 'Outros';
+  if (!type) { return 'Outros'; }
   return ASSET_TYPE_LABELS[type.toLowerCase()] || type.toUpperCase();
 }
 
@@ -78,8 +78,8 @@ interface NormalizedPosition {
 
 function normalizePosition(p: AssetPosition | SerializedAssetPosition): NormalizedPosition {
   const toDec = (val: Decimal | string | null | undefined): Decimal | null => {
-    if (val === null || val === undefined) return null;
-    if (val instanceof Decimal) return val;
+    if (val === null || val === undefined) { return null; }
+    if (val instanceof Decimal) { return val; }
     return new Decimal(val);
   };
 
@@ -126,7 +126,7 @@ function getPositionEffectiveValue(
         return p.totalCost;
       }
       // Ativo estrangeiro em consolidação BRL só entra na soma de custo se houver taxa cambial válida
-      if (p.fxRateUsed && p.fxRateUsed.greaterThan(0)) {
+      if (p.fxRateUsed?.greaterThan(0)) {
         return p.totalCost.times(p.fxRateUsed);
       }
       return null;
@@ -145,14 +145,14 @@ function getPositionEffectiveValue(
 
   if (isBrlConsolidation) {
     if (isBrlAsset) {
-      return p.marketValue && p.marketValue.greaterThan(0) ? p.marketValue : null;
+      return p.marketValue?.greaterThan(0) ? p.marketValue : null;
     }
     // Ativo estrangeiro em consolidação BRL exige marketValueBrl
-    return p.marketValueBrl && p.marketValueBrl.greaterThan(0) ? p.marketValueBrl : null;
+    return p.marketValueBrl?.greaterThan(0) ? p.marketValueBrl : null;
   }
 
   // Para carteiras em moeda estrangeira (ex: USD)
-  return p.marketValue && p.marketValue.greaterThan(0) ? p.marketValue : null;
+  return p.marketValue?.greaterThan(0) ? p.marketValue : null;
 }
 
 /**
@@ -202,15 +202,15 @@ export function calculatePortfolioAllocation(
     const isQuoted =
       p.hasQuote &&
       (baseCurrency === 'BRL' && p.currency !== 'BRL'
-        ? p.marketValueBrl !== null && p.marketValueBrl.greaterThan(0)
-        : p.marketValue !== null && p.marketValue.greaterThan(0));
+        ? p.marketValueBrl?.greaterThan(0)
+        : p.marketValue?.greaterThan(0));
 
     if (isQuoted) {
       quotedPositionsCount++;
     } else {
       unquotedPositionsCount++;
       if (baseCurrency === 'BRL' && p.currency !== 'BRL') {
-        if (p.fxRateUsed && p.fxRateUsed.greaterThan(0)) {
+        if (p.fxRateUsed?.greaterThan(0)) {
           unquotedTotalCost = unquotedTotalCost.plus(p.totalCost.times(p.fxRateUsed));
         }
       } else {
@@ -262,7 +262,6 @@ export function calculatePortfolioAllocation(
         groupLabel = p.currency.toUpperCase();
         secondaryLabel = p.currency === 'BRL' ? 'Moeda Nacional' : 'Moeda Estrangeira';
         break;
-      case 'asset':
       default:
         groupKey = p.assetId;
         groupLabel = p.ticker;

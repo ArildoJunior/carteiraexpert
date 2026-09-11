@@ -31,7 +31,7 @@ function getMarketTypeDescription(marketType: number): string {
 }
 
 function formatDateToPtBr(isoDate: string): string {
-  if (!isoDate) return '';
+  if (!isoDate) { return ''; }
   const parts = isoDate.split('-');
   if (parts.length === 3) {
     return `${parts[2]}/${parts[1]}/${parts[0]}`;

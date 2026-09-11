@@ -56,7 +56,7 @@ export function AssetSearchSelect({
 
   // Debounced search effect
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) { return; }
 
     setLoading(true);
 
@@ -129,6 +129,7 @@ export function AssetSearchSelect({
         <div className="relative">
           <input
             id="asset-search-input"
+            role="combobox"
             type="text"
             value={query}
             onChange={(e) => {

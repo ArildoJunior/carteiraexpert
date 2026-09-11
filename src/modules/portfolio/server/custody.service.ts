@@ -23,7 +23,6 @@ import {
 import {
   CustodyInstitutionNotFoundError,
   CustodyAccountNotFoundError,
-  CustodyAccountArchivedError,
   PortfolioNotFoundError,
 } from '../domain/errors';
 
@@ -377,9 +376,9 @@ export async function updateCustodyAccount(
     updatedAt: new Date(),
   };
 
-  if (data.name !== undefined) updateFields.name = data.name;
-  if (data.accountNumber !== undefined) updateFields.accountNumber = data.accountNumber;
-  if (data.status !== undefined) updateFields.status = data.status;
+  if (data.name !== undefined) { updateFields.name = data.name; }
+  if (data.accountNumber !== undefined) { updateFields.accountNumber = data.accountNumber; }
+  if (data.status !== undefined) { updateFields.status = data.status; }
 
   const [updated] = await executor
     .update(custodyAccounts)

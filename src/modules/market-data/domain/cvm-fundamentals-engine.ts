@@ -6,7 +6,6 @@ import {
   type ConvertedFundamentals,
   type CvmPeriodType,
   type CvmRawStatementData,
-  type CvmStatementType,
 } from './cvm-fundamentals.types';
 import { rawStatementDataSchema } from './cvm-fundamentals.schema';
 import {
@@ -80,7 +79,7 @@ export function validateFinancialSanity(fundamentals: ConvertedFundamentals): vo
   }
 
   // 5. Dívida Bruta não pode ser negativa
-  if (fundamentals.grossDebt && fundamentals.grossDebt.isNegative()) {
+  if (fundamentals.grossDebt?.isNegative()) {
     throw new CvmFinancialSanityError(
       `Sanity check violado: Dívida Bruta não pode ser negativa (valor: ${fundamentals.grossDebt.toString()}).`,
       'GROSS_DEBT_NEGATIVE',
@@ -89,7 +88,7 @@ export function validateFinancialSanity(fundamentals: ConvertedFundamentals): vo
   }
 
   // 6. Caixa e Equivalentes não pode ser negativo
-  if (fundamentals.cashEquivalents && fundamentals.cashEquivalents.isNegative()) {
+  if (fundamentals.cashEquivalents?.isNegative()) {
     throw new CvmFinancialSanityError(
       `Sanity check violado: Caixa e Equivalentes não pode ser negativo (valor: ${fundamentals.cashEquivalents.toString()}).`,
       'CASH_EQUIVALENTS_NEGATIVE',
@@ -107,7 +106,7 @@ export function validateFinancialSanity(fundamentals: ConvertedFundamentals): vo
   }
 
   // 8. Quantidade de Ações não pode ser negativa
-  if (fundamentals.sharesCount && fundamentals.sharesCount.isNegative()) {
+  if (fundamentals.sharesCount?.isNegative()) {
     throw new CvmFinancialSanityError(
       `Sanity check violado: Quantidade de ações não pode ser negativa (valor: ${fundamentals.sharesCount.toString()}).`,
       'SHARES_COUNT_NEGATIVE',
@@ -151,8 +150,8 @@ export function isOperatingDepreciationAmortization(
   accountCode: string,
   accountDescription?: string | null
 ): boolean {
-  if (!accountCode || !/^6\.01\.01\.\d+$/.test(accountCode)) return false;
-  if (!accountDescription || typeof accountDescription !== 'string') return false;
+  if (!accountCode || !/^6\.01\.01\.\d+$/.test(accountCode)) { return false; }
+  if (!accountDescription || typeof accountDescription !== 'string') { return false; }
 
   const norm = accountDescription
     .toLowerCase()
@@ -161,7 +160,7 @@ export function isOperatingDepreciationAmortization(
     .trim();
 
   // Rejeita descrições muito curtas ou puramente genéricas/ambíguas
-  if (norm.length < 5) return false;
+  if (norm.length < 5) { return false; }
 
   const genericDescriptions = new Set([
     'outros',
@@ -176,7 +175,7 @@ export function isOperatingDepreciationAmortization(
     'outras despesas',
     'outras receitas',
   ]);
-  if (genericDescriptions.has(norm)) return false;
+  if (genericDescriptions.has(norm)) { return false; }
 
   // Regra positiva estrita: requer radical comprovado de depreciação, amortização, exaustão ou depleção
   const hasPositiveKeyword =
@@ -185,7 +184,7 @@ export function isOperatingDepreciationAmortization(
     norm.includes('exaust') ||
     norm.includes('deplec');
 
-  if (!hasPositiveKeyword) return false;
+  if (!hasPositiveKeyword) { return false; }
 
   // Exclusões estritas de amortizações financeiras, dívidas, custos de transação/captação, fiscais ou capital de giro
   const exclusions = [
@@ -240,7 +239,7 @@ export function isOperatingDepreciationAmortization(
   ];
 
   for (const ex of exclusions) {
-    if (norm.includes(ex)) return false;
+    if (norm.includes(ex)) { return false; }
   }
 
   return true;
@@ -255,7 +254,7 @@ export function extractDfcDepreciationAmortization(
   accounts?: Map<string, Decimal> | null,
   descriptions?: Map<string, string> | null
 ): Decimal | null {
-  if (!accounts || accounts.size === 0) return null;
+  if (!accounts || accounts.size === 0) { return null; }
 
   let total: Decimal | null = null;
 
@@ -288,7 +287,7 @@ export function isDeclaredDividendsAccount(
   accountCode: string,
   accountDescription?: string | null
 ): boolean {
-  if (!accountCode) return false;
+  if (!accountCode) { return false; }
   if (accountCode !== '5.04.06' && !/^5\.04\.06\.\d+$/.test(accountCode)) {
     return false;
   }
@@ -302,7 +301,7 @@ export function isDeclaredDividendsAccount(
     .replace(/[\u0300-\u036f]/g, '')
     .trim();
 
-  if (norm.length < 5) return false;
+  if (norm.length < 5) { return false; }
 
   const genericDescriptions = new Set([
     'outros',
@@ -313,10 +312,10 @@ export function isDeclaredDividendsAccount(
     'outras despesas',
     'outras receitas',
   ]);
-  if (genericDescriptions.has(norm)) return false;
+  if (genericDescriptions.has(norm)) { return false; }
 
   // Radical afirmativo obrigatório
-  if (!norm.includes('divid')) return false;
+  if (!norm.includes('divid')) { return false; }
 
   // Exclusões estritas
   const exclusions = [
@@ -338,7 +337,7 @@ export function isDeclaredDividendsAccount(
   ];
 
   for (const ex of exclusions) {
-    if (norm.includes(ex)) return false;
+    if (norm.includes(ex)) { return false; }
   }
 
   return true;
@@ -355,14 +354,16 @@ export function extractDmplDividendsDeclared(
   accounts?: Map<string, Decimal> | null,
   descriptions?: Map<string, string> | null
 ): Decimal | null {
-  if (!accounts || accounts.size === 0) return null;
+  if (!accounts || accounts.size === 0) { return null; }
 
   // 1. Prioridade absoluta para a conta sintética padrão 5.04.06
   if (accounts.has('5.04.06')) {
     const desc = descriptions?.get('5.04.06');
     if (isDeclaredDividendsAccount('5.04.06', desc)) {
-      const val = accounts.get('5.04.06')!;
-      return val.abs();
+      const val = accounts.get('5.04.06');
+      if (val) {
+        return val.abs();
+      }
     }
     return null;
   }
@@ -422,19 +423,15 @@ export function convertStatementToFundamentals(
 
   // 2. Caixa e Equivalentes de Caixa (BPA 1.01.01)
   // Diferenciação estrita: conta ausente -> null; conta presente com valor zero -> Decimal(0)
-  const cashEquivalents = accounts.has('1.01.01')
-    ? accounts.get('1.01.01')!
-    : null;
+  const cashEquivalents = accounts.get('1.01.01') ?? null;
 
   // 3. Regra Estrita de Dívida Bruta (grossDebt):
   // Exige explicitamente ambas as subcontas: 2.01.04 (CP) E 2.02.01 (LP). Se faltar qualquer uma, grossDebt = null.
-  const hasShortTermDebt = accounts.has('2.01.04');
-  const hasLongTermDebt = accounts.has('2.02.01');
+  const shortTermDebt = accounts.get('2.01.04');
+  const longTermDebt = accounts.get('2.02.01');
 
   let grossDebt: Decimal | null = null;
-  if (hasShortTermDebt && hasLongTermDebt) {
-    const shortTermDebt = accounts.get('2.01.04')!;
-    const longTermDebt = accounts.get('2.02.01')!;
+  if (shortTermDebt && longTermDebt) {
     grossDebt = shortTermDebt.add(longTermDebt);
   }
 
@@ -450,8 +447,7 @@ export function convertStatementToFundamentals(
   // - EBIT (DRE conta 3.05 - "Resultado Antes do Resultado Financeiro e dos Tributos")
   // - D&A (DFC 6.01.01.* - Depreciação e Amortização Operacional com descrição comprovada)
   // Se qualquer componente faltar, ebitda = null. Proibido o uso da conta 3.99 ou qualquer bypass/fallback não documentado.
-  const hasEbit = accounts.has('3.05');
-  const ebit = hasEbit ? accounts.get('3.05')! : null;
+  const ebit = accounts.get('3.05') ?? null;
 
   // D&A deve ser comprovado a partir de subcontas 6.01.01.* com descrições operacionais válidas
   const extractedDA = extractDfcDepreciationAmortization(
@@ -555,9 +551,9 @@ export function convertStatementToFundamentals(
 
     // g) Verificação cruzada com o mapa accounts (se a conta estiver no mapa, o abs() deve coincidir)
     let isAccountsMapConsistent = true;
-    if (codes.length === 1 && accounts.has(codes[0])) {
-      const accVal = accounts.get(codes[0])!;
-      if (!accVal.abs().equals(origin.declaredAmount)) {
+    if (codes.length === 1) {
+      const accVal = accounts.get(codes[0]);
+      if (accVal && !accVal.abs().equals(origin.declaredAmount)) {
         isAccountsMapConsistent = false;
       }
     }

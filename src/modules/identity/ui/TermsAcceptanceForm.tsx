@@ -40,7 +40,7 @@ export function TermsAcceptanceForm() {
           </div>
           <div className="ml-3 text-sm">
             <label htmlFor="accept-terms" className="font-medium text-text-secondary">
-              Li e concordo com os <a href="/terms" target="_blank" className="text-action-primary hover:underline font-semibold">Termos de Uso</a> (Obrigatório)
+              Li e concordo com os <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-action-primary hover:underline font-semibold">Termos de Uso</a> (Obrigatório)
             </label>
             {state.fieldErrors?.termsOfService && (
               <p id="accept-terms-error" className="text-negative-text text-xs mt-1">{state.fieldErrors.termsOfService[0]}</p>
@@ -60,7 +60,7 @@ export function TermsAcceptanceForm() {
           </div>
           <div className="ml-3 text-sm">
             <label htmlFor="accept-privacy" className="font-medium text-text-secondary">
-              Li e concordo com a <a href="/privacy" target="_blank" className="text-action-primary hover:underline font-semibold">Política de Privacidade</a> (Obrigatório)
+              Li e concordo com a <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-action-primary hover:underline font-semibold">Política de Privacidade</a> (Obrigatório)
             </label>
             {state.fieldErrors?.privacyPolicy && (
               <p id="accept-privacy-error" className="text-negative-text text-xs mt-1">{state.fieldErrors.privacyPolicy[0]}</p>

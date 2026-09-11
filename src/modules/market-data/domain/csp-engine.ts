@@ -171,8 +171,7 @@ export function filterEligibleAssets(
     // 6. Alavancagem: Dívida Líquida / EBITDA
     if (
       criteria.maxNetDebtToEbitda !== null &&
-      asset.netDebtToEbitda !== null &&
-      asset.netDebtToEbitda.greaterThan(criteria.maxNetDebtToEbitda)
+      asset.netDebtToEbitda?.greaterThan(criteria.maxNetDebtToEbitda)
     ) {
       excluded.push({
         ticker: asset.ticker,
@@ -185,8 +184,7 @@ export function filterEligibleAssets(
     // 7. Alavancagem: Dívida Líquida / PL
     if (
       criteria.maxNetDebtToEquity !== null &&
-      asset.netDebtToEquity !== null &&
-      asset.netDebtToEquity.greaterThan(criteria.maxNetDebtToEquity)
+      asset.netDebtToEquity?.greaterThan(criteria.maxNetDebtToEquity)
     ) {
       excluded.push({
         ticker: asset.ticker,
@@ -222,8 +220,8 @@ export function filterEligibleAssets(
  */
 export function rankAssetsByMarginOfSafety(eligible: CspAssetInput[]): CspAssetInput[] {
   return [...eligible].sort((a, b) => {
-    if (b.marginOfSafetyPercent.greaterThan(a.marginOfSafetyPercent)) return 1;
-    if (a.marginOfSafetyPercent.greaterThan(b.marginOfSafetyPercent)) return -1;
+    if (b.marginOfSafetyPercent.greaterThan(a.marginOfSafetyPercent)) { return 1; }
+    if (a.marginOfSafetyPercent.greaterThan(b.marginOfSafetyPercent)) { return -1; }
     return a.ticker.localeCompare(b.ticker);
   });
 }
@@ -299,7 +297,7 @@ export function calculatePortfolioWeights(
   }
 
   // Aplicação iterativa de travas de concentração (Cap por Ativo e Cap por Setor)
-  let weights = [...rawWeights];
+  const weights = [...rawWeights];
 
   // Passadas de redistribuição de excesso
   for (let iter = 0; iter < 20; iter++) {
@@ -378,7 +376,7 @@ export function calculatePortfolioWeights(
     w.toDecimalPlaces(4, Decimal.ROUND_DOWN)
   );
 
-  let currentTotal = finalWeights.reduce((acc, w) => acc.plus(w), new Decimal(0));
+  const currentTotal = finalWeights.reduce((acc, w) => acc.plus(w), new Decimal(0));
   let diff = effectiveTargetWeight.minus(currentTotal);
 
   // Redistribuição determinística dos centésimos (passos de 0.0001) estritamente entre ativos

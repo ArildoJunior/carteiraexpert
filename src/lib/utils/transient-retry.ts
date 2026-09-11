@@ -27,7 +27,7 @@ export interface RetryOptions {
  * Classifica se um erro é puramente transitório (passível de resolução com retry).
  */
 export function isTransientError(error: unknown): boolean {
-  if (!error) return false;
+  if (!error) { return false; }
 
   if (error instanceof Error) {
     const msg = error.message.toLowerCase();
@@ -104,7 +104,7 @@ export async function executeWithTransientRetry<T>(
       }
 
       // Cálculo do backoff exponencial: initialDelay * factor^(attempt - 1)
-      let delayMs = Math.min(initialDelayMs * Math.pow(factor, attempt - 1), maxDelayMs);
+      let delayMs = Math.min(initialDelayMs * factor ** (attempt - 1), maxDelayMs);
 
       if (useJitter) {
         // Jitter entre 0.8x e 1.2x do delay calculado

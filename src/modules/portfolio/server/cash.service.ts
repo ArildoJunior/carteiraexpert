@@ -1,5 +1,5 @@
-import { eq, and, isNull, desc, sql } from 'drizzle-orm';
-import { db, type Database, type DatabaseTransaction, type DbExecutor } from '@/lib/db';
+import { eq, and, isNull, desc } from 'drizzle-orm';
+import { db, type Database, type DatabaseTransaction } from '@/lib/db';
 import { cashAccounts, cashTransactions } from '@/lib/db/schema/cash';
 import { portfolios } from '@/lib/db/schema/portfolio';
 import { Decimal } from '@/lib/decimal';
@@ -474,8 +474,8 @@ export async function depositCash(
     let newBalance = new Decimal(0);
     for (const t of allTxs) {
       const a = new Decimal(t.amount);
-      if (t.type === 'DEPOSIT') newBalance = newBalance.plus(a);
-      else if (t.type === 'WITHDRAWAL') newBalance = newBalance.minus(a);
+      if (t.type === 'DEPOSIT') { newBalance = newBalance.plus(a); }
+      else if (t.type === 'WITHDRAWAL') { newBalance = newBalance.minus(a); }
     }
 
     return {
@@ -551,8 +551,8 @@ export async function withdrawCash(
     let currentBalance = new Decimal(0);
     for (const t of allTxs) {
       const a = new Decimal(t.amount);
-      if (t.type === 'DEPOSIT') currentBalance = currentBalance.plus(a);
-      else if (t.type === 'WITHDRAWAL') currentBalance = currentBalance.minus(a);
+      if (t.type === 'DEPOSIT') { currentBalance = currentBalance.plus(a); }
+      else if (t.type === 'WITHDRAWAL') { currentBalance = currentBalance.minus(a); }
     }
 
     const requestedAmount = new Decimal(input.amount);

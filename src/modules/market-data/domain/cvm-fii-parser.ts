@@ -34,7 +34,7 @@ export function validateAndNormalizeCnpj(raw: string | null | undefined): string
  * Tenta normalizar CNPJ sem lançar erro, retornando null se inválido.
  */
 export function safeNormalizeCnpj(raw: string | null | undefined): string | null {
-  if (!raw) return null;
+  if (!raw) { return null; }
   const digits = raw.replace(/\D/g, '');
   if (digits.length !== 14 || digits === '00000000000000') {
     return null;
@@ -48,7 +48,7 @@ export function safeNormalizeCnpj(raw: string | null | undefined): string | null
  * Exemplo: 'BRHGLGCTF004'.
  */
 export function normalizeIsin(raw: string | null | undefined): string | null {
-  if (!raw) return null;
+  if (!raw) { return null; }
   const trimmed = raw.trim().toUpperCase();
   if (/^[A-Z]{2}[A-Z0-9]{9}\d$/.test(trimmed)) {
     return trimmed;
@@ -66,7 +66,7 @@ export function normalizeIsin(raw: string | null | undefined): string | null {
  * - Nulos ou vazios: "", "-", "N/A", "NULL" -> null
  */
 export function parseCvmDecimal(raw: string | null | undefined): Decimal | null {
-  if (raw === null || raw === undefined) return null;
+  if (raw === null || raw === undefined) { return null; }
   const trimmed = raw.trim();
   if (
     trimmed === '' ||
@@ -131,7 +131,7 @@ export function parseCvmDecimal(raw: string | null | undefined): Decimal | null 
  * Remove pontuação de milhar se presente.
  */
 export function parseCvmInteger(raw: string | null | undefined): number | null {
-  if (!raw) return null;
+  if (!raw) { return null; }
   const trimmed = raw.trim();
   if (
     trimmed === '' ||
@@ -156,10 +156,10 @@ export function parseCvmInteger(raw: string | null | undefined): number | null {
  * Normaliza e valida data em formato 'YYYY-MM-DD'.
  */
 export function parseCvmDateString(raw: string | null | undefined): string | null {
-  if (!raw) return null;
+  if (!raw) { return null; }
   const trimmed = raw.trim();
   const dateMatch = trimmed.match(/^(\d{4}-\d{2}-\d{2})/);
-  if (!dateMatch) return null;
+  if (!dateMatch) { return null; }
   const candidate = dateMatch[1];
   return isValidCalendarDate(candidate) ? candidate : null;
 }
@@ -168,13 +168,13 @@ export function parseCvmDateString(raw: string | null | undefined): string | nul
  * Converte data ou timestamp CVM para Date UTC.
  */
 export function parseCvmTimestamp(raw: string | null | undefined): Date | null {
-  if (!raw) return null;
+  if (!raw) { return null; }
   const trimmed = raw.trim();
-  if (!trimmed) return null;
+  if (!trimmed) { return null; }
 
   // Suporta 'YYYY-MM-DD' ou 'YYYY-MM-DD HH:mm:ss'
   const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}):(\d{2}))?/);
-  if (!match) return null;
+  if (!match) { return null; }
 
   const year = Number(match[1]);
   const month = Number(match[2]);
@@ -260,7 +260,7 @@ function findColumnIndex(headers: string[], aliases: string[]): number {
   for (const alias of aliases) {
     const normalizedAlias = alias.toUpperCase().replace(/\s+/g, '_');
     const idx = normalizedHeaders.indexOf(normalizedAlias);
-    if (idx !== -1) return idx;
+    if (idx !== -1) { return idx; }
   }
   return -1;
 }
@@ -331,7 +331,7 @@ export async function parseCvmFiiGeralLines(
   for await (const rawLine of lines) {
     totalLines++;
     const line = rawLine.replace(/[\r\n]/g, '').trim();
-    if (!line) continue;
+    if (!line) { continue; }
 
     const parts = splitCsvLine(line);
 
@@ -483,7 +483,7 @@ export async function parseCvmFiiComplementoLines(
   for await (const rawLine of lines) {
     totalLines++;
     const line = rawLine.replace(/[\r\n]/g, '').trim();
-    if (!line) continue;
+    if (!line) { continue; }
 
     const parts = splitCsvLine(line);
 
@@ -644,7 +644,7 @@ export async function parseCvmFiiAtivoPassivoLines(
   for await (const rawLine of lines) {
     totalLines++;
     const line = rawLine.replace(/[\r\n]/g, '').trim();
-    if (!line) continue;
+    if (!line) { continue; }
 
     const parts = splitCsvLine(line);
 
@@ -827,9 +827,10 @@ export async function parseCvmFiiMonthlyPackage(
 
   // 5. Ordenação canônica determinística: CNPJ ASC, Data Referência ASC, Versão ASC
   monthlyRecords.sort((a, b) => {
-    if (a.cnpj !== b.cnpj) return a.cnpj.localeCompare(b.cnpj);
-    if (a.referenceDate !== b.referenceDate)
+    if (a.cnpj !== b.cnpj) { return a.cnpj.localeCompare(b.cnpj); }
+    if (a.referenceDate !== b.referenceDate) {
       return a.referenceDate.localeCompare(b.referenceDate);
+    }
     return a.version - b.version;
   });
 

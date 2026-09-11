@@ -12,7 +12,6 @@ import {
   getOptionContractAnalytics,
 } from './options.service';
 import {
-  createOptionContractSchema,
   calculateGreeksInputSchema,
   payoffSimulationInputSchema,
   type CreateOptionContractInput,
@@ -24,10 +23,6 @@ import {
   calculatePayoffAnalysis,
 } from '../domain/black-scholes-engine';
 import type {
-  OptionContract,
-  GreeksResult,
-  PayoffAnalysis,
-  OptionProximityAlert,
   SerializedOptionContract,
   SerializedGreeksResult,
   SerializedPayoffAnalysis,
@@ -41,7 +36,7 @@ import {
   serializePayoffAnalysis,
   serializeOptionProximityAlert,
 } from '../domain/options.serializer';
-import { Decimal, toDecimal } from '@/lib/decimal';
+import { toDecimal } from '@/lib/decimal';
 
 export type OptionsActionResult<T> =
   | { success: true; data: T }

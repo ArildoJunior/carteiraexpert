@@ -6,7 +6,6 @@ import { useState, useTransition } from 'react';
 import type {
   CatalogAssetCategory,
   PaginatedCatalogResult,
-  PublicAssetSummary,
 } from '../domain/catalog.types';
 import {
   getAssetDetailRoute,
@@ -124,6 +123,7 @@ export function AssetListingView({
               stroke="currentColor"
               viewBox="0 0 24 24"
             >
+              <title>Ícone de busca</title>
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -178,6 +178,7 @@ export function AssetListingView({
               stroke="currentColor"
               viewBox="0 0 24 24"
             >
+              <title>Nenhum ativo encontrado</title>
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"

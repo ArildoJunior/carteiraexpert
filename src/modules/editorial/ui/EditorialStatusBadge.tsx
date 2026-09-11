@@ -1,4 +1,3 @@
-import React from 'react';
 import type { EditorialStatus } from '../domain/editorial.types';
 
 interface EditorialStatusBadgeProps {

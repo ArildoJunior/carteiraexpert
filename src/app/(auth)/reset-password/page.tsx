@@ -16,7 +16,7 @@ export default async function ResetPasswordPage({ searchParams }: Props) {
   const { token } = await searchParams;
 
   // Token ausente na URL: página não encontrada
-  if (!token) notFound();
+  if (!token) { notFound(); }
 
   return (
     <div className="bg-surface border border-border-theme rounded-2xl p-8 shadow-xl">

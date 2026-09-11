@@ -36,7 +36,7 @@ export async function generateMetadata({ params }: FiiDetailPageProps): Promise<
     permanentRedirect(`/fips/${encodeURIComponent(resolved.asset.ticker)}`);
   }
 
-  if (!resolved || resolved.canonicalCategory !== 'fii') {
+  if (resolved?.canonicalCategory !== 'fii') {
     return {
       title: 'FII Não Encontrado | CarteiraExpert',
     };
@@ -68,7 +68,7 @@ export default async function FiiDetailPage({ params, searchParams }: FiiDetailP
     permanentRedirect(`/fips/${encodeURIComponent(resolved.asset.ticker)}`);
   }
 
-  if (!resolved || resolved.canonicalCategory !== 'fii') {
+  if (resolved?.canonicalCategory !== 'fii') {
     notFound();
   }
 

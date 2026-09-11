@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   ResponsiveContainer,
   LineChart,
@@ -35,9 +34,8 @@ export function OptionsPayoffChart({
   const breakevenNum = Number(payoff.breakevenPrice);
 
   return (
-    <div
+    <section
       id="options-payoff-chart"
-      role="region"
       aria-label={`Curva de Payoff no Vencimento para ${ticker}`}
       className="rounded-xl border border-border-theme bg-surface p-5 sm:p-6 shadow-sm space-y-5"
     >
@@ -122,7 +120,7 @@ export function OptionsPayoffChart({
             />
             <Tooltip
               content={({ active, payload }) => {
-                if (!active || !payload || payload.length === 0) return null;
+                if (!active || !payload || payload.length === 0) { return null; }
                 const data = payload[0].payload as { spot: string; pnl: number; pnlUnitary: number };
                 const isPositive = data.pnl >= 0;
                 return (
@@ -171,6 +169,6 @@ export function OptionsPayoffChart({
         <span>Linha horizontal pontilhada indica PnL R$ 0,00 (equilíbrio contábil).</span>
         <span>Curva baseada no vencimento sem considerar custos adicionais.</span>
       </div>
-    </div>
+    </section>
   );
 }

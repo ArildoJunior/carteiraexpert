@@ -16,9 +16,10 @@ import {
 import {
   CvmBindingError,
   CvmConflictingActiveBindingError,
-  isCvmShareClass,
   parseCvmShareClass,
   type CvmBindingAuditAction,
+  type CvmBindingMatchMethod,
+  type CvmBindingStatus,
   type CvmCompanyAssetBinding,
   type CvmShareClass,
   type ProposeBindingInput,
@@ -42,7 +43,7 @@ export class CvmBindingService {
       validated.source
     );
 
-    const executeInTransaction = async (tx: any) => {
+    const executeInTransaction = async (tx: DbExecutor) => {
       // 1. Validar existência da companhia CVM
       const [company] = await tx
         .select()
@@ -193,7 +194,7 @@ export class CvmBindingService {
     };
 
     if ('transaction' in executor && typeof executor.transaction === 'function') {
-      return (executor as any).transaction(executeInTransaction);
+      return (executor as typeof db).transaction(executeInTransaction);
     }
     return executeInTransaction(executor);
   }
@@ -207,7 +208,7 @@ export class CvmBindingService {
   ): Promise<CvmCompanyAssetBinding> {
     const validated = reviewBindingSchema.parse(input);
 
-    const executeInTransaction = async (tx: any) => {
+    const executeInTransaction = async (tx: DbExecutor) => {
       // 1. Obter o vínculo atual
       const [binding] = await tx
         .select()
@@ -225,7 +226,7 @@ export class CvmBindingService {
       }
 
       // Validar máquina de estados
-      const { action } = validateBindingTransition(binding.status as any, 'APPROVED');
+      const { action } = validateBindingTransition(binding.status as CvmBindingStatus, 'APPROVED');
 
       // 2. Lock transacional complementar sobre o ativo B3 para serializar aprovações concorrentes
       const [asset] = await tx
@@ -302,7 +303,7 @@ export class CvmBindingService {
     };
 
     if ('transaction' in executor && typeof executor.transaction === 'function') {
-      return (executor as any).transaction(executeInTransaction);
+      return (executor as typeof db).transaction(executeInTransaction);
     }
     return executeInTransaction(executor);
   }
@@ -317,7 +318,7 @@ export class CvmBindingService {
   ): Promise<CvmCompanyAssetBinding> {
     const validated = reviewBindingSchema.parse(input);
 
-    const executeInTransaction = async (tx: any) => {
+    const executeInTransaction = async (tx: DbExecutor) => {
       const [binding] = await tx
         .select()
         .from(cvmCompanyAssets)
@@ -340,7 +341,7 @@ export class CvmBindingService {
         );
       }
 
-      const { action } = validateBindingTransition(binding.status as any, 'REJECTED');
+      const { action } = validateBindingTransition(binding.status as CvmBindingStatus, 'REJECTED');
 
       const [company] = await tx.select().from(cvmCompanies).where(eq(cvmCompanies.id, binding.companyId));
       const [asset] = await tx.select().from(assets).where(eq(assets.id, binding.assetId));
@@ -380,7 +381,7 @@ export class CvmBindingService {
     };
 
     if ('transaction' in executor && typeof executor.transaction === 'function') {
-      return (executor as any).transaction(executeInTransaction);
+      return (executor as typeof db).transaction(executeInTransaction);
     }
     return executeInTransaction(executor);
   }
@@ -396,7 +397,7 @@ export class CvmBindingService {
   ): Promise<CvmCompanyAssetBinding> {
     const validated = reviewBindingSchema.parse(input);
 
-    const executeInTransaction = async (tx: any) => {
+    const executeInTransaction = async (tx: DbExecutor) => {
       const [binding] = await tx
         .select()
         .from(cvmCompanyAssets)
@@ -419,7 +420,7 @@ export class CvmBindingService {
         );
       }
 
-      const { action } = validateBindingTransition(binding.status as any, 'REJECTED');
+      const { action } = validateBindingTransition(binding.status as CvmBindingStatus, 'REJECTED');
 
       const [company] = await tx.select().from(cvmCompanies).where(eq(cvmCompanies.id, binding.companyId));
       const [asset] = await tx.select().from(assets).where(eq(assets.id, binding.assetId));
@@ -459,7 +460,7 @@ export class CvmBindingService {
     };
 
     if ('transaction' in executor && typeof executor.transaction === 'function') {
-      return (executor as any).transaction(executeInTransaction);
+      return (executor as typeof db).transaction(executeInTransaction);
     }
     return executeInTransaction(executor);
   }
@@ -473,7 +474,7 @@ export class CvmBindingService {
   ): Promise<CvmCompanyAssetBinding> {
     const validated = reviewBindingSchema.parse(input);
 
-    const executeInTransaction = async (tx: any) => {
+    const executeInTransaction = async (tx: DbExecutor) => {
       const [binding] = await tx
         .select()
         .from(cvmCompanyAssets)
@@ -489,7 +490,7 @@ export class CvmBindingService {
         return this.mapToBinding(binding, company, asset);
       }
 
-      const { action } = validateBindingTransition(binding.status as any, 'PENDING_REVIEW');
+      const { action } = validateBindingTransition(binding.status as CvmBindingStatus, 'PENDING_REVIEW');
 
       const [company] = await tx.select().from(cvmCompanies).where(eq(cvmCompanies.id, binding.companyId));
       const [asset] = await tx.select().from(assets).where(eq(assets.id, binding.assetId));
@@ -529,7 +530,7 @@ export class CvmBindingService {
     };
 
     if ('transaction' in executor && typeof executor.transaction === 'function') {
-      return (executor as any).transaction(executeInTransaction);
+      return (executor as typeof db).transaction(executeInTransaction);
     }
     return executeInTransaction(executor);
   }
@@ -542,7 +543,7 @@ export class CvmBindingService {
     companyIdentifier: string,
     executor: DbExecutor = db
   ): Promise<ResolvedAssetTarget[]> {
-    if (!companyIdentifier) return [];
+    if (!companyIdentifier) { return []; }
 
     // 1. Buscar a companhia por ID, CNPJ ou CD_CVM
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -558,7 +559,7 @@ export class CvmBindingService {
       .from(cvmCompanies)
       .where(condition);
 
-    if (!company || company.status !== 'ATIVO') {
+    if (company?.status !== 'ATIVO') {
       return [];
     }
 
@@ -597,15 +598,15 @@ export class CvmBindingService {
    * Inserção atômica e sanitizada na tabela audit_logs.
    */
   private async recordAuditLog(
-    tx: any,
+    tx: DbExecutor,
     recordId: string,
     action: CvmBindingAuditAction,
     actorId: string,
     actorType: 'user' | 'system',
     reason: string,
     source: string,
-    oldValue: any,
-    newValue: any
+    oldValue: unknown,
+    newValue: unknown
   ): Promise<void> {
     await tx.insert(auditLogs).values({
       id: crypto.randomUUID(),
@@ -624,9 +625,9 @@ export class CvmBindingService {
   }
 
   private mapToBinding(
-    record: any,
-    company: any,
-    asset: any
+    record: typeof cvmCompanyAssets.$inferSelect,
+    company: typeof cvmCompanies.$inferSelect | undefined,
+    asset: typeof assets.$inferSelect | undefined
   ): CvmCompanyAssetBinding {
     return {
       id: record.id,
@@ -637,9 +638,9 @@ export class CvmBindingService {
       assetId: record.assetId,
       assetTicker: asset?.ticker ?? '',
       assetType: asset?.assetType ?? '',
-      shareClass: record.shareClass,
-      status: record.status,
-      matchMethod: record.matchMethod,
+      shareClass: record.shareClass as CvmShareClass | null,
+      status: record.status as CvmBindingStatus,
+      matchMethod: record.matchMethod as CvmBindingMatchMethod,
       justification: record.justification,
       source: record.source,
       createdAt: record.createdAt,

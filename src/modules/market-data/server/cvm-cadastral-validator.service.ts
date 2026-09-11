@@ -1,7 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import {
-  calculateFileSha256,
   inspectLocalFile,
   createLineStream,
 } from './cvm-cadastral-dry-run.service';
@@ -20,7 +19,6 @@ import type {
 } from '../domain/cvm-matching.types';
 import type {
   HumanApprovalListManifest,
-  HumanCvmBindingApprovalItem,
   CvmValidationItemResult,
   CvmValidationReport,
   ValidationItemStatus,
@@ -125,8 +123,8 @@ export class CvmCadastralValidatorService {
           marketType: comp.marketType,
           status: comp.status,
         };
-        if (normCnpj) companiesByCnpj.set(normCnpj, cInput);
-        if (normCvm) companiesByCvmCode.set(normCvm, cInput);
+        if (normCnpj) { companiesByCnpj.set(normCnpj, cInput); }
+        if (normCvm) { companiesByCvmCode.set(normCvm, cInput); }
       }
     }
 
@@ -215,7 +213,7 @@ export class CvmCadastralValidatorService {
         blockingReasons.push('Identificador do homologador (reviewerId) ausente.');
       }
 
-      if (!item.reviewedAt || isNaN(Date.parse(item.reviewedAt))) {
+      if (!item.reviewedAt || Number.isNaN(Date.parse(item.reviewedAt))) {
         blockingReasons.push('Data de homologação (reviewedAt) inválida ou ausente.');
       }
 

@@ -23,7 +23,7 @@ export function extractFcaShareClass(
   if (classeDireta && classeDireta.trim().length > 0) {
     return classeDireta.trim();
   }
-  if (!valorMobiliario) return null;
+  if (!valorMobiliario) { return null; }
 
   const vmUpper = valorMobiliario.toUpperCase();
   if (vmUpper.includes('ORDIN') || vmUpper.includes('ORD')) {
@@ -32,8 +32,8 @@ export function extractFcaShareClass(
   if (vmUpper.includes('PREFEREN')) {
     if (siglaClassePref) {
       const prefSigla = siglaClassePref.trim().toUpperCase();
-      if (prefSigla === 'A') return 'PNA';
-      if (prefSigla === 'B') return 'PNB';
+      if (prefSigla === 'A') { return 'PNA'; }
+      if (prefSigla === 'B') { return 'PNB'; }
     }
     return 'PN';
   }
@@ -73,7 +73,7 @@ export async function parseCvmFcaStream(
   for await (const rawLine of lineStream) {
     metrics.totalLinesRead++;
     const line = rawLine.replace(/[\r\n]/g, '').trim();
-    if (!line) continue;
+    if (!line) { continue; }
 
     const parts = line.split(';').map((p) => p.trim());
 
@@ -82,31 +82,31 @@ export async function parseCvmFcaStream(
       const upperParts = parts.map((p) => p.toUpperCase());
       
       let cnpjIdx = upperParts.indexOf('CNPJ_COMPANHIA');
-      if (cnpjIdx === -1) cnpjIdx = upperParts.indexOf('CNPJ_CIA');
-      if (cnpjIdx === -1) cnpjIdx = upperParts.indexOf('CNPJ');
+      if (cnpjIdx === -1) { cnpjIdx = upperParts.indexOf('CNPJ_CIA'); }
+      if (cnpjIdx === -1) { cnpjIdx = upperParts.indexOf('CNPJ'); }
 
       let cvmCodeIdx = upperParts.indexOf('CD_CVM');
-      if (cvmCodeIdx === -1) cvmCodeIdx = upperParts.indexOf('COD_CVM');
-      if (cvmCodeIdx === -1) cvmCodeIdx = upperParts.indexOf('CODIGO_CVM');
+      if (cvmCodeIdx === -1) { cvmCodeIdx = upperParts.indexOf('COD_CVM'); }
+      if (cvmCodeIdx === -1) { cvmCodeIdx = upperParts.indexOf('CODIGO_CVM'); }
 
       let tickerIdx = upperParts.indexOf('CODIGO_NEGOCIACAO');
-      if (tickerIdx === -1) tickerIdx = upperParts.indexOf('COD_NEGOCIACAO');
-      if (tickerIdx === -1) tickerIdx = upperParts.indexOf('SIGLA');
-      if (tickerIdx === -1) tickerIdx = upperParts.indexOf('TICKER');
+      if (tickerIdx === -1) { tickerIdx = upperParts.indexOf('COD_NEGOCIACAO'); }
+      if (tickerIdx === -1) { tickerIdx = upperParts.indexOf('SIGLA'); }
+      if (tickerIdx === -1) { tickerIdx = upperParts.indexOf('TICKER'); }
 
       let classIdx = upperParts.indexOf('CLASSE_ACAO');
-      if (classIdx === -1) classIdx = upperParts.indexOf('DS_CLASSE_VALOR_MOBILIARIO');
-      if (classIdx === -1) classIdx = upperParts.indexOf('CLASSE');
+      if (classIdx === -1) { classIdx = upperParts.indexOf('DS_CLASSE_VALOR_MOBILIARIO'); }
+      if (classIdx === -1) { classIdx = upperParts.indexOf('CLASSE'); }
 
-      let prefClassSiglaIdx = upperParts.indexOf('SIGLA_CLASSE_ACAO_PREFERENCIAL');
+      const prefClassSiglaIdx = upperParts.indexOf('SIGLA_CLASSE_ACAO_PREFERENCIAL');
 
       let isinIdx = upperParts.indexOf('CODIGO_ISIN');
-      if (isinIdx === -1) isinIdx = upperParts.indexOf('COD_ISIN');
-      if (isinIdx === -1) isinIdx = upperParts.indexOf('ISIN');
+      if (isinIdx === -1) { isinIdx = upperParts.indexOf('COD_ISIN'); }
+      if (isinIdx === -1) { isinIdx = upperParts.indexOf('ISIN'); }
 
       let secTypeIdx = upperParts.indexOf('VALOR_MOBILIARIO');
-      if (secTypeIdx === -1) secTypeIdx = upperParts.indexOf('TP_VALOR_MOBILIARIO');
-      if (secTypeIdx === -1) secTypeIdx = upperParts.indexOf('TIPO_VALOR_MOBILIARIO');
+      if (secTypeIdx === -1) { secTypeIdx = upperParts.indexOf('TP_VALOR_MOBILIARIO'); }
+      if (secTypeIdx === -1) { secTypeIdx = upperParts.indexOf('TIPO_VALOR_MOBILIARIO'); }
 
       if ((cvmCodeIdx === -1 && cnpjIdx === -1) || tickerIdx === -1) {
         throw new CvmInvalidHeaderError(

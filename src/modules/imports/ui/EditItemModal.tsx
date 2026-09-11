@@ -34,16 +34,16 @@ export function EditItemModal({
   const [unitPrice, setUnitPrice] = useState(item?.unitPrice || '0');
   const [fees, setFees] = useState(item?.fees || '0');
   const [currency, setCurrency] = useState<'BRL' | 'USD' | 'EUR'>(
-    (item?.currency as any) || 'BRL'
+    (item?.currency as 'BRL' | 'USD' | 'EUR') || 'BRL'
   );
   const [notes, setNotes] = useState(item?.notes || '');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  if (!item) return null;
+  if (!item) { return null; }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!item) return;
+    if (!item) { return; }
 
     setErrorMessage(null);
 
@@ -99,7 +99,7 @@ export function EditItemModal({
             aria-label="Fechar modal"
             className="p-1 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
@@ -197,7 +197,7 @@ export function EditItemModal({
               <select
                 id="edit-currency"
                 value={currency}
-                onChange={(e) => setCurrency(e.target.value as any)}
+                onChange={(e) => setCurrency(e.target.value as 'BRL' | 'USD' | 'EUR')}
                 className="w-full bg-background border border-border-theme rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-action-primary"
               >
                 <option value="BRL">BRL (R$)</option>

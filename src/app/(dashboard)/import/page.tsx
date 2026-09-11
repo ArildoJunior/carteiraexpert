@@ -15,10 +15,10 @@ export const metadata: Metadata = {
 
 export default async function ImportPage() {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) { redirect('/login'); }
 
   const hasConsent = await hasAcceptedCurrentTerms(user.id);
-  if (!hasConsent) redirect('/terms-acceptance');
+  if (!hasConsent) { redirect('/terms-acceptance'); }
 
   const [rawPortfolios, rawBatches] = await Promise.all([
     listPortfolios(user),

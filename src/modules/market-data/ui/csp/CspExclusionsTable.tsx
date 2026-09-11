@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import type { CspExclusionReason, CspExclusionRecord } from '@/modules/market-data/domain/csp.types';
 
 export interface CspExclusionsTableProps {
@@ -138,9 +138,9 @@ export function CspExclusionsTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-border-theme/60">
-            {filteredExclusions.map((item, idx) => (
+            {filteredExclusions.map((item) => (
               <tr
-                key={`excl-${item.ticker}-${idx}`}
+                key={`excl-${item.ticker}-${item.reason}`}
                 className="hover:bg-surface-elevated/40 transition-colors"
               >
                 <td className="py-2.5 px-4 font-bold text-text-primary whitespace-nowrap">

@@ -25,7 +25,7 @@ export const metadata: Metadata = {
 
 export default async function FiscalPage() {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) { redirect('/login'); }
 
   const currentYear = new Date().getFullYear();
 
@@ -36,7 +36,7 @@ export default async function FiscalPage() {
   ]);
 
   // Executa apuração inicial para o ano corrente
-  let initialReport;
+  let initialReport: ReturnType<typeof serializeTaxAnnualReport>;
   try {
     const report = await executeTaxCalculation(user, {
       year: currentYear,

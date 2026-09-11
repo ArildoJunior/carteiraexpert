@@ -45,14 +45,15 @@ export function AllocateSubscriptionModal({
         const res = await listAvailableOffersAction();
         if (active && res.success && res.data) {
           setOffers(res.data);
-          if (res.data.length > 0 && !selectedOfferId) {
-            setSelectedOfferId(res.data[0].id);
+          if (res.data.length > 0) {
+            const firstId = res.data[0].id;
+            setSelectedOfferId((prev) => prev || firstId);
           }
         }
       } catch {
         // Trata erro de carregamento silenciosamente
       } finally {
-        if (active) setLoadingOffers(false);
+        if (active) { setLoadingOffers(false); }
       }
     }
 
@@ -63,7 +64,7 @@ export function AllocateSubscriptionModal({
     };
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  if (!isOpen) { return null; }
 
   const selectedOffer = offers.find((o) => o.id === selectedOfferId);
 

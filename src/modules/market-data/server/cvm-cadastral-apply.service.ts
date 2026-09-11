@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import type postgres from 'postgres';
 import {
   normalizeCnpjDigits,
   normalizeCvmCodeDigits,
@@ -73,8 +74,12 @@ export interface CvmCadastralManifest {
   items: CvmCadastralManifestItem[];
 }
 
+export interface CvmApplySqlExecutor {
+  begin<T>(cb: (tx: postgres.TransactionSql) => Promise<T>): Promise<T>;
+}
+
 export interface CvmApplyBatchParams {
-  sql: any;
+  sql: CvmApplySqlExecutor;
   eligibleItems: CvmEligibleApplyCandidate[];
   canonicalAssets: CanonicalAssetMatchingInput[];
   existingBindings: ExistingBindingMatchingInput[];
@@ -137,9 +142,9 @@ export class CvmCadastralApplyService {
       );
     }
 
-    let parsed: any;
+    let parsed: CvmCadastralManifest | null = null;
     try {
-      parsed = JSON.parse(rawContent);
+      parsed = JSON.parse(rawContent) as CvmCadastralManifest;
     } catch {
       throw new CvmCadastralApplyValidationError(`Formato JSON inválido no arquivo de manifesto: ${filePath}`);
     }
@@ -172,14 +177,14 @@ export class CvmCadastralApplyService {
       }
 
       const normCnpj = normalizeCnpjDigits(item.cnpj);
-      if (!normCnpj || normCnpj.length !== 14) {
+      if (normCnpj?.length !== 14) {
         throw new CvmCadastralApplyValidationError(
           `CNPJ inválido no manifesto para ${item.ticker}: ${item.cnpj}`
         );
       }
 
       const normCvm = normalizeCvmCodeDigits(item.cvm_code);
-      if (!normCvm || normCvm.length !== 6) {
+      if (normCvm?.length !== 6) {
         throw new CvmCadastralApplyValidationError(
           `Código CVM inválido no manifesto para ${item.ticker}: ${item.cvm_code}`
         );
@@ -299,7 +304,7 @@ export class CvmCadastralApplyService {
         continue;
       }
       const normCnpj = normalizeCnpjDigits(item.cnpj);
-      if (!normCnpj || normCnpj.length !== 14) {
+      if (normCnpj?.length !== 14) {
         rejectedItems.push({
           ticker: item.ticker,
           assetId: item.assetId,
@@ -319,7 +324,7 @@ export class CvmCadastralApplyService {
         continue;
       }
       const normCvm = normalizeCvmCodeDigits(item.cvmCode);
-      if (!normCvm || normCvm.length !== 6) {
+      if (normCvm?.length !== 6) {
         rejectedItems.push({
           ticker: item.ticker,
           assetId: item.assetId,
@@ -348,11 +353,11 @@ export class CvmCadastralApplyService {
     }
 
     // 5. Execução em transação única
-    await sql.begin(async (tx: any) => {
+    await sql.begin(async (tx: postgres.TransactionSql) => {
       // Carrega mapa atual de companhias na transação
-      const currentCompanies = await tx`
+      const currentCompanies = (await tx`
         SELECT id, cvm_code, cnpj, legal_name FROM cvm_companies;
-      `;
+      `) as Array<{ id: string; cvm_code: string; cnpj: string; legal_name: string }>;
       const dbCompaniesByCnpj = new Map<string, { id: string; cvm_code: string; cnpj: string }>();
       for (const c of currentCompanies) {
         const norm = normalizeCnpjDigits(c.cnpj);
@@ -362,10 +367,10 @@ export class CvmCadastralApplyService {
       }
 
       // Carrega mapa atual de vínculos na transação
-      const currentDbBindings = await tx`
+      const currentDbBindings = (await tx`
         SELECT id, asset_id, company_id, status FROM cvm_company_assets;
-      `;
-      const dbBindingsByAssetId = new Map<string, any>();
+      `) as Array<{ id: string; asset_id: string; company_id: string; status: string }>;
+      const dbBindingsByAssetId = new Map<string, { id: string; asset_id: string; company_id: string; status: string }>();
       for (const b of currentDbBindings) {
         dbBindingsByAssetId.set(b.asset_id, b);
       }
@@ -390,7 +395,7 @@ export class CvmCadastralApplyService {
 
         if (!comp) {
           const newCompanyId = crypto.randomUUID();
-          const insertedComp = await tx`
+          const insertedComp = (await tx`
             INSERT INTO cvm_companies (
               id,
               cvm_code,
@@ -415,7 +420,7 @@ export class CvmCadastralApplyService {
               NOW()
             )
             RETURNING id, cvm_code, cnpj;
-          `;
+          `) as Array<{ id: string; cvm_code: string; cnpj: string }>;
           comp = insertedComp[0];
           if (comp) {
             dbCompaniesByCnpj.set(normCnpj, comp);
@@ -451,7 +456,7 @@ export class CvmCadastralApplyService {
           `Homologação cadastral de ativo canônico com correspondência exata no FCA/CAD da CVM (${item.legalName}).`;
         const source = item.source || 'fca_cad_batch_manifest_2026';
 
-        const insertedBinding = await tx`
+        const insertedBinding = (await tx`
           INSERT INTO cvm_company_assets (
             id,
             company_id,
@@ -476,17 +481,24 @@ export class CvmCadastralApplyService {
             NOW()
           )
           RETURNING id, company_id, asset_id, share_class;
-        `;
+        `) as Array<{ id: string; company_id: string; asset_id: string; share_class: string }>;
 
-        dbBindingsByAssetId.set(item.assetId, insertedBinding[0]);
+        if (insertedBinding[0]) {
+          dbBindingsByAssetId.set(item.assetId, {
+            id: insertedBinding[0].id,
+            company_id: insertedBinding[0].company_id,
+            asset_id: insertedBinding[0].asset_id,
+            status: 'APPROVED',
+          });
 
-        createdBindings.push({
-          bindingId: insertedBinding[0].id,
-          ticker: item.ticker,
-          assetId: item.assetId,
-          companyId,
-          shareClass: insertedBinding[0].share_class,
-        });
+          createdBindings.push({
+            bindingId: insertedBinding[0].id,
+            ticker: item.ticker,
+            assetId: item.assetId,
+            companyId,
+            shareClass: insertedBinding[0].share_class,
+          });
+        }
       }
     });
 

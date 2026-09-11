@@ -47,7 +47,7 @@ export interface WithAdvisoryLockResult<T> {
  * Obtém a connection string segura para operações de lock.
  */
 function resolveConnectionString(override?: string): string {
-  if (override) return override;
+  if (override) { return override; }
   if (process.env.VITEST === 'true' && process.env.DATABASE_URL_TEST) {
     return process.env.DATABASE_URL_TEST;
   }

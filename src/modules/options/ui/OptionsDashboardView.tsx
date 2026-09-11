@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect } from 'react';
 import { OptionsDisclaimerBanner } from './OptionsDisclaimerBanner';
 import { OptionsAlertsBanner } from './OptionsAlertsBanner';
 import { OptionsContractList } from './OptionsContractList';
@@ -93,7 +93,7 @@ export function OptionsDashboardView({
 
     getOptionContractAnalyticsAction(selectedContractId)
       .then((res) => {
-        if (!isMounted) return;
+        if (!isMounted) { return; }
         if (res.success) {
           setAnalytics(res.data);
         } else {
@@ -101,11 +101,11 @@ export function OptionsDashboardView({
         }
       })
       .catch((err) => {
-        if (!isMounted) return;
+        if (!isMounted) { return; }
         setAnalyticsError(err instanceof Error ? err.message : 'Erro ao apurar analytics.');
       })
       .finally(() => {
-        if (isMounted) setIsLoadingAnalytics(false);
+        if (isMounted) { setIsLoadingAnalytics(false); }
       });
 
     return () => {
@@ -159,8 +159,8 @@ export function OptionsDashboardView({
         }),
       ]);
 
-      if (greeksRes.success) setStandaloneGreeks(greeksRes.data);
-      if (payoffRes.success) setStandalonePayoff(payoffRes.data);
+      if (greeksRes.success) { setStandaloneGreeks(greeksRes.data); }
+      if (payoffRes.success) { setStandalonePayoff(payoffRes.data); }
     } catch {
       // Falha silenciosa ou log
     }

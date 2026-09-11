@@ -28,7 +28,6 @@ import {
 import {
   calculateExpirationStatus,
   generateProximityAlert,
-  calculateB3BusinessDays,
 } from '../domain/expiration-calendar';
 import {
   OptionContractNotFoundError,
@@ -403,7 +402,7 @@ export async function getUserOptionAlerts(
 
   return alerts.sort((a, b) => {
     const weightDiff = (severityWeight[a.alertLevel] ?? 99) - (severityWeight[b.alertLevel] ?? 99);
-    if (weightDiff !== 0) return weightDiff;
+    if (weightDiff !== 0) { return weightDiff; }
     return a.businessDaysRemaining - b.businessDaysRemaining;
   });
 }

@@ -1,4 +1,4 @@
-import { ConsentDocumentType } from './consent-constants';
+import type { ConsentDocumentType } from './consent-constants';
 
 export type ConsentAction = 'granted' | 'revoked';
 

@@ -69,7 +69,7 @@ const holidayCache = new Map<number, Set<string>>();
 
 export function isB3TradingDay(dateStr: string): boolean {
   const parts = dateStr.split('-');
-  if (parts.length !== 3) return false;
+  if (parts.length !== 3) { return false; }
   const year = parseInt(parts[0], 10);
   const month = parseInt(parts[1], 10);
   const day = parseInt(parts[2], 10);
@@ -85,7 +85,7 @@ export function isB3TradingDay(dateStr: string): boolean {
     holidayCache.set(year, getB3HolidaysForYear(year));
   }
 
-  const holidays = holidayCache.get(year)!;
+  const holidays = holidayCache.get(year) ?? getB3HolidaysForYear(year);
   return !holidays.has(dateStr);
 }
 

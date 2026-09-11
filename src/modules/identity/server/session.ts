@@ -22,7 +22,7 @@ export function hashToken(token: string): string {
 }
 
 export function anonymizeIp(ip: string | null | undefined): string | null {
-  if (!ip || typeof ip !== 'string') return null;
+  if (!ip || typeof ip !== 'string') { return null; }
   // IPv4: zera o último octeto
   if (/^\d+\.\d+\.\d+\.\d+$/.test(ip)) {
     return ip.replace(/\.\d+$/, '.0');
@@ -38,7 +38,7 @@ export function anonymizeIp(ip: string | null | undefined): string | null {
 // ─── Sanitização de User Agent ────────────────────────────────────────────────
 /** Trunca o User-Agent para no máximo 255 chars. */
 export function sanitizeUserAgent(ua: string | null | undefined): string | null {
-  if (!ua || typeof ua !== 'string') return null;
+  if (!ua || typeof ua !== 'string') { return null; }
   return ua.slice(0, 255);
 }
 
@@ -136,7 +136,7 @@ export interface RequestContext {
 export function extractRequestContext(
   hdrs?: Headers | Record<string, string | string[] | undefined> | null
 ): RequestContext {
-  if (!hdrs) return {};
+  if (!hdrs) { return {}; }
 
   const getHeader = (name: string): string | null => {
     if ('get' in hdrs && typeof hdrs.get === 'function') {
@@ -145,7 +145,7 @@ export function extractRequestContext(
     const val =
       (hdrs as Record<string, string | string[] | undefined>)[name] ??
       (hdrs as Record<string, string | string[] | undefined>)[name.toLowerCase()];
-    if (Array.isArray(val)) return val[0] ?? null;
+    if (Array.isArray(val)) { return val[0] ?? null; }
     return val ?? null;
   };
 
@@ -177,7 +177,7 @@ export function extractRequestContext(
  * Verifica se um host corresponde estritamente ao loopback local.
  */
 export function isLocalLoopbackHost(host: string | null | undefined): boolean {
-  if (!host) return false;
+  if (!host) { return false; }
   const raw = host.trim().toLowerCase();
 
   // Trata IPv6 com colchetes: [::1] ou [::1]:3005

@@ -31,9 +31,9 @@ export class StandardCsvParserAdapter implements ImportParserAdapter {
     'Formato CSV com colunas flexíveis em português ou inglês (Data, Tipo, Ticker, Quantidade, Preço, Taxas).';
 
   canParse(rawContent: string, _fileName: string): boolean {
-    if (!rawContent || rawContent.trim().length === 0) return false;
+    if (!rawContent || rawContent.trim().length === 0) { return false; }
     const lines = rawContent.split(/\r?\n/).filter((l) => l.trim().length > 0);
-    if (lines.length < 2) return false;
+    if (lines.length < 2) { return false; }
 
     const firstLine = lines[0];
     const delimiter = detectCsvDelimiter(rawContent);
@@ -106,11 +106,11 @@ export class StandardCsvParserAdapter implements ImportParserAdapter {
     );
 
     const missingHeaders: string[] = [];
-    if (dateIdx === -1) missingHeaders.push('Data');
-    if (typeIdx === -1) missingHeaders.push('Tipo/Operação');
-    if (tickerIdx === -1) missingHeaders.push('Ticker/Código');
-    if (qtyIdx === -1) missingHeaders.push('Quantidade');
-    if (priceIdx === -1) missingHeaders.push('Preço Unitário');
+    if (dateIdx === -1) { missingHeaders.push('Data'); }
+    if (typeIdx === -1) { missingHeaders.push('Tipo/Operação'); }
+    if (tickerIdx === -1) { missingHeaders.push('Ticker/Código'); }
+    if (qtyIdx === -1) { missingHeaders.push('Quantidade'); }
+    if (priceIdx === -1) { missingHeaders.push('Preço Unitário'); }
 
     if (missingHeaders.length > 0) {
       throw new Error(
@@ -120,12 +120,12 @@ export class StandardCsvParserAdapter implements ImportParserAdapter {
 
     const parsedRows: ParsedImportRow[] = [];
     let validCount = 0;
-    let warningCount = 0;
+    const warningCount = 0;
     let errorCount = 0;
 
     for (let i = 1; i < lines.length; i++) {
       const rawLine = lines[i];
-      if (!rawLine.trim()) continue;
+      if (!rawLine.trim()) { continue; }
 
       const lineNumber = i + 1;
       const columns = parseCsvLine(rawLine, delimiter);

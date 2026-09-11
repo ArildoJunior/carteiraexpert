@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { z } from 'zod';
+import type { z } from 'zod';
 import Decimal from 'decimal.js';
 import { eq, and, isNull, desc } from 'drizzle-orm';
 import { db, type Database, type DatabaseTransaction, type DbExecutor } from '@/lib/db';
@@ -25,8 +25,6 @@ import {
   exerciseSubscriptionInputSchema,
   cancelSubscriptionRightSchema,
   type AllocateSubscriptionRightInput,
-  type ExerciseSubscriptionInput,
-  type CancelSubscriptionRightInput,
   type SubscriptionStatus,
   type SubscriptionOffer,
   type SubscriptionRight,
@@ -782,7 +780,7 @@ export async function listActiveSubscriptionsByPortfolio(
       .where(eq(subscriptionOffers.id, right.offerId))
       .limit(1);
 
-    if (!offer) continue;
+    if (!offer) { continue; }
 
     const [originAsset] = await executor
       .select({

@@ -24,9 +24,9 @@ export function normalizeCnpjDigits(rawCnpj?: string | null): string | null {
  * Exemplo: 'BRHGLGCTF004' -> 'HGLG'.
  */
 export function extractFiiTickerRootFromIsin(isin?: string | null): string | null {
-  if (!isin) return null;
+  if (!isin) { return null; }
   const normalized = normalizeIsin(isin);
-  if (!normalized) return null;
+  if (!normalized) { return null; }
 
   const match = normalized.match(/^BR([A-Z0-9]{4})CT[A-Z0-9]\d{3}$/);
   if (match) {
@@ -60,7 +60,7 @@ export class FiiCadastralResolverEngine {
   constructor(context: FiiCadastralResolverContext) {
     // 1. Indexa catálogo canônico de ativos locais (restringindo estritamente a assetType === 'fii')
     for (const asset of context.canonicalAssets) {
-      if (!asset.assetType || asset.assetType.trim().toLowerCase() !== 'fii') {
+      if (asset.assetType?.trim().toLowerCase() !== 'fii') {
         continue;
       }
       this.assetsById.set(asset.id, asset);

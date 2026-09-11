@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Decimal } from '@/lib/decimal';
 import type { SerializedCspAssetAllocation } from '@/modules/market-data/server/csp.service';
 
@@ -14,7 +14,7 @@ type SortField = 'ticker' | 'sector' | 'marketPrice' | 'theoreticalPrice' | 'mar
 type SortOrder = 'asc' | 'desc';
 
 function formatCurrency(valStr: string | null | undefined, currency = 'BRL'): string {
-  if (!valStr) return '—';
+  if (!valStr) { return '—'; }
   try {
     const d = new Decimal(valStr);
     const isNegative = d.isNegative();
@@ -30,7 +30,7 @@ function formatCurrency(valStr: string | null | undefined, currency = 'BRL'): st
 }
 
 function formatPercent(valStr: string | null | undefined): string {
-  if (!valStr) return '—';
+  if (!valStr) { return '—'; }
   try {
     const d = new Decimal(valStr);
     const isNegative = d.isNegative();
@@ -45,7 +45,7 @@ function formatPercent(valStr: string | null | undefined): string {
 }
 
 function formatWeightPercent(valStr: string | null | undefined): string {
-  if (!valStr) return '0,00%';
+  if (!valStr) { return '0,00%'; }
   try {
     const d = new Decimal(valStr).times(100);
     return `${d.toFixed(2).replace('.', ',')}%`;

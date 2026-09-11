@@ -10,11 +10,11 @@ export default async function DashboardLayout({
 }) {
   // Validação server-side completa: verifica sessão no banco de dados.
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) { redirect('/login'); }
 
   // Validação de consentimentos obrigatórios vigentes (LGPD)
   const hasConsent = await hasAcceptedCurrentTerms(user.id);
-  if (!hasConsent) redirect('/terms-acceptance');
+  if (!hasConsent) { redirect('/terms-acceptance'); }
 
   return (
     <AppShell user={user}>

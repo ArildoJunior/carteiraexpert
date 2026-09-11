@@ -35,8 +35,8 @@ export default async function AtivosIndexPage({ searchParams }: AtivosPageProps)
     query: resolvedParams.query,
     page: resolvedParams.page ? Number(resolvedParams.page) : 1,
     limit: resolvedParams.limit ? Number(resolvedParams.limit) : 20,
-    sortBy: (resolvedParams.sortBy as any) || 'ticker',
-    sortOrder: (resolvedParams.sortOrder as any) || 'asc',
+    sortBy: (resolvedParams.sortBy as CatalogFilterParams['sortBy']) || 'ticker',
+    sortOrder: (resolvedParams.sortOrder as CatalogFilterParams['sortOrder']) || 'asc',
   };
 
   const result = await getPublicCatalogList(filterParams);

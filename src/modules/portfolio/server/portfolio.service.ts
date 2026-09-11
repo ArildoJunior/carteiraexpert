@@ -81,12 +81,18 @@ export async function createPortfolioInTransaction(
       })
       .returning();
     createdPortfolio = res;
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const dbErr = err as {
+      code?: string;
+      constraint?: string;
+      detail?: string;
+      message?: string;
+    } | null;
     const isTargetConstraint =
-      err?.code === '23505' &&
-      (err?.constraint === 'idx_unique_user_real_portfolio' ||
-        String(err?.detail).includes('idx_unique_user_real_portfolio') ||
-        String(err?.message).includes('idx_unique_user_real_portfolio'));
+      dbErr?.code === '23505' &&
+      (dbErr?.constraint === 'idx_unique_user_real_portfolio' ||
+        String(dbErr?.detail).includes('idx_unique_user_real_portfolio') ||
+        String(dbErr?.message).includes('idx_unique_user_real_portfolio'));
 
     if (isTargetConstraint) {
       throw new DuplicateRealPortfolioError();
@@ -306,12 +312,18 @@ export async function updatePortfolioInTransaction(
       )
       .returning();
     updatedPortfolio = res;
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const dbErr = err as {
+      code?: string;
+      constraint?: string;
+      detail?: string;
+      message?: string;
+    } | null;
     const isTargetConstraint =
-      err?.code === '23505' &&
-      (err?.constraint === 'idx_unique_user_real_portfolio' ||
-        String(err?.detail).includes('idx_unique_user_real_portfolio') ||
-        String(err?.message).includes('idx_unique_user_real_portfolio'));
+      dbErr?.code === '23505' &&
+      (dbErr?.constraint === 'idx_unique_user_real_portfolio' ||
+        String(dbErr?.detail).includes('idx_unique_user_real_portfolio') ||
+        String(dbErr?.message).includes('idx_unique_user_real_portfolio'));
 
     if (isTargetConstraint) {
       throw new DuplicateRealPortfolioError();

@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 export default async function PlansPage() {
   const user = await getCurrentUser();
-  if (!user) redirect('/login');
+  if (!user) { redirect('/login'); }
 
   const [plans, quotaSummary, billingSummary, groupOverview] = await Promise.all([
     listCommercialPlans(),

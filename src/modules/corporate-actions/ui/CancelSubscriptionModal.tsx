@@ -30,20 +30,23 @@ export function CancelSubscriptionModal({
       setReason('');
       setState({ success: false });
     }
-  }, [isOpen, subscription]);
+  }, [isOpen]);
 
-  if (!isOpen || !subscription) return null;
+  if (!isOpen || !subscription) { return null; }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     e.stopPropagation();
+    if (!subscription) {
+      return;
+    }
     setPending(true);
     setState({ success: false });
 
     try {
       const formData = new FormData();
-      formData.set('subscriptionRightId', subscription!.id);
-      formData.set('portfolioId', subscription!.portfolioId);
+      formData.set('subscriptionRightId', subscription.id);
+      formData.set('portfolioId', subscription.portfolioId);
       formData.set('reason', reason);
 
       const res = await cancelSubscriptionRightAction(null, formData);

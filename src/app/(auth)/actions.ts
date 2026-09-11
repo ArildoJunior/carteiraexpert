@@ -2,14 +2,13 @@
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { z } from 'zod';
 import { db } from '@/lib/db';
 import { sessions } from '@/lib/db/schema/identity';
 import { eq, and, isNull, gt } from 'drizzle-orm';
 import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from '@/modules/identity/domain/user.schema';
 import * as authService from '@/modules/identity/server/auth.service';
-import { getSessionId } from '@/modules/identity/server/current-user';
 import { requireAuth } from '@/modules/identity/server/current-user';
+import type { SafeUser } from '@/modules/identity/domain/user.types';
 import { termsAcceptanceSchema } from '@/modules/identity/domain/consent.schema';
 import { recordConsent } from '@/modules/identity/server/consent-service';
 import { CURRENT_CONSENT_VERSIONS } from '@/modules/identity/domain/consent-constants';
@@ -286,7 +285,7 @@ export async function acceptTermsAction(
   _prev: ActionResult,
   formData: FormData
 ): Promise<ActionResult> {
-  let user;
+  let user: SafeUser;
   try {
     user = await requireAuth();
   } catch {

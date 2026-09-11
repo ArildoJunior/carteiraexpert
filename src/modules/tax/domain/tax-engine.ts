@@ -81,7 +81,7 @@ export function identifyDayTradeEvents(events: TaxTimelineEvent[]): Set<string> 
   const byAssetAndDate = new Map<string, TaxTimelineEvent[]>();
 
   for (const event of events) {
-    if (event.type !== 'BUY' && event.type !== 'SELL') continue;
+    if (event.type !== 'BUY' && event.type !== 'SELL') { continue; }
     const dateStr = event.tradeDate.toISOString().slice(0, 10);
     const key = `${event.portfolioId}_${event.assetId}_${dateStr}`;
     const list = byAssetAndDate.get(key) || [];
@@ -118,13 +118,13 @@ export function calculateAnnualTax(
   const sortedEvents = [...events].sort((a, b) => {
     const dateA = a.settlementDate ? a.settlementDate.getTime() : a.tradeDate.getTime();
     const dateB = b.settlementDate ? b.settlementDate.getTime() : b.tradeDate.getTime();
-    if (dateA !== dateB) return dateA - dateB;
+    if (dateA !== dateB) { return dateA - dateB; }
 
     // Se mesma data: BUY antes de SELL, eventos corporativos antes de negociações
     const priority = (type: string) => {
-      if (type === 'SPLIT' || type === 'GROUPING' || type === 'BONUS_SHARE') return 1;
-      if (type === 'BUY') return 2;
-      if (type === 'SELL') return 3;
+      if (type === 'SPLIT' || type === 'GROUPING' || type === 'BONUS_SHARE') { return 1; }
+      if (type === 'BUY') { return 2; }
+      if (type === 'SELL') { return 3; }
       return 4;
     };
     return priority(a.type) - priority(b.type);
@@ -137,7 +137,7 @@ export function calculateAnnualTax(
 
   // Créditos de prejuízo ativos (FIFO)
   // Filtra apenas créditos que não expiraram no ano de apuração (máximo 5 anos)
-  let activeLossCredits: TaxLossCredit[] = initialLossCredits
+  const activeLossCredits: TaxLossCredit[] = initialLossCredits
     .filter((c) => {
       const creditYear = c.year;
       return targetYear >= creditYear && targetYear <= creditYear + 5 && c.remainingAmount.greaterThan(0);
@@ -158,7 +158,7 @@ export function calculateAnnualTax(
   let totalAnnualNetGainLoss = new Decimal(0);
   let totalAnnualEstimatedTax = new Decimal(0);
   let totalIrrfRetidoJcp = new Decimal(0);
-  let totalIrrfRetidoDividendos = new Decimal(0);
+  const totalIrrfRetidoDividendos = new Decimal(0);
   let totalRendimentosIsentosDividendos = new Decimal(0);
   let totalRendimentosIsentosFii = new Decimal(0);
 
@@ -169,7 +169,7 @@ export function calculateAnnualTax(
   while (eventIdx < sortedEvents.length) {
     const ev = sortedEvents[eventIdx];
     const evYear = ev.tradeDate.getUTCFullYear();
-    if (evYear >= targetYear) break;
+    if (evYear >= targetYear) { break; }
 
     processEventPosition(ev, assetPositions);
     eventIdx++;
@@ -259,7 +259,7 @@ export function calculateAnnualTax(
         });
       } else if (ev.type === 'SELL') {
         const pos = assetPositions.get(ev.assetId);
-        const avgCost = pos && pos.quantity.greaterThan(0)
+        const avgCost = pos?.quantity.greaterThan(0)
           ? pos.totalCost.dividedBy(pos.quantity)
           : new Decimal(0);
 
@@ -363,11 +363,11 @@ export function calculateAnnualTax(
       .minus(etfBdrLoss);
 
     // Day Trade é apurado separadamente
-    let grossTaxableDayTradeBase = dayTradeGain.minus(dayTradeLoss);
+    const grossTaxableDayTradeBase = dayTradeGain.minus(dayTradeLoss);
 
     // Compensação de prejuízos acumulados (se habilitado)
     let lossCompensatedSwing = new Decimal(0);
-    let lossCompensatedDayTrade = new Decimal(0);
+    const lossCompensatedDayTrade = new Decimal(0);
 
     const newLossCreditsGenerated: { assetSymbol: string; amount: Decimal; originMonth: number }[] = [];
 
@@ -402,8 +402,8 @@ export function calculateAnnualTax(
         let gainRemaining = grossTaxableSwingBase;
 
         for (const credit of activeLossCredits) {
-          if (gainRemaining.lessThanOrEqualTo(0)) break;
-          if (credit.remainingAmount.lessThanOrEqualTo(0)) continue;
+          if (gainRemaining.lessThanOrEqualTo(0)) { break; }
+          if (credit.remainingAmount.lessThanOrEqualTo(0)) { continue; }
 
           if (credit.remainingAmount.greaterThanOrEqualTo(gainRemaining)) {
             credit.remainingAmount = credit.remainingAmount.minus(gainRemaining);

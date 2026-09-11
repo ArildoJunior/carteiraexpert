@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { eq, and, or, isNull, inArray, sql } from 'drizzle-orm';
+import { eq, and, or, isNull, sql } from 'drizzle-orm';
 import { db, type DbExecutor, type Database } from '@/lib/db';
 import { marketQuotes, exchangeRates } from '@/lib/db/schema/market-data';
 import { assets } from '@/lib/db/schema/portfolio';
@@ -13,8 +13,6 @@ import type {
   IngestMarketDataOptions,
   IngestionReport,
   IngestionItemResult,
-  ProviderQuoteItem,
-  ProviderExchangeRateItem,
 } from './market-data-provider.types';
 import {
   ingestQuoteItemSchema,

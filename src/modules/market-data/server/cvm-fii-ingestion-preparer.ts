@@ -19,7 +19,7 @@ export function decodeCsvContent(
   content: string | Buffer | null | undefined,
   encoding: FiiCsvEncoding = 'latin1'
 ): string | null {
-  if (content === null || content === undefined) return null;
+  if (content === null || content === undefined) { return null; }
   const raw =
     typeof content === 'string'
       ? content
@@ -136,7 +136,7 @@ export async function prepareFiiMonthlyPackage(
 
   for (const monthly of parsedPackage.monthlyRecords) {
     const matched = cadastralReport.matchedMap.get(monthly.cnpj);
-    if (!matched || matched.status !== 'MATCHED' || !matched.matchedAssetId) {
+    if (matched?.status !== 'MATCHED' || !matched.matchedAssetId) {
       unmatchedMonthlyRecords.push(monthly);
     } else {
       matchedAssetsSet.add(matched.matchedAssetId);
