@@ -20,7 +20,7 @@ export interface CspOptions {
  * Regras rígidas:
  * - default-src 'self'
  * - script-src 'self' com o hash SHA-256 exato do script anti-FOUC (e nonce dinâmico)
- * - NUNCA utiliza 'unsafe-eval'
+ * - NUNCA utiliza 'unsafe-eval' em produção (permitido exclusivamente em desenvolvimento para React/Turbopack)
  * - NUNCA utiliza 'unsafe-inline' em script-src
  * - style-src 'self' 'unsafe-inline' (necessário para Tailwind CSS e atributos inline de SVG no Recharts)
  * - img-src 'self' data: https:
@@ -32,8 +32,12 @@ export interface CspOptions {
  */
 export function buildCspHeader(options: CspOptions = {}): string {
   const { nonce } = options;
+  const isProd = options.isProduction ?? (process.env.NODE_ENV === 'production');
 
   const scriptSources = ["'self'", `'${THEME_SCRIPT_SHA256}'`];
+  if (!isProd) {
+    scriptSources.push("'unsafe-eval'");
+  }
   if (nonce) {
     scriptSources.push(`'nonce-${nonce}'`);
   }
@@ -81,7 +85,7 @@ export function getStaticSecurityHeaders(isProduction = process.env.NODE_ENV ===
  */
 export function getSecurityHeaders(options: CspOptions = {}): Array<{ key: string; value: string }> {
   const isProd = options.isProduction ?? process.env.NODE_ENV === 'production';
-  const csp = buildCspHeader(options);
+  const csp = buildCspHeader({ ...options, isProduction: isProd });
 
   return [
     ...getStaticSecurityHeaders(isProd),

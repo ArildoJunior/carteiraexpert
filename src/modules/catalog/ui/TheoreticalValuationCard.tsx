@@ -13,12 +13,28 @@ import {
   calculateTheoreticalValuations,
   serializeTheoreticalValuationResultSet,
 } from '@/modules/market-data/domain/theoretical-valuation-engine';
+import { formatCivilTradeDate } from '@/modules/catalog/domain/catalog-utils';
 
 const SKELETON_VALUATION_KEYS = ['graham', 'bazin', 'gordon', 'fcd'] as const;
 
 export interface TheoreticalValuationCardProps {
   valuationData?: SerializedTheoreticalValuationResultSet | null;
   isLoading?: boolean;
+}
+
+function computeClassicalMarginOfSafety(
+  intrinsicValueStr: string | null | undefined,
+  quotePriceStr: string | null | undefined
+): string | null {
+  if (!intrinsicValueStr || !quotePriceStr) { return null; }
+  try {
+    const iv = new Decimal(intrinsicValueStr);
+    const q = new Decimal(quotePriceStr);
+    if (iv.isZero() || iv.isNegative() || q.isZero() || q.isNegative()) { return null; }
+    return new Decimal(1).minus(q.dividedBy(iv)).times(100).toFixed(2);
+  } catch {
+    return null;
+  }
 }
 
 function formatCurrency(valStr: string | null | undefined, currency = 'BRL'): string {
@@ -135,9 +151,9 @@ export function TheoreticalValuationCard({
   const [dcfGrowthRateInput, setDcfGrowthRateInput] = useState<string>('8.0');
   const [dcfTerminalGrowthInput, setDcfTerminalGrowthInput] = useState<string>('3.0');
   const [dcfYearsInput, setDcfYearsInput] = useState<number>(5);
-  const [multiplesPeInput, setMultiplesPeInput] = useState<string>('15.0');
+  const [multiplesPeInput, setMultiplesPeInput] = useState<string>('10.0');
   const [multiplesPbInput, setMultiplesPbInput] = useState<string>('1.5');
-  const [multiplesEvToEbitdaInput, setMultiplesEvToEbitdaInput] = useState<string>('8.0');
+  const [multiplesEvToEbitdaInput, setMultiplesEvToEbitdaInput] = useState<string>('6.0');
 
   // Se o usuário estiver simulando premissas customizadas, recalcula localmente de forma determinística
   const activeData: SerializedTheoreticalValuationResultSet | null = useMemo(() => {
@@ -274,9 +290,9 @@ export function TheoreticalValuationCard({
     setDcfGrowthRateInput('8.0');
     setDcfTerminalGrowthInput('3.0');
     setDcfYearsInput(5);
-    setMultiplesPeInput('15.0');
+    setMultiplesPeInput('10.0');
     setMultiplesPbInput('1.5');
-    setMultiplesEvToEbitdaInput('8.0');
+    setMultiplesEvToEbitdaInput('6.0');
     setShowSimulator(false);
   };
 
@@ -297,6 +313,11 @@ export function TheoreticalValuationCard({
       dispersionPercent = maxPrice.minus(minPrice).dividedBy(targetDec).times(100);
     }
   }
+
+  const classicalMarginOfSafety = computeClassicalMarginOfSafety(
+    consensus?.weightedTargetPrice,
+    quoteAudit?.quotePriceUsed
+  );
 
   return (
     <div className="rounded-xl border border-border-theme bg-surface p-6 shadow-xs space-y-6">
@@ -344,6 +365,23 @@ export function TheoreticalValuationCard({
           )}
         </div>
       </div>
+
+      {/* Aviso de Defasagem Temporal entre Fundamentos e Cotação */}
+      {quoteAudit?.quoteDateUsed && activeData.referencePeriod && (
+        <div className="p-3 rounded-lg bg-surface-elevated/60 border border-border-theme text-xs text-text-muted flex items-start gap-2.5">
+          <span className="text-brand text-sm mt-0.5">ℹ️</span>
+          <div className="space-y-0.5">
+            <span className="font-semibold text-text-secondary">
+              Defasagem temporal entre fundamentos e cotação de mercado:
+            </span>
+            <p className="leading-relaxed">
+              Os modelos teóricos combinam os fundamentos contábeis auditados do exercício{' '}
+              <strong className="text-text-primary">{activeData.referencePeriod}</strong> ({activeData.statementType === 'CONSOLIDATED' ? 'Consolidado' : 'Individual'}, documento mais recente disponível) com a cotação de mercado de{' '}
+              <strong className="text-text-primary">{formatCivilTradeDate(quoteAudit.quoteDateUsed)}</strong> ({formatCurrency(quoteAudit.quotePriceUsed, quoteAudit.currency)}).
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* 2. Painel Colapsável de Ajuste de Premissas (Simulador Interativo) */}
       {showSimulator && (
@@ -493,7 +531,7 @@ export function TheoreticalValuationCard({
                 onChange={(e) => setMultiplesPeInput(e.target.value)}
                 className="w-full px-3 py-1.5 rounded-md bg-surface border border-border-theme text-text-primary text-xs focus:ring-1 focus:ring-brand focus:border-brand"
               />
-              <p className="text-[10px] text-text-muted">Padrão: 15,0x</p>
+              <p className="text-[10px] text-text-muted">Padrão: 10,0x</p>
             </div>
 
             {/* Premissa Múltiplos: P/VP Alvo */}
@@ -529,7 +567,7 @@ export function TheoreticalValuationCard({
                 onChange={(e) => setMultiplesEvToEbitdaInput(e.target.value)}
                 className="w-full px-3 py-1.5 rounded-md bg-surface border border-border-theme text-text-primary text-xs focus:ring-1 focus:ring-brand focus:border-brand"
               />
-              <p className="text-[10px] text-text-muted">Padrão: 8,0x</p>
+              <p className="text-[10px] text-text-muted">Padrão: 6,0x</p>
             </div>
           </div>
         </div>
@@ -565,9 +603,9 @@ export function TheoreticalValuationCard({
               </div>
             </div>
 
-            {/* Margem de Segurança Ponderada */}
+            {/* Potencial Teórico (Upside) & Margem Clássica */}
             <div>
-              <div className="text-xs text-text-muted font-medium">Margem de Segurança</div>
+              <div className="text-xs text-text-muted font-medium">Potencial Teórico (Upside)</div>
               <div
                 className={`text-2xl font-extrabold ${
                   consensus.marginOfSafetyPercent && Number(consensus.marginOfSafetyPercent) >= 0
@@ -577,6 +615,14 @@ export function TheoreticalValuationCard({
               >
                 {formatPercent(consensus.marginOfSafetyPercent)}
               </div>
+              {classicalMarginOfSafety !== null && (
+                <div className="text-[10px] text-text-muted mt-0.5">
+                  Margem clássica (Graham):{' '}
+                  <span className="font-semibold text-text-secondary">
+                    {formatPercent(classicalMarginOfSafety)}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Amplitude Min / Max */}
@@ -645,17 +691,24 @@ export function TheoreticalValuationCard({
                   {formatCurrency(bazin.intrinsicValue, currency)}
                 </div>
                 {bazin.marginOfSafetyPercent !== null && (
-                  <div className="flex items-center gap-1.5 mt-1.5 text-xs">
-                    <span className="text-text-muted">Margem de segurança:</span>
-                    <span
-                      className={`font-bold ${
-                        Number(bazin.marginOfSafetyPercent) >= 0
-                          ? 'text-emerald-600 dark:text-emerald-400'
-                          : 'text-rose-600 dark:text-rose-400'
-                      }`}
-                    >
-                      {formatPercent(bazin.marginOfSafetyPercent)}
-                    </span>
+                  <div className="mt-1.5 text-xs space-y-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-text-muted">Potencial (Upside):</span>
+                      <span
+                        className={`font-bold ${
+                          Number(bazin.marginOfSafetyPercent) >= 0
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : 'text-rose-600 dark:text-rose-400'
+                        }`}
+                      >
+                        {formatPercent(bazin.marginOfSafetyPercent)}
+                      </span>
+                    </div>
+                    {computeClassicalMarginOfSafety(bazin.intrinsicValue, quoteAudit?.quotePriceUsed) !== null && (
+                      <div className="text-[10px] text-text-muted">
+                        Margem clássica: {formatPercent(computeClassicalMarginOfSafety(bazin.intrinsicValue, quoteAudit?.quotePriceUsed))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -702,17 +755,24 @@ export function TheoreticalValuationCard({
                   {formatCurrency(graham.intrinsicValue, currency)}
                 </div>
                 {graham.marginOfSafetyPercent !== null && (
-                  <div className="flex items-center gap-1.5 mt-1.5 text-xs">
-                    <span className="text-text-muted">Margem de segurança:</span>
-                    <span
-                      className={`font-bold ${
-                        Number(graham.marginOfSafetyPercent) >= 0
-                          ? 'text-emerald-600 dark:text-emerald-400'
-                          : 'text-rose-600 dark:text-rose-400'
-                      }`}
-                    >
-                      {formatPercent(graham.marginOfSafetyPercent)}
-                    </span>
+                  <div className="mt-1.5 text-xs space-y-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-text-muted">Potencial (Upside):</span>
+                      <span
+                        className={`font-bold ${
+                          Number(graham.marginOfSafetyPercent) >= 0
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : 'text-rose-600 dark:text-rose-400'
+                        }`}
+                      >
+                        {formatPercent(graham.marginOfSafetyPercent)}
+                      </span>
+                    </div>
+                    {computeClassicalMarginOfSafety(graham.intrinsicValue, quoteAudit?.quotePriceUsed) !== null && (
+                      <div className="text-[10px] text-text-muted">
+                        Margem clássica: {formatPercent(computeClassicalMarginOfSafety(graham.intrinsicValue, quoteAudit?.quotePriceUsed))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -759,17 +819,24 @@ export function TheoreticalValuationCard({
                   {formatCurrency(dcf.intrinsicValue, currency)}
                 </div>
                 {dcf.marginOfSafetyPercent !== null && (
-                  <div className="flex items-center gap-1.5 mt-1.5 text-xs">
-                    <span className="text-text-muted">Margem de segurança:</span>
-                    <span
-                      className={`font-bold ${
-                        Number(dcf.marginOfSafetyPercent) >= 0
-                          ? 'text-emerald-600 dark:text-emerald-400'
-                          : 'text-rose-600 dark:text-rose-400'
-                      }`}
-                    >
-                      {formatPercent(dcf.marginOfSafetyPercent)}
-                    </span>
+                  <div className="mt-1.5 text-xs space-y-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-text-muted">Potencial (Upside):</span>
+                      <span
+                        className={`font-bold ${
+                          Number(dcf.marginOfSafetyPercent) >= 0
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : 'text-rose-600 dark:text-rose-400'
+                        }`}
+                      >
+                        {formatPercent(dcf.marginOfSafetyPercent)}
+                      </span>
+                    </div>
+                    {computeClassicalMarginOfSafety(dcf.intrinsicValue, quoteAudit?.quotePriceUsed) !== null && (
+                      <div className="text-[10px] text-text-muted">
+                        Margem clássica: {formatPercent(computeClassicalMarginOfSafety(dcf.intrinsicValue, quoteAudit?.quotePriceUsed))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -817,17 +884,24 @@ export function TheoreticalValuationCard({
                     {formatCurrency(multiples.intrinsicValue, currency)}
                   </div>
                   {multiples.marginOfSafetyPercent !== null && (
-                    <div className="flex items-center gap-1.5 mt-1.5 text-xs">
-                      <span className="text-text-muted">Margem de segurança:</span>
-                      <span
-                        className={`font-bold ${
-                          Number(multiples.marginOfSafetyPercent) >= 0
-                            ? 'text-emerald-600 dark:text-emerald-400'
-                            : 'text-rose-600 dark:text-rose-400'
-                        }`}
-                      >
-                        {formatPercent(multiples.marginOfSafetyPercent)}
-                      </span>
+                    <div className="mt-1.5 text-xs space-y-0.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-text-muted">Potencial (Upside):</span>
+                        <span
+                          className={`font-bold ${
+                            Number(multiples.marginOfSafetyPercent) >= 0
+                              ? 'text-emerald-600 dark:text-emerald-400'
+                              : 'text-rose-600 dark:text-rose-400'
+                          }`}
+                        >
+                          {formatPercent(multiples.marginOfSafetyPercent)}
+                        </span>
+                      </div>
+                      {computeClassicalMarginOfSafety(multiples.intrinsicValue, quoteAudit?.quotePriceUsed) !== null && (
+                        <div className="text-[10px] text-text-muted">
+                          Margem clássica: {formatPercent(computeClassicalMarginOfSafety(multiples.intrinsicValue, quoteAudit?.quotePriceUsed))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

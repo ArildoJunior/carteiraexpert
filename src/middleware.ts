@@ -66,7 +66,8 @@ export function middleware(req: NextRequest): NextResponse {
 
   // ── Geração de Nonce por requisição para CSP ─────────────────────────────
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
-  const cspHeader = buildCspHeader({ nonce });
+  const isProduction = process.env.NODE_ENV === 'production';
+  const cspHeader = buildCspHeader({ nonce, isProduction });
 
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set('x-nonce', nonce);

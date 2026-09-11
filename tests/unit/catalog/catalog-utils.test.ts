@@ -9,6 +9,7 @@ import {
   getCategoryRoute,
   getAssetDetailRoute,
   getFreshnessBadge,
+  formatCivilTradeDate,
 } from '@/modules/catalog/domain/catalog-utils';
 
 describe('Catálogo Público — Utilitários de Domínio', () => {
@@ -264,6 +265,31 @@ describe('Catálogo Público — Utilitários de Domínio', () => {
       expect(getFreshnessBadge('eod').label).toBe('Fechamento');
       expect(getFreshnessBadge('stale').label).toBe('Defasada');
       expect(getFreshnessBadge('unquoted').label).toBe('Sem Cotação');
+    });
+  });
+
+  describe('Formatação de Data Civil de Pregão (formatCivilTradeDate)', () => {
+    it('deve formatar data string YYYY-MM-DD sem deslocamento de fuso horário UTC-3', () => {
+      // 04/09/2026 nunca deve virar 03/09/2026
+      expect(formatCivilTradeDate('2026-09-04')).toBe('04/09/2026');
+      expect(formatCivilTradeDate('2026-09-03')).toBe('03/09/2026');
+      expect(formatCivilTradeDate('2026-08-26')).toBe('26/08/2026');
+    });
+
+    it('deve formatar timestamp ISO preservando a data civil', () => {
+      expect(formatCivilTradeDate('2026-09-04T00:00:00.000Z')).toBe('04/09/2026');
+      expect(formatCivilTradeDate('2026-08-26T14:16:06.935Z')).toBe('26/08/2026');
+    });
+
+    it('deve formatar objeto Date', () => {
+      const d = new Date(2026, 8, 4); // Mês 8 = Setembro (0-indexed)
+      expect(formatCivilTradeDate(d)).toBe('04/09/2026');
+    });
+
+    it('deve retornar string vazia para valores nulos ou vazios', () => {
+      expect(formatCivilTradeDate(null)).toBe('');
+      expect(formatCivilTradeDate(undefined)).toBe('');
+      expect(formatCivilTradeDate('')).toBe('');
     });
   });
 });

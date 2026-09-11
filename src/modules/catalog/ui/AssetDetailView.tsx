@@ -2,7 +2,11 @@ import type {
   PublicAssetDetail,
   PublicQuoteHistoryPoint,
 } from '../domain/catalog.types';
-import { getCategoryLabel, getCategoryRoute } from '../domain/catalog-utils';
+import {
+  getCategoryLabel,
+  getCategoryRoute,
+  formatCivilTradeDate,
+} from '../domain/catalog-utils';
 import { QuoteFreshnessBadge } from './QuoteFreshnessBadge';
 import { Breadcrumbs } from './Breadcrumbs';
 import { AssetPriceHistoryChart } from './AssetPriceHistoryChart';
@@ -132,9 +136,7 @@ export function AssetDetailView({
           <div className="text-[11px] text-text-muted mt-1 space-y-0.5">
             <div>
               {asset.quoteDate
-                ? `Pregão: ${new Date(asset.quoteDate).toLocaleDateString('pt-BR', {
-                    timeZone: 'America/Sao_Paulo',
-                  })}`
+                ? `Pregão: ${formatCivilTradeDate(asset.quoteDate)}`
                 : 'Sem registro de pregão'}
             </div>
             <div className="text-[10px] text-text-secondary font-medium">
@@ -197,9 +199,7 @@ export function AssetDetailView({
           </div>
           <div className="text-[11px] text-text-muted mt-1">
             {asset.previousCloseDate
-              ? `Em ${new Date(asset.previousCloseDate).toLocaleDateString('pt-BR', {
-                  timeZone: 'America/Sao_Paulo',
-                })}`
+              ? `Em ${formatCivilTradeDate(asset.previousCloseDate)}`
               : 'Base de pregão inicial'}
           </div>
         </div>

@@ -45,9 +45,9 @@ describe('Cabeçalhos de Segurança HTTP e CSP', () => {
       expect(csp).toContain("frame-ancestors 'none'");
     });
 
-    it('NUNCA inclui unsafe-eval', () => {
+    it('inclui unsafe-eval apenas em desenvolvimento e NUNCA em produção', () => {
       const cspDev = buildCspHeader({ isProduction: false });
-      expect(cspDev).not.toContain('unsafe-eval');
+      expect(cspDev).toContain("'unsafe-eval'");
 
       const cspProd = buildCspHeader({ isProduction: true });
       expect(cspProd).not.toContain('unsafe-eval');

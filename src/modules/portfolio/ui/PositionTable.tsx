@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Decimal } from '@/lib/decimal';
 import { AssetPositionDetailModal } from './AssetPositionDetailModal';
+import { formatCivilTradeDate } from '@/modules/catalog/domain/catalog-utils';
 import type {
   SerializedPortfolioPositionsSummary,
 } from '../domain/position.types';
@@ -412,7 +413,7 @@ export function PositionTable({ summary, baseCurrency = 'BRL' }: PositionTablePr
                             </div>
                             {pos.quoteDate && (
                               <span className="text-[10px] text-text-secondary">
-                                Pregão: {new Date(pos.quoteDate).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+                                Pregão: {formatCivilTradeDate(pos.quoteDate)}
                               </span>
                             )}
                           </div>

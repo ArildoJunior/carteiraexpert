@@ -1,5 +1,5 @@
 import type { DerivedFreshnessStatus } from '../domain/catalog.types';
-import { getFreshnessBadge } from '../domain/catalog-utils';
+import { getFreshnessBadge, formatCivilTradeDate } from '../domain/catalog-utils';
 
 interface QuoteFreshnessBadgeProps {
   status: DerivedFreshnessStatus;
@@ -26,7 +26,7 @@ export function QuoteFreshnessBadge({
 
   return (
     <span
-      title={`${badge.description}${quoteDate ? ` • Data: ${new Date(quoteDate).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}` : ''}`}
+      title={`${badge.description}${quoteDate ? ` • Data: ${formatCivilTradeDate(quoteDate)}` : ''}`}
       className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${variantStyles} ${className}`}
     >
       <span

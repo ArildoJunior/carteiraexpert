@@ -1,4 +1,4 @@
-import { eq, and, gte, lte, asc, desc, sql } from 'drizzle-orm';
+import { eq, and, gte, lte, asc, desc, sql, getTableColumns } from 'drizzle-orm';
 import { db, type DbExecutor } from '@/lib/db';
 import { b3HistoricalQuotes } from '@/lib/db/schema/b3-market-data';
 import type {
@@ -41,7 +41,8 @@ function formatDateToPtBr(isoDate: string): string {
 
 /**
  * Consulta cotações históricas da B3 na tabela b3_historical_quotes.
- * Não altera nem consulta a tabela legada market_quotes.
+ * Aplica deduplicação determinística por instrumento econômico (tradeDate, marketType, bdiCode)
+ * preservando o registro mais recente inserido no banco caso haja duplicidade física residual.
  */
 export async function getB3HistoricalQuotes(
   filter: B3HistoricalQuotesFilter,
@@ -64,27 +65,42 @@ export async function getB3HistoricalQuotes(
 
   const whereClause = and(...conditions);
 
-  // 1. Contagem total de registros para paginação
+  // Subconsulta particionada para deduplicar múltiplos registros da mesma data e instrumento
+  // (ex: reprocessamento de lote com hash diferente). Prioriza o mais recentemente criado.
+  const b3Columns = getTableColumns(b3HistoricalQuotes);
+  const rankedSubquery = executor
+    .select({
+      ...b3Columns,
+      rowNumber: sql<number>`ROW_NUMBER() OVER (
+        PARTITION BY ${b3HistoricalQuotes.ticker}, ${b3HistoricalQuotes.tradeDate}, ${b3HistoricalQuotes.marketType}, ${b3HistoricalQuotes.bdiCode}
+        ORDER BY ${b3HistoricalQuotes.createdAt} DESC, ${b3HistoricalQuotes.id} DESC
+      )`.as('rn'),
+    })
+    .from(b3HistoricalQuotes)
+    .where(whereClause)
+    .as('ranked_b3_quotes');
+
+  // 1. Contagem total de registros deduplicados para paginação
   const [countResult] = await executor
     .select({ count: sql<number>`count(*)::int` })
-    .from(b3HistoricalQuotes)
-    .where(whereClause);
+    .from(rankedSubquery)
+    .where(eq(rankedSubquery.rowNumber, 1));
 
   const totalCount = countResult?.count ?? 0;
   const totalPages = Math.ceil(totalCount / limit) || 1;
   const offset = (page - 1) * limit;
 
-  // 2. Consulta paginada com ordenação consistente
+  // 2. Consulta paginada deduplicada com ordenação consistente
   const rows = await executor
     .select()
-    .from(b3HistoricalQuotes)
-    .where(whereClause)
+    .from(rankedSubquery)
+    .where(eq(rankedSubquery.rowNumber, 1))
     .orderBy(
       orderDirection === 'asc'
-        ? asc(b3HistoricalQuotes.tradeDate)
-        : desc(b3HistoricalQuotes.tradeDate),
-      asc(b3HistoricalQuotes.marketType),
-      asc(b3HistoricalQuotes.id)
+        ? asc(rankedSubquery.tradeDate)
+        : desc(rankedSubquery.tradeDate),
+      asc(rankedSubquery.marketType),
+      asc(rankedSubquery.id)
     )
     .limit(limit)
     .offset(offset);

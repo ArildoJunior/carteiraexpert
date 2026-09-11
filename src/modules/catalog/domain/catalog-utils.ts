@@ -39,6 +39,29 @@ export function getMarketTradingDay(date: Date | string, timeZone = B3_TIMEZONE)
 }
 
 /**
+ * Formata a data de pregão para exibição civil no formato DD/MM/YYYY.
+ * Evita o recuo de um dia (timezone shift) que ocorre ao converter strings ISO
+ * puras ("YYYY-MM-DD") usando fusos locais brasileiros (UTC-3).
+ */
+export function formatCivilTradeDate(dateInput: string | Date | null | undefined): string {
+  if (!dateInput) {
+    return '';
+  }
+  if (typeof dateInput === 'string') {
+    const match = dateInput.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) {
+      const [, y, m, d] = match;
+      return `${d}/${m}/${y}`;
+    }
+  }
+  const dateObj = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+  if (Number.isNaN(dateObj.getTime())) {
+    return '';
+  }
+  return dateObj.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+}
+
+/**
  * Calcula a quantidade de dias úteis (segunda a sexta-feira) entre uma data no passado e o momento atual.
  */
 export function countBusinessDaysSince(
